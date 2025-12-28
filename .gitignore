@@ -12,3 +12,8 @@ venv/
 data/cache/
 runs/
 
+# 自动化工作流配置（本地）
+.autoworkflow/
+.bmad-core/
+.claude/
+
