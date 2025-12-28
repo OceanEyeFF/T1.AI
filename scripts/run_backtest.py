@@ -39,7 +39,9 @@ def main() -> None:
 
     data_by_symbol: dict[str, pd.DataFrame] = {}
     for symbol in symbols:
-        req = AkshareDailyBarsRequest(symbol=symbol, start_date=args.start, end_date=args.end, adjust="qfq")
+        req = AkshareDailyBarsRequest(
+            symbol=symbol, start_date=args.start, end_date=args.end, adjust="qfq"
+        )
         df = load_or_fetch_daily_bars(req, cache_dir=cache_dir, refresh=args.refresh)
         if df.empty:
             raise SystemExit(f"empty data for {symbol}")
@@ -61,7 +63,9 @@ def main() -> None:
     out_dir = Path(args.out_dir) / ts
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    bench_req = AkshareIndexDailyRequest(symbol=args.benchmark, start_date=args.start, end_date=args.end)
+    bench_req = AkshareIndexDailyRequest(
+        symbol=args.benchmark, start_date=args.start, end_date=args.end
+    )
     bench = load_or_fetch_index_daily(bench_req, cache_dir=cache_dir, refresh=args.refresh)
 
     result.equity_curve.to_csv(out_dir / "equity.csv")

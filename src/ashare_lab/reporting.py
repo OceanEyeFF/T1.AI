@@ -32,4 +32,3 @@ def summarize_excess(excess_df: pd.DataFrame) -> dict[str, float]:
         "excess_vol": vol_excess,
         "excess_sharpe": sharpe_excess,
     }
-

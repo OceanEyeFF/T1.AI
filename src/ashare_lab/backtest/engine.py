@@ -17,8 +17,7 @@ class Strategy(Protocol):
         self,
         today: pd.Timestamp,
         history: dict[str, pd.DataFrame],
-    ) -> dict[str, float]:
-        ...
+    ) -> dict[str, float]: ...
 
 
 @dataclass(frozen=True)
@@ -240,7 +239,9 @@ class BacktestEngine:
                     if shares <= 0:
                         continue
                     turnover = open_px * shares
-                    cost = max(self._config.min_cost_rmb, turnover * self._config.total_friction_rate)
+                    cost = max(
+                        self._config.min_cost_rmb, turnover * self._config.total_friction_rate
+                    )
                     if turnover + cost > cash + 1e-9:
                         continue
                 cash -= turnover + cost

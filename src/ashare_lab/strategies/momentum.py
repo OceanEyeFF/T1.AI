@@ -36,4 +36,3 @@ class MomentumTopNStrategy:
 
         w = 1.0 / float(len(selected))
         return {s: w for s in selected}
-

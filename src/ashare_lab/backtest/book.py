@@ -46,4 +46,3 @@ class PositionBook:
 
     def symbols(self) -> list[str]:
         return sorted(self._lots.keys())
-

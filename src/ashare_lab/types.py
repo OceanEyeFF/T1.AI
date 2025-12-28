@@ -24,4 +24,3 @@ class Fill:
     price: float
     turnover: float
     cost: float
-

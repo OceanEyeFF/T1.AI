@@ -62,4 +62,3 @@ def load_or_fetch_index_daily(
         return df
     df.reset_index().to_csv(cache_path, index=False)
     return df
-

@@ -9,7 +9,9 @@ class _OneShotBuyThenSellStrategy:
     def __init__(self, symbol: str) -> None:
         self._symbol = symbol
 
-    def target_weights(self, today: pd.Timestamp, history: dict[str, pd.DataFrame]) -> dict[str, float]:
+    def target_weights(
+        self, today: pd.Timestamp, history: dict[str, pd.DataFrame]
+    ) -> dict[str, float]:
         # Day 1: buy; Day 2: sell (target empty)
         if len(history[self._symbol].dropna(subset=["close"])) <= 1:
             return {self._symbol: 1.0}
@@ -19,7 +21,9 @@ class _OneShotBuyThenSellStrategy:
 def _df(prices: list[tuple[str, float, float]]) -> pd.DataFrame:
     # prices: (YYYY-MM-DD, open, close)
     idx = pd.to_datetime([d for d, _, _ in prices])
-    return pd.DataFrame({"open": [o for _, o, _ in prices], "close": [c for _, _, c in prices]}, index=idx)
+    return pd.DataFrame(
+        {"open": [o for _, o, _ in prices], "close": [c for _, _, c in prices]}, index=idx
+    )
 
 
 def test_tplus1_blocks_same_day_sell() -> None:
@@ -42,7 +46,9 @@ class _BuyAlwaysStrategy:
     def __init__(self, symbol: str) -> None:
         self._symbol = symbol
 
-    def target_weights(self, today: pd.Timestamp, history: dict[str, pd.DataFrame]) -> dict[str, float]:
+    def target_weights(
+        self, today: pd.Timestamp, history: dict[str, pd.DataFrame]
+    ) -> dict[str, float]:
         return {self._symbol: 1.0}
 
 
@@ -64,7 +70,9 @@ class _SellAlwaysStrategy:
     def __init__(self, symbol: str) -> None:
         self._symbol = symbol
 
-    def target_weights(self, today: pd.Timestamp, history: dict[str, pd.DataFrame]) -> dict[str, float]:
+    def target_weights(
+        self, today: pd.Timestamp, history: dict[str, pd.DataFrame]
+    ) -> dict[str, float]:
         return {}
 
 
@@ -81,7 +89,9 @@ def test_sell_blocked_at_limit_down_after_holding() -> None:
     )
 
     class _BuyDay1ThenFlat:
-        def target_weights(self, today: pd.Timestamp, history: dict[str, pd.DataFrame]) -> dict[str, float]:
+        def target_weights(
+            self, today: pd.Timestamp, history: dict[str, pd.DataFrame]
+        ) -> dict[str, float]:
             closes = history[symbol]["close"].dropna()
             if len(closes) <= 1:
                 return {symbol: 1.0}
@@ -90,4 +100,3 @@ def test_sell_blocked_at_limit_down_after_holding() -> None:
     engine = BacktestEngine(BacktestConfig(initial_cash=10_000))
     result = engine.run({symbol: df}, strategy=_BuyDay1ThenFlat())
     assert result.diagnostics["sell_blocked_limit_down"] >= 1
-

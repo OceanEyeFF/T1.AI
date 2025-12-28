@@ -7,6 +7,7 @@
 - 约束：见 `docs/constraints.md`
 - 盈利/验收目标：见 `docs/objectives.md`
 - 数据契约（内部统一 schema）：见 `docs/data_contract.md`
+- 交易协议（信号/成交时点、持有周期、做T策略）：见 `docs/protocol.md`
 
 ## Quickstart（V0：先用 akshare 跑通链路）
 
@@ -17,7 +18,22 @@ python -m pip install -U pip
 python -m pip install -e ".[dev]"
 ```
 
-2) 跑一个最小回测（默认 Top3 动量，日频评估，开盘撮合 + 沪深300超额）
+2) 构建股票池快照（可选，用于全市场回测）
+
+```bash
+# 使用当前日期
+python scripts/build_universe.py
+
+# 指定日期
+python scripts/build_universe.py --date 20241231
+```
+
+输出：
+- 股票池快照保存到 `data/cache/universe/<date>.csv`
+- 包含股票代码、名称等基础信息
+- 已过滤 ST/北交/科创/创业板
+
+3) 跑一个最小回测（默认 Top3 动量，日频评估，开盘撮合 + 沪深300超额）
 
 ```bash
 python scripts/run_backtest.py \
@@ -39,5 +55,8 @@ python scripts/run_backtest.py \
 
 ## 文档入口
 
+- 交易协议：`docs/protocol.md`（信号/成交时点、持有周期、做T策略）
+- 协议配置：`configs/protocol.yaml`（可配置参数）
 - 数据来源：`docs/data_sources.md`
 - 新闻/公告数据建议：`docs/news_sources.md`
+- 开发路线图：`NEXT_STEPS.md`
