@@ -50,51 +50,52 @@
 
 ---
 
-## 2. 特征与标签（先做简单、严格防穿越）⭐ **当前焦点**
+## 2. 特征与标签（先做简单、严格防穿越）✅
 
-**状态：规划完成，准备实施（2025-12-29）**
+**状态：已完成（2025-12-30）**
 
 目标：搭建 dataset builder（特征/标签/对齐规则），为规则策略与深度模型共用。
 
 ### 快速迭代计划（4 轮）
 
 #### 第一轮：基础架构 + 价格动量特征
-- [ ] 创建 `src/ashare_lab/features/` 目录结构
-- [ ] 实现 `BaseFeature` 基础类（定义接口规范）
-- [ ] 实现价格动量特征：
+- [x] 创建 `src/ashare_lab/features/` 目录结构
+- [x] 实现 `BaseFeature` 基础类（定义接口规范）
+- [x] 实现价格动量特征：
   - `return_1d`：1 日收益率（严格滞后对齐）
   - `return_5d`：5 日收益率
   - `return_20d`：20 日收益率
-- [ ] 编写单元测试 `tests/test_features_momentum.py`（验证时间对齐，防穿越）
-- [ ] Gate 验证：pytest 全绿
+- [x] 编写单元测试 `tests/test_features_momentum.py`（验证时间对齐，防穿越）
+- [x] Gate 验证：pytest 全绿
 
 #### 第二轮：量价特征
-- [ ] 实现量价特征：
+- [x] 实现量价特征：
   - `volume_ratio`：量比（今日成交量 / N 日均量）
-  - `turnover_rate`：换手率（需要流通股本数据，V0 可简化）
   - `amount_change`：成交额变化
-- [ ] 编写单元测试 `tests/test_features_volume.py`
-- [ ] Gate 验证：pytest 全绿
+  - `volume_change`：成交量变化
+  - （可选）`turnover_rate`：换手率（依赖流通股本数据，留到 V1.1）
+- [x] 编写单元测试 `tests/test_features_volume.py`
+- [x] Gate 验证：pytest 全绿
 
 #### 第三轮：标签定义
-- [ ] 创建 `src/ashare_lab/labels/` 目录
-- [ ] 实现 `ExcessReturnLabel` 类：
+- [x] 创建 `src/ashare_lab/labels/` 目录
+- [x] 实现 `ExcessReturnLabel` 类：
   - 计算次日收益率
   - 计算基准（沪深300）次日收益率
   - 计算超额收益（股票收益 - 基准收益）
-- [ ] 编写单元测试 `tests/test_labels.py`（验证标签时间对齐）
-- [ ] Gate 验证：pytest 全绿
+- [x] 编写单元测试 `tests/test_labels.py`（验证标签时间对齐）
+- [x] Gate 验证：pytest 全绿
 
 #### 第四轮：数据集构建器
-- [ ] 创建 `src/ashare_lab/dataset/` 目录
-- [ ] 实现 `DatasetBuilder` 类：
+- [x] 创建 `src/ashare_lab/dataset/` 目录
+- [x] 实现 `DatasetBuilder` 类：
   - 加载股票池快照
-  - 加载行情数据（复用 `data.akshare_source`）
+  - 加载行情数据（复用 `ashare_lab.data.akshare_source`）
   - 计算特征和标签
   - walk-forward 切分（训练/验证/测试）
-- [ ] 创建 `scripts/build_dataset.py` 脚本
-- [ ] 编写集成测试 `tests/test_dataset_builder.py`
-- [ ] Gate 验证：pytest 全绿 + 生成示例数据集
+- [x] 创建 `scripts/build_dataset.py` 脚本
+- [x] 编写集成测试 `tests/test_dataset_builder.py`
+- [x] Gate 验证：pytest 全绿 + 生成示例数据集
 
 ### 验收标准（DoD）
 
@@ -113,8 +114,8 @@
 - 示例：2024-01-15 的特征使用 2024-01-14 及之前的数据，标签是 2024-01-16 的收益
 
 **数据依赖：**
-- 行情数据：`data.akshare_source.AkShareSource`
-- 基准数据：`data.index_source.IndexSource`（沪深300）
+- 行情数据：`ashare_lab.data.akshare_source.load_or_fetch_daily_bars`
+- 基准数据：`ashare_lab.data.index_source.load_or_fetch_index_daily`（沪深300）
 - 股票池快照：`data/cache/universe/<date>.csv`
 
 **输出格式：**
@@ -195,48 +196,30 @@ data/datasets/<name>/
   - 添加单元测试 `tests/test_universe.py`（12 个测试全部通过）
   - 更新 README.md 添加使用说明
 
----
-
-### 优先级 1：特征与标签（任务 2）⭐ **下一步**
-
-**目标：** 搭建 dataset builder（特征/标签/对齐规则），为规则策略与深度模型共用。
-
-**实施策略：** 快速迭代，4 轮小步验证（详见上方任务 2 完整计划）
-
-**第一轮（基础架构 + 价格动量）：**
-- 创建特征框架 + 收益率特征
-- 单元测试验证时间对齐
-- Gate：pytest 全绿
-
-**第二轮（量价特征）：**
-- 成交量、换手率、量比等指标
-- 单元测试
-- Gate：pytest 全绿
-
-**第三轮（标签定义）：**
-- 次日相对沪深300超额收益标签
-- 单元测试验证标签对齐
-- Gate：pytest 全绿
-
-**第四轮（数据集构建器）：**
-- DatasetBuilder 类 + walk-forward 切分
-- 集成测试 + 示例数据集生成
-- Gate：pytest 全绿 + 数据集输出
-
-**验收标准（DoD）：**
-- ✅ 特征计算严格滞后对齐（t 日特征仅使用 t-1 及之前数据）
-- ✅ 标签定义清晰（次日相对沪深300超额收益）
-- ✅ dataset builder 支持 walk-forward 切分（训练/验证/测试）
-- ✅ 所有测试通过（pytest 全绿）
-- ✅ 输出格式清晰（Parquet + 元数据）
-
-**预计工作量：** 1 天（分 4 轮，每轮 2-3 小时）
-
-**前置依赖：** 任务 1 已完成 ✅（股票池快照机制）
+- **任务 2：特征/标签 pipeline**（2025-12-30 完成）
+  - 特征：`src/ashare_lab/features/`（严格滞后对齐）
+  - 标签：`src/ashare_lab/labels/`（次日收益 / 次日相对沪深300超额收益）
+  - 数据集：`src/ashare_lab/dataset/`（DatasetBuilder + Parquet 输出 + `metadata.yaml`）
+  - 脚本：`scripts/build_dataset*.py`、`scripts/train_model.py`、`scripts/evaluate_model.py`
+  - 测试：`tests/test_features_*.py`、`tests/test_labels.py`、`tests/test_dataset_builder.py`（pytest 全绿）
 
 ---
 
-### 优先级 2：策略层增强（任务 3）
+### ✅ 任务 2：特征与标签（已完成）
+
+**交付物：**
+- ✅ `src/ashare_lab/features/`：收益率/量价特征（严格滞后对齐）
+- ✅ `src/ashare_lab/labels/`：次日收益 / 次日相对沪深300超额收益标签
+- ✅ `src/ashare_lab/dataset/`：DatasetBuilder（切分 + Parquet + `metadata.yaml`）
+- ✅ `scripts/build_dataset*.py`：数据集构建脚本
+- ✅ 测试覆盖：`tests/test_features_*.py`、`tests/test_labels.py`、`tests/test_dataset_builder.py`
+
+**备注：**
+- `turnover_rate` 依赖流通股本数据，留到 V1.1 再实现
+
+---
+
+### 优先级 1：策略层增强（任务 3）⭐ **下一步**
 
 **目标：** 把"每天都评估"变成"只有优势足够大才交易"，并且与单日亏损阈值联动。
 
@@ -261,17 +244,17 @@ data/datasets/<name>/
 
 ### 里程碑目标
 
-**V0.5 版本（当前进度：2/7）**
+**V0.5 版本（当前进度：3/7）**
 
 已完成：
 - ✅ **任务 0**：完整的交易协议定义（信号/成交时点、持有周期、做T策略）
 - ✅ **任务 1**：可复现的股票池快照机制
+- ✅ **任务 2**：特征/标签 pipeline（DatasetBuilder + 特征/标签 + 测试）
 
 进行中：
-- ⭐ **任务 2**：特征/标签 pipeline（为深度模型铺路）← **下一步**
+- ⭐ **任务 3**：低换手策略层（换仓门槛 + 成本覆盖阈值）← **下一步**
 
 计划中：
-- 🔲 **任务 3**：低换手策略层（换仓门槛 + 成本覆盖阈值）
 - 🔲 **任务 4**：回测与报告增强（月度超额、滚动胜率、成本占比统计）
 - 🔲 **任务 5**：模型架构接口定义（LSTM/Transformer 插槽）
 - 🔲 **任务 6**：新闻/公告插件（文本事件 schema + 存档 + 抽取）
@@ -286,18 +269,6 @@ data/datasets/<name>/
 
 ### 下一步行动建议
 
-**立即开始任务 2（推荐）：**
-
-主人可以使用命令启动第一轮迭代：
-```bash
-/autoworkflow:feature-shipper 执行任务 2 第一轮：基础架构 + 价格动量特征
-```
-
-或者直接让浮浮酱自主执行：
-```bash
-/autoworkflow:feature-shipper 开始实施 NEXT_STEPS.md 中的任务 2
-```
-
 **验证 gate 机制（可选）：**
 
 如果主人想先确认 gate 验证流程，可以运行：
@@ -305,8 +276,12 @@ data/datasets/<name>/
 pytest tests/ -v
 ```
 
+**生成示例数据集（可选）：**
+```bash
+python scripts/build_dataset.py --symbols 600519,000333 --start 20240101 --end 20241231
+```
+
 **其他选项：**
 
 - 如果主人有更高优先级的任务，可以随时调整计划
 - 如果需要讨论技术细节或设计方案，浮浮酱随时待命 ฅ'ω'ฅ
-
