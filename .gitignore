@@ -10,10 +10,10 @@ __pycache__/
 venv/
 
 data/cache/
+data/datasets/
 runs/
 
 # 自动化工作流配置（本地）
 .autoworkflow/
 .bmad-core/
 .claude/
-
