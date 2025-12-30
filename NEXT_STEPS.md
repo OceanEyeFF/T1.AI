@@ -50,17 +50,84 @@
 
 ---
 
-## 2. 特征与标签（先做简单、严格防穿越）
+## 2. 特征与标签（先做简单、严格防穿越）⭐ **当前焦点**
+
+**状态：规划完成，准备实施（2025-12-29）**
 
 目标：搭建 dataset builder（特征/标签/对齐规则），为规则策略与深度模型共用。
 
-计划：
-- [ ] `src/ashare_lab/features/`：基础特征（收益率、均线、波动率、量价等），全部滞后对齐
-- [ ] `src/ashare_lab/labels/`：明确标签定义（如：次日收益、次日相对沪深300超额）
-- [ ] `scripts/build_dataset.py`：从 universe + bars 生成可训练数据（支持 walk-forward 切分）
+### 快速迭代计划（4 轮）
+
+#### 第一轮：基础架构 + 价格动量特征
+- [ ] 创建 `src/ashare_lab/features/` 目录结构
+- [ ] 实现 `BaseFeature` 基础类（定义接口规范）
+- [ ] 实现价格动量特征：
+  - `return_1d`：1 日收益率（严格滞后对齐）
+  - `return_5d`：5 日收益率
+  - `return_20d`：20 日收益率
+- [ ] 编写单元测试 `tests/test_features_momentum.py`（验证时间对齐，防穿越）
+- [ ] Gate 验证：pytest 全绿
+
+#### 第二轮：量价特征
+- [ ] 实现量价特征：
+  - `volume_ratio`：量比（今日成交量 / N 日均量）
+  - `turnover_rate`：换手率（需要流通股本数据，V0 可简化）
+  - `amount_change`：成交额变化
+- [ ] 编写单元测试 `tests/test_features_volume.py`
+- [ ] Gate 验证：pytest 全绿
+
+#### 第三轮：标签定义
+- [ ] 创建 `src/ashare_lab/labels/` 目录
+- [ ] 实现 `ExcessReturnLabel` 类：
+  - 计算次日收益率
+  - 计算基准（沪深300）次日收益率
+  - 计算超额收益（股票收益 - 基准收益）
+- [ ] 编写单元测试 `tests/test_labels.py`（验证标签时间对齐）
+- [ ] Gate 验证：pytest 全绿
+
+#### 第四轮：数据集构建器
+- [ ] 创建 `src/ashare_lab/dataset/` 目录
+- [ ] 实现 `DatasetBuilder` 类：
+  - 加载股票池快照
+  - 加载行情数据（复用 `data.akshare_source`）
+  - 计算特征和标签
+  - walk-forward 切分（训练/验证/测试）
+- [ ] 创建 `scripts/build_dataset.py` 脚本
+- [ ] 编写集成测试 `tests/test_dataset_builder.py`
+- [ ] Gate 验证：pytest 全绿 + 生成示例数据集
+
+### 验收标准（DoD）
+
+- ✅ 特征计算严格滞后对齐（t 日特征仅使用 t-1 及之前数据）
+- ✅ 标签定义清晰（次日相对沪深300超额收益）
+- ✅ dataset builder 支持 walk-forward 切分（训练/验证/测试）
+- ✅ 所有单元测试和集成测试通过（pytest 全绿）
+- ✅ 输出格式清晰（CSV 或 Parquet，包含元数据）
+- ✅ 文档完善（代码注释 + docstring）
+
+### 技术细节
+
+**时间对齐规则（严格防穿越）：**
+- 特征 `t` 仅使用数据 `[0, t-1]`（不包含 t 日）
+- 标签 `t` 对应的是 `t+1` 日的收益（基于 t+1 日的 close）
+- 示例：2024-01-15 的特征使用 2024-01-14 及之前的数据，标签是 2024-01-16 的收益
+
+**数据依赖：**
+- 行情数据：`data.akshare_source.AkShareSource`
+- 基准数据：`data.index_source.IndexSource`（沪深300）
+- 股票池快照：`data/cache/universe/<date>.csv`
+
+**输出格式：**
+```
+data/datasets/<name>/
+├── metadata.yaml          # 数据集元信息（特征列表、时间范围、切分规则）
+├── train.parquet          # 训练集（带时间戳 + 特征 + 标签）
+├── valid.parquet          # 验证集
+└── test.parquet           # 测试集
+```
 
 备注：
-- V1 不接基本面；V1.1 再加“按披露日对齐”的财务特征。
+- V1 不接基本面；V1.1 再加"按披露日对齐"的财务特征。
 
 ---
 
@@ -134,21 +201,38 @@
 
 **目标：** 搭建 dataset builder（特征/标签/对齐规则），为规则策略与深度模型共用。
 
-**计划步骤：**
-1. `src/ashare_lab/features/`：基础特征（收益率、均线、波动率、量价等），全部滞后对齐
-2. `src/ashare_lab/labels/`：明确标签定义（如：次日收益、次日相对沪深300超额）
-3. `scripts/build_dataset.py`：从 universe + bars 生成可训练数据（支持 walk-forward 切分）
-4. 单元测试：验证特征/标签时间对齐，防穿越
+**实施策略：** 快速迭代，4 轮小步验证（详见上方任务 2 完整计划）
 
-**验收标准：**
+**第一轮（基础架构 + 价格动量）：**
+- 创建特征框架 + 收益率特征
+- 单元测试验证时间对齐
+- Gate：pytest 全绿
+
+**第二轮（量价特征）：**
+- 成交量、换手率、量比等指标
+- 单元测试
+- Gate：pytest 全绿
+
+**第三轮（标签定义）：**
+- 次日相对沪深300超额收益标签
+- 单元测试验证标签对齐
+- Gate：pytest 全绿
+
+**第四轮（数据集构建器）：**
+- DatasetBuilder 类 + walk-forward 切分
+- 集成测试 + 示例数据集生成
+- Gate：pytest 全绿 + 数据集输出
+
+**验收标准（DoD）：**
 - ✅ 特征计算严格滞后对齐（t 日特征仅使用 t-1 及之前数据）
-- ✅ 标签定义清晰（次日相对基准超额收益）
-- ✅ dataset builder 支持 walk-forward 切分（训练集/验证集/测试集）
-- ✅ 通过 gate 验证
+- ✅ 标签定义清晰（次日相对沪深300超额收益）
+- ✅ dataset builder 支持 walk-forward 切分（训练/验证/测试）
+- ✅ 所有测试通过（pytest 全绿）
+- ✅ 输出格式清晰（Parquet + 元数据）
 
-**预计工作量：** 1 天
+**预计工作量：** 1 天（分 4 轮，每轮 2-3 小时）
 
-**前置依赖：** 任务 1 已完成（股票池快照机制）
+**前置依赖：** 任务 1 已完成 ✅（股票池快照机制）
 
 ---
 
@@ -202,7 +286,27 @@
 
 ### 下一步行动建议
 
-主人可以继续使用 `/autoworkflow:feature-shipper` 命令，浮浮酱会自动执行任务 2（特征与标签）喵～ (´。• ᵕ •。`) ♡
+**立即开始任务 2（推荐）：**
 
-或者主人有其他优先级更高的任务也可以告诉浮浮酱喵～ φ(≧ω≦*)♪
+主人可以使用命令启动第一轮迭代：
+```bash
+/autoworkflow:feature-shipper 执行任务 2 第一轮：基础架构 + 价格动量特征
+```
+
+或者直接让浮浮酱自主执行：
+```bash
+/autoworkflow:feature-shipper 开始实施 NEXT_STEPS.md 中的任务 2
+```
+
+**验证 gate 机制（可选）：**
+
+如果主人想先确认 gate 验证流程，可以运行：
+```bash
+pytest tests/ -v
+```
+
+**其他选项：**
+
+- 如果主人有更高优先级的任务，可以随时调整计划
+- 如果需要讨论技术细节或设计方案，浮浮酱随时待命 ฅ'ω'ฅ
 
