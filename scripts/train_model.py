@@ -16,7 +16,6 @@ import logging
 from pathlib import Path
 
 import pandas as pd
-import torch
 
 from ashare_lab.models.transformer import create_model
 from ashare_lab.training.trainer import Trainer, TrainerConfig

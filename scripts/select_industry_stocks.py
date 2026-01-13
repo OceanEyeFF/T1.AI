@@ -204,9 +204,7 @@ def filter_stocks_by_industry(
 
     # 5. 基本面筛选与排序
     # 剔除市值过小的股票（小于50亿）
-    candidates_df = candidates_df[
-        candidates_df["circulating_market_value"] > 5e9
-    ].copy()
+    candidates_df = candidates_df[candidates_df["circulating_market_value"] > 5e9].copy()
 
     if candidates_df.empty:
         logger.warning(f"  ⚠️ 行业 {industry_name} 市值筛选后无候选股票")
@@ -221,8 +219,7 @@ def filter_stocks_by_industry(
     logger.info(f"  ✅ 行业 {industry_name} 选中 {len(selected_codes)} 只股票:")
     for _, row in candidates_df.head(top_n).iterrows():
         logger.info(
-            f"    - {row['code']} {row['name']}: "
-            f"市值 {row['circulating_market_value']/1e8:.2f}亿"
+            f"    - {row['code']} {row['name']}: 市值 {row['circulating_market_value'] / 1e8:.2f}亿"
         )
 
     return selected_codes

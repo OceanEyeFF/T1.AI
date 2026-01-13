@@ -75,9 +75,7 @@ class StockTransformer(nn.Module):
         self.input_projection = nn.Linear(config.input_dim, config.d_model)
 
         # 位置编码
-        self.pos_encoder = PositionalEncoding(
-            config.d_model, config.max_seq_len, config.dropout
-        )
+        self.pos_encoder = PositionalEncoding(config.d_model, config.max_seq_len, config.dropout)
 
         # Transformer Encoder
         encoder_layer = nn.TransformerEncoderLayer(
