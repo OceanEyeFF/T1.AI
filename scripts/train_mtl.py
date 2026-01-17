@@ -22,6 +22,8 @@ from __future__ import annotations
 import argparse
 import glob
 import math
+from dataclasses import replace
+from datetime import datetime
 from pathlib import Path
 from typing import Iterable, Tuple
 
@@ -39,6 +41,14 @@ from ashare_lab.models.transformer import (
     compute_mtl_loss,
     create_mtl_model,
     freeze_encoder_layers,
+)
+from ashare_lab.training.mtl_finetune import (
+    IncrementalTrainConfig,
+    IncrementalTrainer,
+    TrainingGate,
+    count_labeled_samples,
+    fit,
+    infer_last_train_date_from_checkpoint,
 )
 
 
@@ -245,171 +255,14 @@ def build_dataloaders(
     return build_dataloaders_from_parquet(dataset_dir, batch_size=batch_size, seq_len=seq_len)
 
 
-def train_one_epoch(
-    model: MTLTransformer,
-    loader: DataLoader,
-    optimizer: torch.optim.Optimizer,
-    loss_weights: Iterable[float] | torch.Tensor,
-) -> float:
-    model.train()
-    device = next(model.parameters()).device
-    total_loss = 0.0
-    for feats, labels in loader:
-        feats, labels = feats.to(device), labels.to(device)
-        optimizer.zero_grad()
-        _, losses = model(feats, labels, loss_weights=loss_weights)
-        losses["total"].backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-        optimizer.step()
-        total_loss += float(losses["total"].item())
-    return total_loss / len(loader)
-
-
-@torch.no_grad()
-def evaluate(
-    model: MTLTransformer,
-    loader: DataLoader,
-    loss_weights: Iterable[float] | torch.Tensor,
-) -> dict:
-    model.eval()
-    device = next(model.parameters()).device
-    all_preds = []
-    all_labels = []
-    total_loss = 0.0
-    for feats, labels in loader:
-        feats, labels = feats.to(device), labels.to(device)
-        preds, losses = model(feats, labels, loss_weights=loss_weights)
-        stacked_pred = torch.stack([preds["pred_3d"], preds["pred_5d"], preds["pred_10d"]], dim=1)
-        all_preds.append(stacked_pred.cpu())
-        all_labels.append(labels.cpu())
-        total_loss += float(losses["total"].item())
-
-    preds_arr = torch.cat(all_preds).numpy()
-    labels_arr = torch.cat(all_labels).numpy()
-
-    ic_3d = information_coefficient(preds_arr[:, 0], labels_arr[:, 0])
-    ic_5d = information_coefficient(preds_arr[:, 1], labels_arr[:, 1])
-    ic_10d = information_coefficient(preds_arr[:, 2], labels_arr[:, 2])
-    ic = float(np.mean([ic_3d, ic_5d, ic_10d]))
-    return {
-        "loss": total_loss / max(1, len(loader)),
-        "ic": ic,
-        "ic_3d": ic_3d,
-        "ic_5d": ic_5d,
-        "ic_10d": ic_10d,
-    }
-
-
-def _save_checkpoint(
-    path: Path,
-    model: nn.Module,
-    optimizer: torch.optim.Optimizer,
-    epoch: int,
-    train_loss: float,
-    val_metrics: dict,
-    config: dict,
-) -> None:
-    payload = {
-        "model_state_dict": model.state_dict(),
-        "optimizer_state_dict": optimizer.state_dict(),
-        "epoch": epoch,
-        "train_loss": float(train_loss),
-        "val_loss": float(val_metrics.get("loss", 0.0)),
-        "val_ic": float(val_metrics.get("ic", 0.0)),
-        "config": config,
-    }
-    path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(payload, path)
-
-
-def fit(
-    model: MTLTransformer,
-    train_loader: DataLoader,
-    valid_loader: DataLoader,
-    optimizer: torch.optim.Optimizer,
-    *,
-    loss_weights: tuple[float, float, float],
-    max_epochs: int,
-    patience: int,
-    model_dir: Path,
-    log_dir: Path,
-    early_stopping_threshold: float | None = None,
-) -> dict:
-    """Train model with early stopping and checkpointing.
-
-    Returns:
-        dict with history, best_ic, best_path, latest_path, epochs_ran
-    """
-    model_dir.mkdir(parents=True, exist_ok=True)
-    log_dir.mkdir(parents=True, exist_ok=True)
-
-    best_path = model_dir / "best_mtl.pt"
-    latest_path = model_dir / "latest_mtl.pt"
-    stopper = EarlyStoppingIC(patience=patience, min_delta=0.0)
-
-    history: list[dict] = []
-    best_ic = -float("inf")
-
-    for epoch in range(1, max_epochs + 1):
-        train_loss = train_one_epoch(model, train_loader, optimizer, loss_weights)
-        val_metrics = evaluate(model, valid_loader, loss_weights)
-
-        row = {
-            "epoch": epoch,
-            "train_loss": float(train_loss),
-            "val_loss": float(val_metrics["loss"]),
-            "val_ic": float(val_metrics["ic"]),
-            "val_ic_3d": float(val_metrics["ic_3d"]),
-            "val_ic_5d": float(val_metrics["ic_5d"]),
-            "val_ic_10d": float(val_metrics["ic_10d"]),
-        }
-        history.append(row)
-
-        print(
-            f"Epoch {epoch}/{max_epochs} "
-            f"train_loss={row['train_loss']:.6f} "
-            f"val_loss={row['val_loss']:.6f} "
-            f"val_ic={row['val_ic']:.4f}"
-        )
-
-        _save_checkpoint(latest_path, model, optimizer, epoch, train_loss, val_metrics, config={"loss_weights": loss_weights})
-
-        ic = float(val_metrics["ic"])
-        if ic > best_ic:
-            best_ic = ic
-            _save_checkpoint(best_path, model, optimizer, epoch, train_loss, val_metrics, config={"loss_weights": loss_weights})
-            print(f"[checkpoint] Saved best model: {best_path} (val_ic={best_ic:.4f})")
-
-        if stopper.step(ic):
-            print(f"[early-stop] No val_ic improvement for {patience} epoch(s). Stop at epoch={epoch}.")
-            break
-
-    # Persist history
-    try:
-        pd.DataFrame(history).to_csv(log_dir / "mtl_train_log.csv", index=False)
-    except Exception:  # pragma: no cover
-        pass
-
-    if early_stopping_threshold is not None and best_ic < early_stopping_threshold:
-        print(
-            f"[warn] best val_ic={best_ic:.4f} < threshold={early_stopping_threshold:.4f}. "
-            f"Consider revisiting features/hyperparams."
-        )
-
-    return {
-        "history": history,
-        "best_ic": best_ic,
-        "best_path": str(best_path),
-        "latest_path": str(latest_path),
-        "epochs_ran": len(history),
-    }
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="MTL Transformer 训练脚本")
     parser.add_argument("--config", type=str, required=True, help="YAML配置文件路径")
     parser.add_argument("--dataset", type=str, default=None, help="数据集目录（默认: data/datasets）")
     parser.add_argument("--dry-run", action="store_true", help="使用合成数据快速验证流程")
+    parser.add_argument("--incremental", action="store_true", help="运行增量训练（带门控、warm-start、原子写入）")
+    parser.add_argument("--current-date", type=str, default=None, help="增量训练用当前日期（YYYY-MM-DD）")
+    parser.add_argument("--last-train-date", type=str, default=None, help="增量训练用上次训练日期（YYYY-MM-DD）")
     parser.add_argument("--max-epochs", type=int, default=None, help="覆盖配置中的最大epoch数")
     parser.add_argument("--freeze-layers", type=int, default=0, help="冻结前K个encoder层")
     parser.add_argument("--no-warm-start", action="store_true", help="禁用自动warm-start")
@@ -446,7 +299,16 @@ def main() -> None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
-    if not args.no_warm_start:
+    if args.incremental:
+        inc_cfg = IncrementalTrainConfig.from_config_dict(cfg)
+        if args.max_epochs is not None:
+            inc_cfg = replace(inc_cfg, max_epochs=int(args.max_epochs))
+        if args.freeze_layers > 0:
+            inc_cfg = replace(inc_cfg, freeze_layers=int(args.freeze_layers))
+        if args.no_warm_start:
+            inc_cfg = replace(inc_cfg, warm_start_checkpoint=Path("__warm_start_disabled__"))
+
+    if not args.incremental and not args.no_warm_start:
         model_dir = Path(output_cfg.get("model_dir", "models"))
         ckpt = model_dir / "latest_mtl.pt"
         if ckpt.exists():
@@ -457,7 +319,7 @@ def main() -> None:
             except Exception as exc:  # pragma: no cover - 容错处理
                 print(f"[warm-start] Failed to load {ckpt}: {exc}. Continuing without warm-start.")
 
-    if args.freeze_layers > 0:
+    if not args.incremental and args.freeze_layers > 0:
         freeze_encoder_layers(model, args.freeze_layers)
         print(f"[freeze] Frozen first {args.freeze_layers} encoder layers")
 
@@ -470,8 +332,6 @@ def main() -> None:
 
     if args.dry_run and args.max_epochs is None:
         max_epochs = 1
-
-    optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, weight_decay=weight_decay)
 
     seq_len = _as_int(data_cfg.get("seq_len", model.config.min_seq_len), model.config.min_seq_len)
     dataset_dir = Path(args.dataset or data_cfg.get("dataset_dir", "data/datasets"))
@@ -497,6 +357,40 @@ def main() -> None:
 
     model_dir = Path(output_cfg.get("model_dir", "models"))
     log_dir = Path(output_cfg.get("log_dir", "logs"))
+
+    if args.incremental:
+        current_date = args.current_date or datetime.now().date().isoformat()
+        labeled_count = 0
+        for _feats, _labels in train_loader:
+            labeled_count += count_labeled_samples(_labels)
+
+        trainer = IncrementalTrainer(inc_cfg, model, train_loader, valid_loader, loss_weights=loss_weights)
+        warm_ckpt = trainer.load_warm_start_checkpoint() if not args.no_warm_start else None
+        last_train_date = args.last_train_date or infer_last_train_date_from_checkpoint(warm_ckpt)
+        if last_train_date is None and inc_cfg.warm_start_checkpoint.exists():
+            last_train_date = datetime.fromtimestamp(inc_cfg.warm_start_checkpoint.stat().st_mtime).date().isoformat()
+
+        result = trainer.run(
+            TrainingGate(),
+            current_date=current_date,
+            last_train_date=last_train_date,
+            labeled_count=labeled_count,
+        )
+        if result.get("skipped"):
+            print(f"[done] incremental skipped: {result.get('reason')}")
+        else:
+            print(
+                f"[done] incremental epochs={result.get('epochs')} "
+                f"val_ic={float(result.get('val_ic', 0.0)):.4f} "
+                f"ckpt={result.get('checkpoint')}"
+            )
+        return
+
+    optimizer = torch.optim.AdamW(
+        filter(lambda p: p.requires_grad, model.parameters()),
+        lr=lr,
+        weight_decay=weight_decay,
+    )
 
     results = fit(
         model,

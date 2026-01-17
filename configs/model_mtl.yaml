@@ -28,3 +28,14 @@ output:
   model_dir: "models"
   log_dir: "logs"
   save_best_only: true
+
+incremental_training:
+  enabled: true
+  trigger_schedule: "weekly"         # weekly / daily / manual
+  min_labeled_samples: 100           # 最小标签样本数（<100 跳过训练）
+  freeze_layers: 2                   # 冻结前 2 个 encoder 层
+  learning_rate: 5e-5                # 小学习率（全量训练为 1e-4）
+  max_epochs: 3                      # 短训练（全量训练为 50）
+  early_stopping_patience: 2
+  warm_start_checkpoint: "models/latest_mtl.pt"
+  save_checkpoint: "models/latest_mtl.pt"  # 原子写入（临时文件 + rename）
