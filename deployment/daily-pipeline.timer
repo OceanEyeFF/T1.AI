@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily Recommendation Pipeline Timer
+Requires=daily-pipeline.service
+
+[Timer]
+OnCalendar=Mon-Fri 15:15
+Persistent=true
+
+[Install]
+WantedBy=timers.target

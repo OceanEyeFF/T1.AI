@@ -6,4 +6,4 @@ sources:
   tushare:
     description: "TuShare Pro 数据源，需设置环境变量 TUSHARE_TOKEN"
     token_env: "TUSHARE_TOKEN"
-    cache_dir: "data/cache/tushare"
+    cache_dir: "data/cache"

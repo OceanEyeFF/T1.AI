@@ -1,0 +1,15 @@
+[Unit]
+Description=A-share Lab Daily Recommendation Pipeline
+After=network.target
+
+[Service]
+Type=oneshot
+User=oceaneye
+WorkingDirectory=/home/oceaneye/gitee/T1.AI
+Environment="TUSHARE_TOKEN=your_token_here"
+ExecStart=/home/oceaneye/gitee/T1.AI/scripts/daily_pipeline.sh
+StandardOutput=append:/home/oceaneye/gitee/T1.AI/logs/pipeline.log
+StandardError=append:/home/oceaneye/gitee/T1.AI/logs/pipeline.log
+
+[Install]
+WantedBy=multi-user.target
