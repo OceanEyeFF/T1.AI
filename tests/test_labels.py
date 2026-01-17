@@ -6,10 +6,12 @@
 from __future__ import annotations
 
 import numpy as np
+from pathlib import Path
 import pandas as pd
 import pytest
 
 from ashare_lab.labels.excess_return import ExcessReturnLabel, ForwardReturnLabel
+from ashare_lab.labels.multi_horizon import MultiHorizonLabel
 
 
 @pytest.fixture
@@ -227,6 +229,60 @@ class TestLabelEdgeCases:
         result_excess = label_excess.compute(single_df, single_df)
         assert len(result_excess) == 1
         assert pd.isna(result_excess.iloc[0])
+
+
+@pytest.fixture
+def sample_multi_data() -> pd.DataFrame:
+    """跨年且包含停牌/缺价的样本数据"""
+    dates = pd.date_range("2023-12-25", periods=20, freq="D")
+    close = pd.Series(np.linspace(100, 119, num=20), index=dates)
+    close.iloc[12] = np.nan  # 缺价
+
+    volume = pd.Series(1_000_000, index=dates, dtype=float)
+    volume.iloc[5] = 0  # 停牌
+
+    return pd.DataFrame({"close": close, "volume": volume}, index=dates)
+
+
+class TestMultiHorizonLabel:
+    """测试多跨度标签"""
+
+    def test_basic_computation(self, sample_multi_data: pd.DataFrame) -> None:
+        label = MultiHorizonLabel()
+        result = label.compute(sample_multi_data)
+
+        assert list(result.columns) == ["label_3d", "label_5d", "label_10d"]
+        # 正常窗口
+        expected_3d_0 = (sample_multi_data["close"].iloc[3] / sample_multi_data["close"].iloc[0]) - 1
+        assert np.isclose(result.iloc[0]["label_3d"], expected_3d_0, rtol=1e-9)
+
+    def test_suspend_or_nan_window(self, sample_multi_data: pd.DataFrame) -> None:
+        label = MultiHorizonLabel()
+        result = label.compute(sample_multi_data)
+
+        # index 4 的 3 日窗口包含停牌日 (index 5)
+        assert pd.isna(result.loc[result.index[4], "label_3d"])
+
+        # index 3 的 10 日窗口包含缺价 (index 12)
+        assert pd.isna(result.loc[result.index[3], "label_10d"])
+
+    def test_cross_year_alignment(self, sample_multi_data: pd.DataFrame) -> None:
+        label = MultiHorizonLabel()
+        result = label.compute(sample_multi_data)
+
+        # 2023-12-31 对应索引 6
+        idx = pd.Timestamp("2023-12-31")
+        # 窗口不含停牌/缺价，应该有值
+        assert pd.notna(result.loc[idx, "label_5d"])
+
+    def test_compute_and_save(self, sample_multi_data: pd.DataFrame, tmp_path: Path) -> None:
+        label = MultiHorizonLabel()
+        out_path = tmp_path / "labels.parquet"
+        written = label.compute_and_save(sample_multi_data, out_path)
+
+        assert written.exists()
+        loaded = pd.read_parquet(written)
+        assert list(loaded.columns) == ["label_3d", "label_5d", "label_10d"]
 
     def test_with_nan_values(self) -> None:
         """测试包含 NaN 值的数据"""

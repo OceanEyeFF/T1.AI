@@ -1,0 +1,30 @@
+model:
+  input_dim: 10
+  d_model: 128
+  n_heads: 4
+  n_layers: 4
+  d_ff: 512
+  dropout: 0.1
+  min_seq_len: 30
+  max_seq_len: 60
+  loss_weights: [1.0, 1.0, 1.0]
+
+training:
+  batch_size: 32
+  learning_rate: 1e-4
+  weight_decay: 1e-5
+  max_epochs: 50
+  early_stopping_patience: 5
+  early_stopping_metric: "val_ic"
+  early_stopping_threshold: 0.05
+
+data:
+  seq_len: 30
+  train_ratio: 0.7
+  valid_ratio: 0.15
+  test_ratio: 0.15
+
+output:
+  model_dir: "models"
+  log_dir: "logs"
+  save_best_only: true

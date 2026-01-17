@@ -12,6 +12,7 @@ dependencies = [
   "pandas>=2.1",
   "numpy>=1.26",
   "akshare>=1.13",
+  "tushare>=1.2",
   "pyyaml>=6.0",
   "pyarrow>=14.0",
   "torch>=2.0",
@@ -21,6 +22,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "pytest>=8",
+  "pytest-cov>=4",
   "ruff>=0.5",
 ]
 
@@ -30,3 +32,15 @@ package-dir = {"" = "src"}
 [tool.ruff]
 line-length = 100
 
+[tool.coverage.run]
+omit = [
+  "scripts/build_dataset.py",
+  "scripts/build_dataset_multi_stock.py",
+  "scripts/build_universe.py",
+  "scripts/evaluate_model.py",
+  "scripts/run_backtest.py",
+  "scripts/select_industry_stocks.py",
+  "scripts/train_baseline_models.py",
+  "scripts/train_model.py",
+  "scripts/train_mtl.py",
+]

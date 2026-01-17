@@ -118,3 +118,27 @@ class Return20D(BaseFeature):
         # 然后 shift(1) 确保 t 日特征使用 t-1 到 t-21 的数据
         # fill_method=None 避免填充 NaN 值（保持数据真实性）
         return data["close"].pct_change(20, fill_method=None).shift(1)
+
+
+@dataclass(frozen=True)
+class Return10D(BaseFeature):
+    """10 日收益率特征"""
+
+    @property
+    def name(self) -> str:
+        return "return_10d"
+
+    def compute(self, data: pd.DataFrame) -> pd.Series:
+        return data["close"].pct_change(10, fill_method=None).shift(1)
+
+
+@dataclass(frozen=True)
+class Return60D(BaseFeature):
+    """60 日收益率特征"""
+
+    @property
+    def name(self) -> str:
+        return "return_60d"
+
+    def compute(self, data: pd.DataFrame) -> pd.Series:
+        return data["close"].pct_change(60, fill_method=None).shift(1)

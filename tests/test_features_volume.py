@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ashare_lab.features.volume import AmountChange, VolumeChange, VolumeRatio
+from ashare_lab.features.volume import AmountChange, VolumeChange, VolumeRatio, RelativeVolume
 
 
 @pytest.fixture
@@ -250,3 +250,27 @@ class TestVolumeFeatureEdgeCases:
         # iloc[2] 应该是 inf (0 / 1000000 - 1 = -1, shift后是 0/0-1)
         # 实际上 iloc[2] 是 (0 / 1000000 - 1) shift 到这里，所以是 -1
         assert np.isclose(result_change.iloc[2], -1.0, rtol=1e-9)
+
+
+class TestRelativeVolume:
+    """测试相对成交量"""
+
+    def test_compute_correctness(self, sample_data: pd.DataFrame) -> None:
+        feature = RelativeVolume()
+        result = feature.compute(sample_data)
+
+        assert feature.name == "relative_volume"
+        # 第一天 NaN（shift）
+        assert pd.isna(result.iloc[0])
+
+        # 第 6 天（索引 5）
+        volume_t_minus_1 = sample_data["volume"].iloc[4]
+        rolling_mean = sample_data["volume"].iloc[0:5].mean()
+        expected = volume_t_minus_1 / rolling_mean
+        assert np.isclose(result.iloc[5], expected, rtol=1e-9)
+
+    def test_nan_ratio_below_threshold(self, sample_data: pd.DataFrame) -> None:
+        feature = RelativeVolume()
+        result = feature.compute(sample_data)
+        nan_ratio = result.isna().mean()
+        assert nan_ratio < 0.2

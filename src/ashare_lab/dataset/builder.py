@@ -17,6 +17,10 @@ from ashare_lab.data.akshare_source import (
     AkshareDailyBarsRequest,
     load_or_fetch_daily_bars,
 )
+from ashare_lab.data.tushare_source import (
+    TushareDailyBarsRequest,
+    load_or_fetch_daily_bars as load_or_fetch_tushare_bars,
+)
 from ashare_lab.data.index_source import (
     AkshareIndexDailyRequest,
     load_or_fetch_index_daily,
@@ -41,6 +45,7 @@ class DatasetConfig:
     split_method: str = "fixed_window"  # 'fixed_window' or 'rolling_window'
     train_end_date: str | None = None  # YYYYMMDD
     valid_end_date: str | None = None  # YYYYMMDD
+    source: str = "akshare"  # 'akshare' or 'tushare'
     cache_dir: Path = field(default_factory=lambda: Path("data/cache"))
     output_dir: Path = field(default_factory=lambda: Path("data/datasets"))
     nan_threshold: float = 0.2  # 缺失数据阈值（超过警告）
@@ -96,13 +101,24 @@ class DatasetBuilder:
 
         for symbol in self.config.symbols:
             try:
-                req = AkshareDailyBarsRequest(
-                    symbol=symbol,
-                    start_date=self.config.start_date,
-                    end_date=self.config.end_date,
-                    adjust="qfq",
-                )
-                df = load_or_fetch_daily_bars(req, self.config.cache_dir)
+                if self.config.source == "akshare":
+                    req = AkshareDailyBarsRequest(
+                        symbol=symbol,
+                        start_date=self.config.start_date,
+                        end_date=self.config.end_date,
+                        adjust="qfq",
+                    )
+                    df = load_or_fetch_daily_bars(req, self.config.cache_dir)
+                elif self.config.source == "tushare":
+                    req = TushareDailyBarsRequest(
+                        symbol=symbol,
+                        start_date=self.config.start_date,
+                        end_date=self.config.end_date,
+                        adjust="qfq",
+                    )
+                    df = load_or_fetch_tushare_bars(req, self.config.cache_dir)
+                else:
+                    raise ValueError(f"不支持的数据源: {self.config.source}")
 
                 if df.empty:
                     logger.warning(f"股票 {symbol} 数据为空，跳过")
@@ -173,6 +189,8 @@ class DatasetBuilder:
             stock_features["close"] = stock_df["close"]
 
             # 重置索引，将 date 变成列
+            if stock_features.index.name is None:
+                stock_features.index.name = "date"
             stock_features = stock_features.reset_index()
 
             all_rows.append(stock_features)

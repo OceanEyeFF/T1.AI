@@ -9,7 +9,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ashare_lab.features.momentum import Return1D, Return5D, Return20D
+from ashare_lab.features.momentum import (
+    Return1D,
+    Return5D,
+    Return10D,
+    Return20D,
+    Return60D,
+)
 
 
 @pytest.fixture
@@ -22,6 +28,23 @@ def sample_data() -> pd.DataFrame:
     # 创建简单的价格序列：100, 101, 102, ..., 129
     close_prices = np.arange(100, 130, dtype=float)
 
+    return pd.DataFrame(
+        {
+            "open": close_prices - 0.5,
+            "high": close_prices + 1.0,
+            "low": close_prices - 1.0,
+            "close": close_prices,
+            "volume": 1000000,
+            "amount": close_prices * 1000000,
+        },
+        index=dates,
+    )
+
+
+@pytest.fixture
+def long_sample_data() -> pd.DataFrame:
+    dates = pd.date_range("2023-01-01", periods=120, freq="D")
+    close_prices = np.linspace(50, 170, num=120)
     return pd.DataFrame(
         {
             "open": close_prices - 0.5,
@@ -155,6 +178,44 @@ class TestReturn20D:
         # 确保没有使用当日数据
         wrong_value = (sample_data["close"].iloc[24] / sample_data["close"].iloc[4]) - 1.0
         assert not np.isclose(result.iloc[date_idx], wrong_value, rtol=1e-9)
+
+
+class TestReturn10D:
+    """测试 10 日收益率特征"""
+
+    def test_compute_correctness(self, sample_data: pd.DataFrame) -> None:
+        feature = Return10D()
+        result = feature.compute(sample_data)
+
+        assert feature.name == "return_10d"
+        for i in range(11):
+            assert pd.isna(result.iloc[i])
+
+        expected = (sample_data["close"].iloc[10] / sample_data["close"].iloc[0]) - 1.0
+        assert np.isclose(result.iloc[11], expected, rtol=1e-9)
+
+    def test_time_alignment(self, sample_data: pd.DataFrame) -> None:
+        feature = Return10D()
+        result = feature.compute(sample_data)
+        date_idx = 15
+        expected = (sample_data["close"].iloc[14] / sample_data["close"].iloc[4]) - 1.0
+        assert np.isclose(result.iloc[date_idx], expected, rtol=1e-9)
+
+
+class TestReturn60D:
+    """测试 60 日收益率特征"""
+
+    def test_compute_correctness(self, long_sample_data: pd.DataFrame) -> None:
+        feature = Return60D()
+        result = feature.compute(long_sample_data)
+
+        assert feature.name == "return_60d"
+        # 前 61 个值应为 NaN（60 日窗口 + shift）
+        assert result.iloc[:61].isna().all()
+
+        idx = 70
+        expected = (long_sample_data["close"].iloc[69] / long_sample_data["close"].iloc[9]) - 1.0
+        assert np.isclose(result.iloc[idx], expected, rtol=1e-9)
 
 
 class TestFeatureEdgeCases:

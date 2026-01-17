@@ -1,0 +1,250 @@
+{
+  "date": "20250117",
+  "generated_at": "2026-01-16T15:52:42",
+  "3d": [
+    {
+      "rank": 1,
+      "symbol": "600309",
+      "name": "万华化学",
+      "predicted_return": -0.18729054927825928,
+      "confidence": 1.0,
+      "reason": "RSI 33.5 | 20日动量 -10.7% | 量比 0.67x"
+    },
+    {
+      "rank": 2,
+      "symbol": "600795",
+      "name": "国电电力",
+      "predicted_return": -0.18951483070850372,
+      "confidence": 0.950020876393336,
+      "reason": "RSI 34.1 | 20日动量 -8.7% | 量比 0.77x"
+    },
+    {
+      "rank": 3,
+      "symbol": "600150",
+      "name": "中国船舶",
+      "predicted_return": -0.18990135192871094,
+      "confidence": 0.9413358280093229,
+      "reason": "RSI 33.7 | 20日动量 -10.5% | 量比 1.14x"
+    },
+    {
+      "rank": 4,
+      "symbol": "603260",
+      "name": "合盛硅业",
+      "predicted_return": -0.1911085546016693,
+      "confidence": 0.9142102445333816,
+      "reason": "RSI 33.6 | 20日动量 -10.5% | 量比 1.07x"
+    },
+    {
+      "rank": 5,
+      "symbol": "600406",
+      "name": "国电南瑞",
+      "predicted_return": -0.1913747787475586,
+      "confidence": 0.908228245442099,
+      "reason": "RSI 34.8 | 20日动量 -5.3% | 量比 1.05x"
+    },
+    {
+      "rank": 6,
+      "symbol": "600050",
+      "name": "中国联通",
+      "predicted_return": -0.19182132184505463,
+      "confidence": 0.8981945184316622,
+      "reason": "RSI 36.2 | 20日动量 -8.3% | 量比 0.79x"
+    },
+    {
+      "rank": 7,
+      "symbol": "600104",
+      "name": "上汽集团",
+      "predicted_return": -0.19206063449382782,
+      "confidence": 0.8928172148714921,
+      "reason": "RSI 40.6 | 20日动量 -10.8% | 量比 0.76x"
+    },
+    {
+      "rank": 8,
+      "symbol": "002415",
+      "name": "海康威视",
+      "predicted_return": -0.19285252690315247,
+      "confidence": 0.8750235633709867,
+      "reason": "RSI 35.4 | 20日动量 -8.2% | 量比 1.04x"
+    },
+    {
+      "rank": 9,
+      "symbol": "601727",
+      "name": "上海电气",
+      "predicted_return": -0.19503846764564514,
+      "confidence": 0.8259059467419266,
+      "reason": "RSI 39.4 | 20日动量 -14.4% | 量比 0.88x"
+    },
+    {
+      "rank": 10,
+      "symbol": "600031",
+      "name": "三一重工",
+      "predicted_return": -0.19552019238471985,
+      "confidence": 0.8150816958394872,
+      "reason": "RSI 35.5 | 20日动量 -6.9% | 量比 1.16x"
+    }
+  ],
+  "5d": [
+    {
+      "rank": 1,
+      "symbol": "000333",
+      "name": "美的集团",
+      "predicted_return": -0.16683954000473022,
+      "confidence": 1.0,
+      "reason": "RSI 44.7 | 20日动量 0.2% | 量比 0.90x"
+    },
+    {
+      "rank": 2,
+      "symbol": "600309",
+      "name": "万华化学",
+      "predicted_return": -0.1681080460548401,
+      "confidence": 0.9610400843930134,
+      "reason": "RSI 33.5 | 20日动量 -10.7% | 量比 0.67x"
+    },
+    {
+      "rank": 3,
+      "symbol": "600150",
+      "name": "中国船舶",
+      "predicted_return": -0.16885869204998016,
+      "confidence": 0.9379853227552214,
+      "reason": "RSI 33.7 | 20日动量 -10.5% | 量比 1.14x"
+    },
+    {
+      "rank": 4,
+      "symbol": "600406",
+      "name": "国电南瑞",
+      "predicted_return": -0.16945689916610718,
+      "confidence": 0.9196124511731041,
+      "reason": "RSI 34.8 | 20日动量 -5.3% | 量比 1.05x"
+    },
+    {
+      "rank": 5,
+      "symbol": "600795",
+      "name": "国电电力",
+      "predicted_return": -0.16965723037719727,
+      "confidence": 0.9134596330002311,
+      "reason": "RSI 34.1 | 20日动量 -8.7% | 量比 0.77x"
+    },
+    {
+      "rank": 6,
+      "symbol": "603260",
+      "name": "合盛硅业",
+      "predicted_return": -0.17026612162590027,
+      "confidence": 0.8947586172177308,
+      "reason": "RSI 33.6 | 20日动量 -10.5% | 量比 1.07x"
+    },
+    {
+      "rank": 7,
+      "symbol": "600031",
+      "name": "三一重工",
+      "predicted_return": -0.17099884152412415,
+      "confidence": 0.8722544238826736,
+      "reason": "RSI 35.5 | 20日动量 -6.9% | 量比 1.16x"
+    },
+    {
+      "rank": 8,
+      "symbol": "002415",
+      "name": "海康威视",
+      "predicted_return": -0.17146560549736023,
+      "confidence": 0.8579185955245159,
+      "reason": "RSI 35.4 | 20日动量 -8.2% | 量比 1.04x"
+    },
+    {
+      "rank": 9,
+      "symbol": "600050",
+      "name": "中国联通",
+      "predicted_return": -0.17225810885429382,
+      "confidence": 0.833578259188152,
+      "reason": "RSI 36.2 | 20日动量 -8.3% | 量比 0.79x"
+    },
+    {
+      "rank": 10,
+      "symbol": "600104",
+      "name": "上汽集团",
+      "predicted_return": -0.17341512441635132,
+      "confidence": 0.7980425763667526,
+      "reason": "RSI 40.6 | 20日动量 -10.8% | 量比 0.76x"
+    }
+  ],
+  "10d": [
+    {
+      "rank": 1,
+      "symbol": "002050",
+      "name": "三花智控",
+      "predicted_return": -0.05657567083835602,
+      "confidence": 1.0,
+      "reason": "RSI 71.1 | 20日动量 23.8% | 量比 1.22x"
+    },
+    {
+      "rank": 2,
+      "symbol": "600036",
+      "name": "招商银行",
+      "predicted_return": -0.0579301118850708,
+      "confidence": 0.9771206417648028,
+      "reason": "RSI 67.7 | 20日动量 7.8% | 量比 1.31x"
+    },
+    {
+      "rank": 3,
+      "symbol": "601689",
+      "name": "拓普集团",
+      "predicted_return": -0.0623837411403656,
+      "confidence": 0.9018894757972662,
+      "reason": "RSI 63.7 | 20日动量 12.3% | 量比 0.78x"
+    },
+    {
+      "rank": 4,
+      "symbol": "601166",
+      "name": "兴业银行",
+      "predicted_return": -0.06428703665733337,
+      "confidence": 0.8697388110889185,
+      "reason": "RSI 64.5 | 20日动量 8.3% | 量比 1.12x"
+    },
+    {
+      "rank": 5,
+      "symbol": "000737",
+      "name": "北方铜业",
+      "predicted_return": -0.06492531299591064,
+      "confidence": 0.85895698116817,
+      "reason": "RSI 61.7 | 20日动量 11.7% | 量比 0.96x"
+    },
+    {
+      "rank": 6,
+      "symbol": "601988",
+      "name": "中国银行",
+      "predicted_return": -0.07378378510475159,
+      "confidence": 0.7093187541768453,
+      "reason": "RSI 57.9 | 20日动量 3.4% | 量比 1.13x"
+    },
+    {
+      "rank": 7,
+      "symbol": "000651",
+      "name": "格力电器",
+      "predicted_return": -0.07389205694198608,
+      "confidence": 0.7074898151049828,
+      "reason": "RSI 56.3 | 20日动量 7.7% | 量比 0.87x"
+    },
+    {
+      "rank": 8,
+      "symbol": "600111",
+      "name": "北方稀土",
+      "predicted_return": -0.0746595561504364,
+      "confidence": 0.6945251391023196,
+      "reason": "RSI 51.9 | 20日动量 -0.6% | 量比 0.97x"
+    },
+    {
+      "rank": 9,
+      "symbol": "601600",
+      "name": "中国铝业",
+      "predicted_return": -0.07511138916015625,
+      "confidence": 0.6868927291742967,
+      "reason": "RSI 50.5 | 20日动量 1.3% | 量比 0.90x"
+    },
+    {
+      "rank": 10,
+      "symbol": "601869",
+      "name": "长飞光纤",
+      "predicted_return": -0.07602913677692413,
+      "confidence": 0.6713900415198871,
+      "reason": "RSI 53.8 | 20日动量 6.5% | 量比 1.73x"
+    }
+  ]
+}

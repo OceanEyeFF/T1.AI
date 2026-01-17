@@ -128,3 +128,21 @@ class VolumeChange(BaseFeature):
         # 然后 shift(1) 确保 t 日特征使用 t-1 的变化率
         # fill_method=None 避免填充 NaN 值（保持数据真实性）
         return data["volume"].pct_change(1, fill_method=None).shift(1)
+
+
+@dataclass(frozen=True)
+class RelativeVolume(BaseFeature):
+    """相对成交量 = volume / rolling_mean_5"""
+
+    window: int = 5
+
+    @property
+    def name(self) -> str:
+        return "relative_volume"
+
+    def compute(self, data: pd.DataFrame) -> pd.Series:
+        if "volume" not in data:
+            raise KeyError("input data must contain 'volume'")
+        volume_shifted = data["volume"].shift(1)
+        rolling_mean = volume_shifted.rolling(window=self.window, min_periods=1).mean()
+        return volume_shifted / rolling_mean

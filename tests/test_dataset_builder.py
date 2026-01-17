@@ -422,3 +422,54 @@ class TestDatasetBuilderEdgeCases:
         train_df = pd.read_parquet(output_path / "train.parquet")
         assert len(train_df["symbol"].unique()) == 1
         assert train_df["symbol"].iloc[0] == "600519"
+
+
+def test_builder_with_tushare_source(
+    sample_benchmark_cache: Path,
+    temp_output_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """验证数据源切换到 TuShare"""
+    from ashare_lab import dataset
+
+    symbol = "600000.SH"
+    dates = pd.date_range("2024-01-01", periods=5, freq="D")
+    fake_df = pd.DataFrame(
+        {
+            "open": [1, 1.1, 1.2, 1.3, 1.4],
+            "high": [1.1, 1.2, 1.3, 1.4, 1.5],
+            "low": [0.9, 1.0, 1.1, 1.2, 1.3],
+            "close": [1.05, 1.15, 1.25, 1.35, 1.45],
+            "volume": [100, 110, 120, 130, 140],
+            "amount": [1000, 1100, 1200, 1300, 1400],
+        },
+        index=dates,
+    )
+
+    calls: list[str] = []
+
+    def fake_loader(req, cache_dir):
+        calls.append(req.symbol)
+        return fake_df
+
+    monkeypatch.setattr(dataset.builder, "load_or_fetch_tushare_bars", fake_loader)
+
+    config = DatasetConfig(
+        name="test_tushare_source",
+        symbols=[symbol],
+        start_date="20240101",
+        end_date="20240105",
+        features=[Return1D()],
+        label_type="forward_return",
+        train_end_date="20240103",
+        valid_end_date="20240104",
+        cache_dir=sample_benchmark_cache,  # 复用基准缓存路径
+        output_dir=temp_output_dir,
+        source="tushare",
+    )
+
+    builder = DatasetBuilder(config)
+    output_path = builder.build()
+
+    assert (output_path / "train.parquet").exists()
+    assert calls == [symbol]

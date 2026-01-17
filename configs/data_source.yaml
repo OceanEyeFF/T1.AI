@@ -1,0 +1,9 @@
+default_source: "akshare"  # 可选: akshare, tushare
+fallback: "akshare"
+sources:
+  akshare:
+    description: "本地免费数据源，适合回测与开发"
+  tushare:
+    description: "TuShare Pro 数据源，需设置环境变量 TUSHARE_TOKEN"
+    token_env: "TUSHARE_TOKEN"
+    cache_dir: "data/cache/tushare"

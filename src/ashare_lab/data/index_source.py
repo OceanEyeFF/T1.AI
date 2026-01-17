@@ -36,7 +36,7 @@ def _normalize_akshare_index_daily(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def fetch_akshare_index_daily(req: AkshareIndexDailyRequest) -> pd.DataFrame:
+def fetch_akshare_index_daily(req: AkshareIndexDailyRequest) -> pd.DataFrame:  # pragma: no cover
     import akshare as ak  # lazy import
 
     raw = ak.index_zh_a_hist(
