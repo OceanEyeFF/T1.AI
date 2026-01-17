@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import date as date_type
+from datetime import timedelta
 from pathlib import Path
 from typing import Tuple
 
@@ -101,17 +103,202 @@ def generate_report(
     return {"summary": summary_path, "trend": trend_path, "html": html_path}
 
 
+def _validate_year_month(year_month: str) -> None:
+    """验证 year_month 格式为 YYYY-MM。"""
+    if not isinstance(year_month, str) or len(year_month) != 7 or year_month[4] != "-":
+        raise ValueError("year_month 格式必须为 YYYY-MM（例如 2024-12）")
+
+    year_str, month_str = year_month.split("-", 1)
+    if not (year_str.isdigit() and month_str.isdigit()):
+        raise ValueError("year_month 格式必须为 YYYY-MM（例如 2024-12）")
+
+    month = int(month_str)
+    if month < 1 or month > 12:
+        raise ValueError("year_month 中的月份必须为 01-12")
+
+
+def _month_date_range(year_month: str) -> tuple[str, str]:
+    """将 YYYY-MM 转为该月起止日期（闭区间，YYYY-MM-DD）。"""
+    _validate_year_month(year_month)
+    year_str, month_str = year_month.split("-", 1)
+    year = int(year_str)
+    month = int(month_str)
+
+    start = date_type(year, month, 1)
+    if month == 12:
+        end = date_type(year + 1, 1, 1)
+    else:
+        end = date_type(year, month + 1, 1)
+
+    start_s = start.strftime("%Y-%m-%d")
+    end_s = (end - timedelta(days=1)).strftime("%Y-%m-%d")
+    return start_s, end_s
+
+
+def _format_percent(value: float, digits: int = 1) -> str:
+    """将 0-1 或任意小数格式化为百分比字符串。"""
+    return f"{value * 100:.{digits}f}%"
+
+
+def _format_float(value: float, digits: int = 2) -> str:
+    """将浮点数格式化为定点小数。"""
+    return f"{value:.{digits}f}"
+
+
+def _render_monthly_markdown_report(
+    year_month: str,
+    monthly_stats: dict,
+    validations: pd.DataFrame,
+    recommendations: pd.DataFrame,
+) -> str:
+    """生成月度 Markdown 报告内容。"""
+    lines: list[str] = []
+    lines.append(f"# {year_month} 推荐系统月度报告")
+    lines.append("")
+
+    lines.append("## 整体指标")
+    lines.append(f"- 平均命中率: {_format_percent(float(monthly_stats['avg_hit_rate']), digits=1)}")
+    lines.append(f"- 平均 IC: {_format_float(float(monthly_stats['avg_ic']), digits=2)}")
+    lines.append(f"- 平均 RankIC: {_format_float(float(monthly_stats['avg_rank_ic']), digits=2)}")
+    lines.append(f"- 平均超额收益: {_format_percent(float(monthly_stats['avg_excess_return']), digits=1)}")
+    lines.append(f"- 推荐次数: {int(monthly_stats['total_recommendations'])}")
+    lines.append("")
+
+    lines.append("## 每日验证结果")
+    lines.append("| 日期 | 命中率 | IC | RankIC | 超额收益 | 有效样本数 |")
+    lines.append("|------|--------|----|---------|-----------| ----------|")
+    if not validations.empty:
+        for _, row in validations.iterrows():
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        str(row["rec_date"]),
+                        _format_percent(float(row["hit_rate"]), digits=1),
+                        _format_float(float(row["ic"]), digits=2),
+                        _format_float(float(row["rank_ic"]), digits=2),
+                        _format_percent(float(row["excess_return"]), digits=1),
+                        str(int(row["valid_count"])),
+                    ]
+                )
+                + " |"
+            )
+    lines.append("")
+
+    lines.append("## 推荐详情")
+    lines.append("| 日期 | 股票代码 | 得分 | 排名 |")
+    lines.append("|------|----------|------|------|")
+    if not recommendations.empty:
+        for _, row in recommendations.iterrows():
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        str(row["rec_date"]),
+                        str(row["symbol"]),
+                        _format_float(float(row["score"]), digits=4),
+                        str(int(row["rank"])),
+                    ]
+                )
+                + " |"
+            )
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+def _generate_monthly_report(year_month: str, db_path: str | Path) -> Path:
+    """从 RecommendationHistory 读取数据并生成月度 Markdown 报告。"""
+    from ashare_lab.recommendation import RecommendationHistory
+
+    _validate_year_month(year_month)
+
+    db_path = Path(db_path)
+    if str(db_path) != ":memory:" and not db_path.exists():
+        raise SystemExit(f"数据库文件不存在：{db_path}")
+
+    start_date, end_date = _month_date_range(year_month)
+
+    with RecommendationHistory(db_path) as history:
+        monthly_stats = history.get_monthly_stats(year_month)
+        if not monthly_stats:
+            raise SystemExit(f"指定月份 {year_month} 无验证数据")
+
+        validations = history.query_validations(start_date=start_date, end_date=end_date)
+        # 兼容未来可能存在多个 horizon：优先使用 5；否则若只有一个 horizon 则使用它；再否则使用最小 horizon。
+        if not validations.empty and "horizon" in validations.columns:
+            horizons = sorted({int(x) for x in validations["horizon"].dropna().tolist()})
+            if horizons:
+                if 5 in horizons:
+                    chosen_horizon = 5
+                elif len(horizons) == 1:
+                    chosen_horizon = horizons[0]
+                else:
+                    chosen_horizon = horizons[0]
+                validations = validations[validations["horizon"] == chosen_horizon].copy()
+
+        # 为了报告表格统一，按 rec_date 升序展示
+        if not validations.empty:
+            validations = validations.sort_values(["rec_date"]).reset_index(drop=True)
+
+        recommendations = history.query_recommendations(start_date=start_date, end_date=end_date)
+        if not recommendations.empty:
+            recommendations = recommendations.sort_values(["rec_date", "rank", "symbol"]).reset_index(drop=True)
+
+    markdown = _render_monthly_markdown_report(
+        year_month=year_month,
+        monthly_stats=monthly_stats,
+        validations=validations,
+        recommendations=recommendations,
+    )
+
+    output_dir = Path("output/reports")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / f"{year_month}_report.md"
+    output_path.write_text(markdown, encoding="utf-8")
+    return output_path
+
+
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="评估推荐榜单命中率与接近度")
-    parser.add_argument("--pred-file", required=True, help="预测结果文件（csv/json），需含 predicted_return")
-    parser.add_argument("--actual-file", required=True, help="实际涨跌文件（csv/json），需含 actual_return")
+    parser.add_argument("--pred-file", required=False, help="预测结果文件（csv/json），需含 predicted_return")
+    parser.add_argument("--actual-file", required=False, help="实际涨跌文件（csv/json），需含 actual_return")
     parser.add_argument("--output-dir", default="data/recommendations/validation", help="报告输出目录")
     parser.add_argument("--top-n", type=int, default=10, help="Top-N 截断")
-    return parser.parse_args(argv)
+    parser.add_argument("--year-month", required=False, help="生成月度报告（YYYY-MM，例如 2024-12）")
+    parser.add_argument("--db-path", default="data/recommendations.db", help="RecommendationHistory SQLite 路径")
+
+    args = parser.parse_args(argv)
+
+    # 参数互斥校验：--year-month 走月度统计分支；否则走 Top-K 文件评估分支
+    if args.year_month:
+        if args.pred_file or args.actual_file:
+            parser.error("--year-month 与 --pred-file/--actual-file 互斥")
+        try:
+            _validate_year_month(args.year_month)
+        except ValueError as exc:
+            parser.error(str(exc))
+        return args
+
+    if not args.pred_file or not args.actual_file:
+        parser.error("未指定 --year-month 时必须同时提供 --pred-file 与 --actual-file")
+
+    return args
 
 
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
+    if args.year_month:
+        report_path = _generate_monthly_report(args.year_month, args.db_path)
+        print(
+            json.dumps(
+                {"year_month": args.year_month, "report_path": str(report_path)},
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return
+
     pred_df = _load_table(Path(args.pred_file))
     actual_df = _load_table(Path(args.actual_file))
 
