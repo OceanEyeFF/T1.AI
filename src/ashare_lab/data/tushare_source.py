@@ -53,13 +53,20 @@ def _normalize_tushare_daily(df: pd.DataFrame) -> pd.DataFrame:
 
 def fetch_tushare_daily_bars(req: TushareDailyBarsRequest) -> pd.DataFrame:  # pragma: no cover
     """直接调用 TuShare 接口获取日线数据（前复权）"""
+    import os
     import tushare as ts  # lazy import
 
     # token 优先级：参数 > 环境变量
     if req.token:
         pro = ts.pro_api(req.token)
     else:
-        pro = ts.pro_api()
+        token = os.environ.get("TUSHARE_TOKEN")
+        if not token:
+            raise ValueError(
+                "TUSHARE_TOKEN not found. Please set it in environment or pass via token parameter.\n"
+                "Get your token at: https://tushare.pro/register"
+            )
+        pro = ts.pro_api(token)
 
     raw = pro.daily(
         ts_code=req.symbol,

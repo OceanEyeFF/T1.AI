@@ -26,7 +26,7 @@ class TransformerConfig:
     d_ff: int = 512  # 前馈网络维度
     dropout: float = 0.1  # Dropout比例
     max_seq_len: int = 512  # 最大可处理序列长度
-    min_seq_len: int = 30  # 最小序列长度约束
+    min_seq_len: int = 20  # 最小序列长度约束
     loss_weights: tuple[float, float, float] = (1.0, 1.0, 1.0)
 
 
@@ -242,7 +242,7 @@ def create_mtl_model(
     d_ff: int = 512,
     dropout: float = 0.1,
     max_seq_len: int = 512,
-    min_seq_len: int = 30,
+    min_seq_len: int = 20,
     loss_weights: tuple[float, float, float] = (1.0, 1.0, 1.0),
 ) -> "MTLTransformer":
     """便捷创建多任务Transformer模型。"""

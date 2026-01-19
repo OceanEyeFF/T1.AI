@@ -1,5 +1,4 @@
 import sys
-import importlib.util
 from pathlib import Path
 
 import numpy as np
@@ -268,17 +267,9 @@ def test_momentum_strategy_filters_and_weights() -> None:
 
 
 def test_sequence_builder_py_file_is_exercised() -> None:
-    path = Path(__file__).resolve().parents[1] / "src" / "ashare_lab" / "dataset" / "sequence_builder.py"
-    spec = importlib.util.spec_from_file_location("ashare_lab.dataset._sequence_builder_pyfile", path)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    try:
-        spec.loader.exec_module(module)
-    finally:
-        sys.modules.pop(spec.name, None)
+    from ashare_lab.dataset.sequence_builder import SequenceDatasetBuilder
 
-    builder = module.SequenceDatasetBuilder(seq_len=3, stride=1)
+    builder = SequenceDatasetBuilder(seq_len=3, stride=1)
     dates = pd.date_range("2026-01-01", periods=6, freq="D")
     features = pd.DataFrame({"f0": np.arange(6, dtype=np.float32)}, index=dates)
     labels = pd.DataFrame({"y0": np.arange(6, dtype=np.float32)}, index=dates)

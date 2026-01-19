@@ -3,6 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 import torch
 import yaml
 
@@ -19,7 +20,9 @@ from ashare_lab.models.transformer import (
 # Ensure repo root (for `scripts/`) is importable when pytest uses `src/` layout only.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scripts.train_mtl import build_dataloaders_from_parquet, fit, load_sequence_parquet  # noqa: E402
+from scripts.train_mtl import build_dataloaders_from_parquet, fit  # noqa: E402
+
+from ashare_lab.dataset.sequence_parquet import load_sequence_parquet
 
 
 def _write_sequence_split(
@@ -277,6 +280,65 @@ def test_train_mtl_loads_parquet_sequence_dataset(tmp_path: Path):
     assert info["seq_len"] == 6
     assert info["input_dim"] == 10
 
+    # seq_len can be inferred from column suffixes.
+    X2, y2, info2 = load_sequence_parquet(dataset_dir / "train.parquet")
+    assert X2.shape == (20, 6, 10)
+    assert y2.shape == (20, 3)
+    assert info2["seq_len"] == 6
+    assert info2["input_dim"] == 10
+
+    # seq_len mismatch should be rejected.
+    with pytest.raises(ValueError, match="seq_len mismatch"):
+        _X_bad, _y_bad, _info_bad = load_sequence_parquet(dataset_dir / "train.parquet", seq_len=5)
+
+    # Additional label columns are tolerated but the 3 required labels are used.
+    df = pd.read_parquet(dataset_dir / "train.parquet")
+    df["label_1d"] = 0.0
+    df["junk_tX"] = 0.0  # cover non-digit suffix handling in seq_len inference
+    extra_path = dataset_dir / "train_extra_labels.parquet"
+    df.to_parquet(extra_path, index=False)
+    _X3, _y3, info3 = load_sequence_parquet(extra_path, seq_len=6)
+    assert info3["label_cols"] == ["label_3d", "label_5d", "label_10d"]
+
+    # Missing required labels should raise.
+    df_missing = df.drop(columns=["label_5d"])
+    missing_path = dataset_dir / "train_missing_label.parquet"
+    df_missing.to_parquet(missing_path, index=False)
+    with pytest.raises(ValueError, match="parquet must contain labels"):
+        _X_bad2, _y_bad2, _info_bad2 = load_sequence_parquet(missing_path, seq_len=6)
+
+    # No flattened feature columns should raise.
+    df_no_feat = pd.DataFrame(
+        {
+            "label_3d": np.zeros(4, dtype=np.float32),
+            "label_5d": np.zeros(4, dtype=np.float32),
+            "label_10d": np.zeros(4, dtype=np.float32),
+        }
+    )
+    no_feat_path = dataset_dir / "train_no_features.parquet"
+    df_no_feat.to_parquet(no_feat_path, index=False)
+    with pytest.raises(ValueError, match="cannot infer seq_len"):
+        _X_no_len, _y_no_len, _info_no_len = load_sequence_parquet(no_feat_path)
+    with pytest.raises(ValueError, match="no flattened feature columns"):
+        _X_bad3, _y_bad3, _info_bad3 = load_sequence_parquet(no_feat_path, seq_len=6)
+
+    # Incomplete bases (has *_t0 but missing later timesteps) should be ignored.
+    df_partial = pd.DataFrame(
+        {
+            "label_3d": np.zeros(3, dtype=np.float32),
+            "label_5d": np.zeros(3, dtype=np.float32),
+            "label_10d": np.zeros(3, dtype=np.float32),
+            "bar_t0": np.ones(3, dtype=np.float32),
+            "bar_t1": np.ones(3, dtype=np.float32),
+            "foo_t0": np.ones(3, dtype=np.float32),
+        }
+    )
+    partial_path = dataset_dir / "train_partial_bases.parquet"
+    df_partial.to_parquet(partial_path, index=False)
+    X4, _y4, info4 = load_sequence_parquet(partial_path, seq_len=2)
+    assert X4.shape == (3, 2, 1)
+    assert info4["feature_bases"] == ["bar"]
+
 
 def test_train_loop_updates_params_and_saves_checkpoints(tmp_path: Path):
     dataset_dir = _make_sequence_dataset_dir(tmp_path, seq_len=8, input_dim=10, n_train=128, n_valid=64, n_test=64)
@@ -374,7 +436,9 @@ def test_early_stopping_triggers_when_val_ic_stalls(tmp_path: Path):
 def test_model_mtl_yaml_parses():
     cfg = yaml.safe_load(Path("configs/model_mtl.yaml").read_text(encoding="utf-8"))
     assert isinstance(cfg, dict)
-    assert cfg["model"]["input_dim"] == 10
+    assert cfg["model"]["input_dim"] == 6
+    assert cfg["model"]["min_seq_len"] == 20
+    assert cfg["data"]["seq_len"] == 20
     assert cfg["training"]["batch_size"] == 32
     assert float(cfg["training"]["learning_rate"]) == 1e-4
     assert float(cfg["training"]["weight_decay"]) == 1e-5
