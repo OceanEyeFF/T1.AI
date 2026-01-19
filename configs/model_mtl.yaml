@@ -1,25 +1,25 @@
 model:
-  input_dim: 10
+  input_dim: 11              # 6 -> 11: 新增5个技术指标特征
   d_model: 128
   n_heads: 4
   n_layers: 4
   d_ff: 512
-  dropout: 0.1
-  min_seq_len: 30
-  max_seq_len: 60
+  dropout: 0.25             # 0.15 -> 0.25: 更强的正则化
+  min_seq_len: 20           # 恢复最优的20天窗口
+  max_seq_len: 512
   loss_weights: [1.0, 1.0, 1.0]
 
 training:
   batch_size: 32
-  learning_rate: 1e-4
-  weight_decay: 1e-5
-  max_epochs: 50
-  early_stopping_patience: 5
+  learning_rate: 5e-5       # 3e-5 -> 5e-5: 中等学习率，平衡稳定性和探索
+  weight_decay: 1e-4        # 5e-5 -> 1e-4: 更强的权重衰减
+  max_epochs: 100
+  early_stopping_patience: 8   # 12 -> 8: 更早停止
   early_stopping_metric: "val_ic"
-  early_stopping_threshold: 0.05
+  early_stopping_threshold: 0.12
 
 data:
-  seq_len: 30
+  seq_len: 20               # 恢复最优的20天窗口
   train_ratio: 0.7
   valid_ratio: 0.15
   test_ratio: 0.15
