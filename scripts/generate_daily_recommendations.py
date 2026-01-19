@@ -40,18 +40,21 @@ except Exception as exc:  # pragma: no cover - torch is expected in this repo
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
+from ashare_lab.data.tushare_source import load_or_fetch_daily_bars, TushareDailyBarsRequest  # noqa: E402
 from ashare_lab.features import (  # noqa: E402
     AmountChange,
-    BollingerDeviation,
     Return1D,
-    Return10D,
     Return20D,
     Return5D,
-    Return60D,
-    RSI,
     VolumeChange,
     VolumeRatio,
 )
+from ashare_lab.features.technical import (  # noqa: E402
+    RSI,
+    MACDHist,
+    BollingerDeviation,
+)
+from ashare_lab.features.price_slope import PriceSlope  # noqa: E402
 from ashare_lab.models.transformer import create_mtl_model  # noqa: E402
 from ashare_lab.recommendation.engine import Recommendation, RecommendationEngine  # noqa: E402
 from ashare_lab.universe import is_allowed_a_share_symbol  # noqa: E402
@@ -79,11 +82,24 @@ def _latest_cached_bars_path(symbol: str, cache_dir: Path) -> Path | None:
 
 
 def _load_cached_daily_bars(symbol: str, cache_dir: Path) -> pd.DataFrame:
-    path = _latest_cached_bars_path(symbol, cache_dir)
-    if path is None or not path.exists():
-        raise FileNotFoundError(f"missing cached daily bars for {symbol} under {cache_dir}")
-    df = pd.read_csv(path, parse_dates=["date"])
-    df = df.set_index("date").sort_index()
+    """Load daily bars using TuShare format (Parquet with year partitions)."""
+    # TuShare format: cache_dir/tushare/{ts_code}/year={YYYY}/part.parquet
+    # Convert symbol to ts_code if needed
+    ts_code = symbol
+    if len(ts_code) == 6 and "." not in ts_code:
+        # Heuristic: 60/68/90/93 -> SH, others -> SZ
+        ts_code = f"{ts_code}.SH" if ts_code[:2] in {"60", "68", "90", "93"} else f"{ts_code}.SZ"
+
+    req = TushareDailyBarsRequest(symbol=ts_code, start_date="20000101", end_date="20991231", adjust="qfq")
+    df = load_or_fetch_daily_bars(req, cache_dir)
+
+    if df.empty:
+        raise FileNotFoundError(f"missing cached daily bars for {symbol}")
+
+    # Ensure date index
+    if "date" in df.columns:
+        df = df.set_index("date")
+    df = df.sort_index()
     return df
 
 
@@ -92,7 +108,7 @@ def _load_selected_universe() -> list[dict[str, str]]:
 
     Priority:
       1) data/cache/selected_stocks_20210701.csv (small, already cached bars in this repo)
-      2) infer from available cached bars files
+      2) infer from TuShare cached directories (tushare/{ts_code}/)
     """
     selected_csv = PROJECT_ROOT / "data" / "cache" / "selected_stocks_20210701.csv"
     if selected_csv.exists():
@@ -109,12 +125,18 @@ def _load_selected_universe() -> list[dict[str, str]]:
                 items[code] = name
         return [{"symbol": k, "name": v} for k, v in sorted(items.items())]
 
-    cache_dir = PROJECT_ROOT / "data" / "cache"
+    # Scan TuShare cache directories
+    cache_dir = PROJECT_ROOT / "data" / "cache" / "tushare"
     symbols: set[str] = set()
-    for p in cache_dir.glob("*_daily_*.csv"):
-        stem = p.name.split("_", 1)[0]
-        if stem.isdigit() and len(stem) == 6:
-            symbols.add(stem)
+    if cache_dir.exists():
+        for p in cache_dir.iterdir():
+            if p.is_dir():
+                # Extract ts_code (e.g., "688981.SH")
+                ts_code = p.name
+                # Convert to 6-digit symbol
+                symbol = ts_code.split(".")[0] if "." in ts_code else ts_code
+                if symbol.isdigit() and len(symbol) == 6:
+                    symbols.add(symbol)
     return [{"symbol": s, "name": ""} for s in sorted(symbols)]
 
 
@@ -239,7 +261,7 @@ def load_mtl_checkpoint_model(model_path: Path, device: torch.device) -> torch.n
     params = _infer_model_params(state)
     # n_heads is not encoded in state shapes; use a safe default that divides d_model.
     n_heads = 4 if params["d_model"] % 4 == 0 else 1
-    min_seq_len = 30
+    min_seq_len = 20
     max_seq_len = max(params["max_seq_len"], min_seq_len)
 
     model = create_mtl_model(
@@ -280,16 +302,19 @@ def _reason_from_meta(symbol_meta: dict[str, Any] | None) -> str | None:
         return None
 
     parts: list[str] = []
-    rsi = symbol_meta.get("rsi_14")
     mom20 = symbol_meta.get("return_20d")
     vol_ratio = symbol_meta.get("volume_ratio_5d")
+    vol_change = symbol_meta.get("volume_change")
+    amt_change = symbol_meta.get("amount_change")
 
-    if _is_number(rsi):
-        parts.append(f"RSI {float(rsi):.1f}")
     if _is_number(mom20):
         parts.append(f"20日动量 {float(mom20):.1%}")
     if _is_number(vol_ratio):
         parts.append(f"量比 {float(vol_ratio):.2f}x")
+    if _is_number(vol_change):
+        parts.append(f"成交量变化 {float(vol_change):.1%}")
+    if _is_number(amt_change):
+        parts.append(f"成交额变化 {float(amt_change):.1%}")
 
     return " | ".join(parts) if parts else None
 
@@ -402,22 +427,27 @@ def main(argv: list[str] | None = None) -> int:
         model_runner = InferenceWrapper(model, device=device)
 
         features = [
+            # Momentum features (3)
             Return1D(),
             Return5D(),
-            Return10D(),
             Return20D(),
-            Return60D(),
+            # Volume features (3)
             VolumeRatio(window=5),
             VolumeChange(),
             AmountChange(),
+            # Technical indicators (3)
             RSI(period=14),
+            MACDHist(),
             BollingerDeviation(window=20),
+            # Trend features (2)
+            PriceSlope(window=5),
+            PriceSlope(window=20),
         ]
 
         universe_items = _load_selected_universe()
 
         # Attach names to meta so RecommendationEngine can display them.
-        feature_builder = LocalFeatureBuilder(cache_dir=cache_dir, feature_fns=features, seq_len=30)
+        feature_builder = LocalFeatureBuilder(cache_dir=cache_dir, feature_fns=features, seq_len=20)
         universe_filter = LocalUniverseFilter(universe_items)
 
         engine = RecommendationEngine(model_runner, feature_builder, universe_filter)
