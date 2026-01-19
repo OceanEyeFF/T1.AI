@@ -1,0 +1,47 @@
+# Conda 环境配置文件
+# 使用方法：conda env create -f environment.yml
+
+name: ashare-lab
+
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+
+dependencies:
+  # Python 版本
+  - python=3.10
+
+  # 核心数据科学库
+  - numpy>=1.26
+  - pandas>=2.1
+  - scikit-learn>=1.3
+
+  # PyTorch (深度学习框架)
+  # CPU 版本（如果需要 GPU，请修改为 pytorch-cuda）
+  - pytorch>=2.0
+  - pytorch-mutex=1.0=cpu
+
+  # 数据存储
+  - pyarrow>=14.0
+  - pyyaml>=6.0
+
+  # 开发工具
+  - pytest>=8
+  - pytest-cov>=4
+  - ruff>=0.5
+
+  # Jupyter (可选，用于数据探索)
+  - jupyter
+  - matplotlib
+  - seaborn
+
+  # pip 依赖（conda 没有的包）
+  - pip
+  - pip:
+      # A股数据源
+      - akshare>=1.13
+      - tushare>=1.2
+
+      # 其他工具
+      - python-dotenv  # 环境变量管理

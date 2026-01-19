@@ -33,6 +33,7 @@ package-dir = {"" = "src"}
 line-length = 100
 
 [tool.coverage.run]
+source = ["src/ashare_lab"]
 omit = [
   "scripts/build_dataset.py",
   "scripts/build_dataset_multi_stock.py",
@@ -44,3 +45,6 @@ omit = [
   "scripts/train_model.py",
   "scripts/train_mtl.py",
 ]
+
+[tool.coverage.report]
+fail_under = 90

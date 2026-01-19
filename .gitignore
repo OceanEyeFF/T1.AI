@@ -19,3 +19,22 @@ runs/
 .autoworkflow/
 .bmad-core/
 .claude/
+
+# 环境变量文件（包含敏感信息）
+.env
+
+# 模型检查点（大文件）
+*.pt
+*.pth
+*.ckpt
+
+# 训练日志
+logs/*.log
+logs/*.csv
+
+# 备份文件
+*.bak
+backup/
+
+# 推荐结果
+output/recommendations/
