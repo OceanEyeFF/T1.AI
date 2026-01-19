@@ -26,6 +26,8 @@ from ashare_lab.data.tushare_source import TushareDailyBarsRequest, load_or_fetc
 from ashare_lab.dataset.sequence_builder import SequenceDatasetBuilder
 from ashare_lab.features.momentum import Return1D, Return20D, Return5D
 from ashare_lab.features.volume import AmountChange, VolumeChange, VolumeRatio
+from ashare_lab.features.technical import RSI, MACDHist, BollingerDeviation
+from ashare_lab.features.price_slope import PriceSlope
 from ashare_lab.labels.multi_horizon import MultiHorizonLabel
 
 logging.basicConfig(
@@ -64,13 +66,30 @@ def _parse_symbols(symbols: str | None, symbols_csv: str | None) -> list[str]:
 
 
 def _compute_features(data: pd.DataFrame) -> pd.DataFrame:
+    """Compute MVP + technical indicator features.
+
+    Features (11 total):
+    - Momentum: Return1D, Return5D, Return20D
+    - Volume: VolumeRatio, VolumeChange, AmountChange
+    - Technical: RSI(14), MACDHist, BollingerDeviation
+    - Trend: PriceSlope(5), PriceSlope(20)
+    """
     features = [
+        # Momentum features (3)
         Return1D(),
         Return5D(),
         Return20D(),
+        # Volume features (3)
         VolumeRatio(window=5),
         VolumeChange(),
         AmountChange(),
+        # Technical indicators (3)
+        RSI(period=14),
+        MACDHist(),
+        BollingerDeviation(window=20),
+        # Trend features (2)
+        PriceSlope(window=5),
+        PriceSlope(window=20),
     ]
     feat_dict: dict[str, pd.Series] = {}
     for f in features:
@@ -120,7 +139,7 @@ def main() -> None:
     parser.add_argument("--source", default="akshare", choices=["akshare", "tushare"], help="Data source")
     parser.add_argument("--cache-dir", default="data/cache", help="Cache dir for daily bars")
     parser.add_argument("--output-dir", default="data/datasets", help="Output dir for parquet files")
-    parser.add_argument("--seq-len", type=int, default=30, help="Sequence length (default: 30)")
+    parser.add_argument("--seq-len", type=int, default=20, help="Sequence length (default: 20)")
     parser.add_argument("--stride", type=int, default=1, help="Sliding window stride (default: 1)")
     parser.add_argument("--train-ratio", type=float, default=0.7, help="Train ratio (default: 0.7)")
     parser.add_argument("--valid-ratio", type=float, default=0.15, help="Valid ratio (default: 0.15)")
@@ -201,8 +220,9 @@ def main() -> None:
     n_dates = len(unique_dates)
     train_cut = max(1, int(n_dates * args.train_ratio))
     valid_cut = max(train_cut, int(n_dates * (args.train_ratio + args.valid_ratio)))
-    train_dates = set(unique_dates[: min(train_cut, n_dates)].tolist())
-    valid_dates = set(unique_dates[min(train_cut, n_dates) : min(valid_cut, n_dates)].tolist())
+    # 转换为pandas Timestamp以确保与dates的类型匹配
+    train_dates = set(pd.to_datetime(unique_dates[: min(train_cut, n_dates)]))
+    valid_dates = set(pd.to_datetime(unique_dates[min(train_cut, n_dates) : min(valid_cut, n_dates)]))
     m_train = dates.isin(train_dates).to_numpy()
     m_valid = dates.isin(valid_dates).to_numpy()
     m_test = ~(m_train | m_valid)
