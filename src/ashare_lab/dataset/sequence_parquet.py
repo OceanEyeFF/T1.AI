@@ -103,8 +103,12 @@ def load_sequence_parquet(path: Path, seq_len: int | None = None) -> tuple[torch
     X = X_flat.reshape(X_flat.shape[0], seq_len, len(bases))
     y = df[label_cols].to_numpy(dtype=np.float32, copy=False)
 
+    # Fill NaN values in features with 0 to avoid gradient explosion
+    X_tensor = torch.from_numpy(X)
+    X_tensor = torch.nan_to_num(X_tensor, nan=0.0)
+
     return (
-        torch.from_numpy(X),
+        X_tensor,
         torch.from_numpy(y),
         {"seq_len": seq_len, "input_dim": len(bases), "feature_bases": bases, "label_cols": label_cols},
     )

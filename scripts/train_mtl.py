@@ -193,6 +193,8 @@ def main() -> None:
         max_seq_len=_as_int(model_cfg.get("max_seq_len", 512), 512),
         min_seq_len=_as_int(model_cfg.get("min_seq_len", 30), 30),
         loss_weights=loss_weights,
+        loss_type=str(model_cfg.get("loss_type", "l1")),
+        loss_alpha=_as_float(model_cfg.get("loss_alpha", 0.3), 0.3),
     )
 
     torch.manual_seed(int(args.seed))
