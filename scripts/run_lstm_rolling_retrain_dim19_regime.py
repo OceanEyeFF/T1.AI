@@ -1,0 +1,517 @@
+#!/usr/bin/env python
+"""Rolling retrain (18m window) + horizon-wise sign calibration for dim19 market-state LSTM."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import random
+import time
+from dataclasses import dataclass
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset
+
+from ashare_lab.evaluation.metrics import (
+    information_coefficient,
+    mean_absolute_error,
+    rank_information_coefficient,
+)
+from ashare_lab.models.transformer import compute_mtl_loss
+
+FEATURES_DIM19 = [
+    "return_1d",
+    "return_5d",
+    "return_10d",
+    "return_20d",
+    "return_60d",
+    "volume_ratio_5d",
+    "relative_volume",
+    "volume_change",
+    "amount_change",
+    "rsi_14",
+    "macd_line",
+    "macd_signal",
+    "macd_hist",
+    "bollinger_deviation",
+    "price_slope_5d",
+    "price_slope_20d",
+    "market_mom_5d",
+    "market_vol_20d",
+    "market_amount_z20",
+]
+
+LABEL_COLS = ["label_3d", "label_5d", "label_10d"]
+PRED_COLS = ["pred_3d", "pred_5d", "pred_10d"]
+
+
+def _set_seed(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
+def _metrics(pred: np.ndarray, y: np.ndarray) -> dict[str, float]:
+    ic = [information_coefficient(pred[:, i], y[:, i]) for i in range(3)]
+    ric = [rank_information_coefficient(pred[:, i], y[:, i]) for i in range(3)]
+    mae = [mean_absolute_error(pred[:, i], y[:, i]) for i in range(3)]
+    return {
+        "ic_3d": float(ic[0]),
+        "ic_5d": float(ic[1]),
+        "ic_10d": float(ic[2]),
+        "avg_ic": float(np.mean(ic)),
+        "rank_ic_3d": float(ric[0]),
+        "rank_ic_5d": float(ric[1]),
+        "rank_ic_10d": float(ric[2]),
+        "avg_rank_ic": float(np.mean(ric)),
+        "mae_3d": float(mae[0]),
+        "mae_5d": float(mae[1]),
+        "mae_10d": float(mae[2]),
+        "avg_mae": float(np.mean(mae)),
+    }
+
+
+def _extract_xy(df: pd.DataFrame, feature_bases: list[str], seq_len: int) -> tuple[np.ndarray, np.ndarray]:
+    x_cols = [f"{b}_t{t}" for t in range(seq_len) for b in feature_bases]
+    x = df[x_cols].to_numpy(dtype=np.float32, copy=False).reshape(len(df), seq_len, len(feature_bases))
+    x = np.nan_to_num(x, nan=0.0)
+    y = df[LABEL_COLS].to_numpy(dtype=np.float32, copy=False)
+    return x, y
+
+
+class MtlLSTM(nn.Module):
+    def __init__(self, *, input_dim: int, hidden_size: int, num_layers: int, dropout: float) -> None:
+        super().__init__()
+        self.loss_weights = torch.tensor([1.0, 1.0, 1.0], dtype=torch.float32)
+        self.lstm = nn.LSTM(
+            input_size=input_dim,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            dropout=dropout if num_layers > 1 else 0.0,
+            batch_first=True,
+        )
+        self.norm = nn.LayerNorm(hidden_size)
+
+        def _head() -> nn.Module:
+            return nn.Sequential(
+                nn.Linear(hidden_size, hidden_size // 2),
+                nn.GELU(),
+                nn.Linear(hidden_size // 2, 1),
+            )
+
+        self.head_3d = _head()
+        self.head_5d = _head()
+        self.head_10d = _head()
+
+    def forward(self, x: torch.Tensor, labels: torch.Tensor | None = None):
+        out, _ = self.lstm(x)
+        h = self.norm(out[:, -1, :])
+        preds = {
+            "pred_3d": self.head_3d(h).squeeze(-1),
+            "pred_5d": self.head_5d(h).squeeze(-1),
+            "pred_10d": self.head_10d(h).squeeze(-1),
+        }
+        if labels is None:
+            return preds
+        total, head = compute_mtl_loss(preds, labels, self.loss_weights.to(labels.device))
+        return preds, {"total": total, **head}
+
+
+@torch.no_grad()
+def _predict(model: nn.Module, x: np.ndarray, batch_size: int, device: torch.device) -> np.ndarray:
+    loader = DataLoader(TensorDataset(torch.from_numpy(x)), batch_size=batch_size, shuffle=False)
+    model.eval()
+    rows: list[np.ndarray] = []
+    for (xb,) in loader:
+        out = model(xb.to(device))
+        rows.append(
+            torch.stack([out["pred_3d"], out["pred_5d"], out["pred_10d"]], dim=1).detach().cpu().numpy()
+        )
+    return np.concatenate(rows, axis=0)
+
+
+@torch.no_grad()
+def _eval(model: nn.Module, x: np.ndarray, y: np.ndarray, batch_size: int, device: torch.device) -> dict[str, float]:
+    pred = _predict(model, x, batch_size=batch_size, device=device)
+    return _metrics(pred, y)
+
+
+@dataclass(frozen=True)
+class TrainConfig:
+    hidden_size: int
+    num_layers: int
+    dropout: float
+    lr: float
+    batch_size: int
+    max_epochs: int
+    patience: int
+
+
+def _train_one_model(
+    x_train: np.ndarray,
+    y_train: np.ndarray,
+    x_valid: np.ndarray,
+    y_valid: np.ndarray,
+    cfg: TrainConfig,
+    device: torch.device,
+) -> tuple[nn.Module, dict[str, float], int, float]:
+    model = MtlLSTM(
+        input_dim=x_train.shape[2],
+        hidden_size=cfg.hidden_size,
+        num_layers=cfg.num_layers,
+        dropout=cfg.dropout,
+    ).to(device)
+    opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=1e-5)
+
+    train_loader = DataLoader(
+        TensorDataset(torch.from_numpy(x_train), torch.from_numpy(y_train)),
+        batch_size=cfg.batch_size,
+        shuffle=True,
+        pin_memory=torch.cuda.is_available(),
+    )
+    valid_loader = DataLoader(
+        TensorDataset(torch.from_numpy(x_valid), torch.from_numpy(y_valid)),
+        batch_size=cfg.batch_size,
+        shuffle=False,
+        pin_memory=torch.cuda.is_available(),
+    )
+
+    best_ic = -1e9
+    best_state = None
+    stale = 0
+    epochs = 0
+    t0 = time.perf_counter()
+
+    for ep in range(1, cfg.max_epochs + 1):
+        epochs = ep
+        model.train()
+        total_loss = 0.0
+        for xb, yb in train_loader:
+            xb = xb.to(device, non_blocking=True)
+            yb = yb.to(device, non_blocking=True)
+            opt.zero_grad(set_to_none=True)
+            _, losses = model(xb, yb)
+            losses["total"].backward()
+            nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            opt.step()
+            total_loss += float(losses["total"].item())
+
+        # valid metrics
+        model.eval()
+        vp = [[], [], []]
+        vy = [[], [], []]
+        for xb, yb in valid_loader:
+            out = model(xb.to(device))
+            vp[0].append(out["pred_3d"].detach().cpu().numpy())
+            vp[1].append(out["pred_5d"].detach().cpu().numpy())
+            vp[2].append(out["pred_10d"].detach().cpu().numpy())
+            vy[0].append(yb[:, 0].numpy())
+            vy[1].append(yb[:, 1].numpy())
+            vy[2].append(yb[:, 2].numpy())
+        pred = np.stack([np.concatenate(vp[i]) for i in range(3)], axis=1)
+        yv = np.stack([np.concatenate(vy[i]) for i in range(3)], axis=1)
+        met = _metrics(pred, yv)
+        print(
+            f"epoch={ep:02d} train_loss={total_loss/max(1,len(train_loader)):.5f} "
+            f"val_ic={met['avg_ic']:.4f} val_rank_ic={met['avg_rank_ic']:.4f}"
+        )
+
+        if met["avg_ic"] > best_ic:
+            best_ic = float(met["avg_ic"])
+            stale = 0
+            best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+        else:
+            stale += 1
+
+        if stale >= cfg.patience:
+            break
+
+    if best_state is not None:
+        model.load_state_dict(best_state)
+    model.to(device)
+    valid_best = _eval(model, x_valid, y_valid, cfg.batch_size, device)
+    train_seconds = time.perf_counter() - t0
+    return model, valid_best, epochs, float(train_seconds)
+
+
+def _horizon_sign_with_threshold(score: float, threshold: float) -> int:
+    if not np.isfinite(score):
+        return 1
+    if abs(score) < threshold:
+        return 1
+    return 1 if score >= 0 else -1
+
+
+def _choose_sign_consensus(hist_ic: float, val_ic: float, threshold: float) -> tuple[int, str]:
+    """Conservative sign decision to reduce false flips.
+
+    Rules:
+      1) If both history and validation IC are available:
+         - flip only when both exceed threshold and have the same sign.
+         - otherwise keep sign=+1 (no flip).
+      2) If only one score is available:
+         - use thresholded sign from that score.
+      3) If neither is available:
+         - keep sign=+1.
+    """
+    hist_ok = np.isfinite(hist_ic)
+    val_ok = np.isfinite(val_ic)
+
+    if hist_ok and val_ok:
+        if abs(hist_ic) >= threshold and abs(val_ic) >= threshold and np.sign(hist_ic) == np.sign(val_ic):
+            return (1 if hist_ic >= 0 else -1), "hist_val_consensus"
+        return 1, "no_consensus_or_low_conf"
+
+    if hist_ok:
+        return _horizon_sign_with_threshold(hist_ic, threshold), "hist_only"
+    if val_ok:
+        return _horizon_sign_with_threshold(val_ic, threshold), "val_only"
+    return 1, "no_signal"
+
+
+def _select_train_valid_for_month(
+    train_pool: pd.DataFrame,
+    month_start: pd.Timestamp,
+    *,
+    train_window_months: int,
+    valid_window_months: int,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    left = month_start - pd.DateOffset(months=train_window_months)
+    pool = train_pool[(train_pool["date"] >= left) & (train_pool["date"] < month_start)].copy()
+    if pool.empty:
+        raise RuntimeError(f"empty rolling pool before {month_start.date()}")
+
+    valid_left = month_start - pd.DateOffset(months=valid_window_months)
+    valid_df = pool[(pool["date"] >= valid_left) & (pool["date"] < month_start)].copy()
+    train_df = pool[pool["date"] < valid_left].copy()
+
+    if train_df.empty or valid_df.empty:
+        # fallback date split if month-window split is too short
+        ud = np.array(sorted(pool["date"].unique()))
+        cut = max(1, int(len(ud) * 0.85))
+        train_dates = set(pd.to_datetime(ud[:cut]))
+        valid_dates = set(pd.to_datetime(ud[cut:]))
+        train_df = pool[pool["date"].isin(train_dates)].copy()
+        valid_df = pool[pool["date"].isin(valid_dates)].copy()
+        if train_df.empty or valid_df.empty:
+            raise RuntimeError(f"unable to split train/valid before {month_start.date()}")
+
+    return train_df, valid_df
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Rolling retrain + horizon sign calibration.")
+    parser.add_argument("--dataset-dir", default="data/datasets/lstm_sector70_19d_mkt_20210101_20260120")
+    parser.add_argument("--seq-len", type=int, default=20)
+    parser.add_argument("--train-window-months", type=int, default=18)
+    parser.add_argument("--valid-window-months", type=int, default=2)
+    parser.add_argument("--calibration-months", type=int, default=3)
+    parser.add_argument("--sign-threshold", type=float, default=0.02)
+    parser.add_argument("--hidden-size", type=int, default=64)
+    parser.add_argument("--num-layers", type=int, default=2)
+    parser.add_argument("--dropout", type=float, default=0.3)
+    parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--max-epochs", type=int, default=40)
+    parser.add_argument("--patience", type=int, default=8)
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--save-monthly-checkpoints", action="store_true")
+    parser.add_argument(
+        "--report",
+        default="output/reports/lstm_dim19_rolling18m_horizoncal_20260303.json",
+    )
+    args = parser.parse_args()
+
+    _set_seed(args.seed)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    cfg = TrainConfig(
+        hidden_size=args.hidden_size,
+        num_layers=args.num_layers,
+        dropout=args.dropout,
+        lr=args.lr,
+        batch_size=args.batch_size,
+        max_epochs=args.max_epochs,
+        patience=args.patience,
+    )
+
+    ddir = Path(args.dataset_dir)
+    train_df = pd.read_parquet(ddir / "train.parquet")
+    valid_df = pd.read_parquet(ddir / "valid.parquet")
+    test_df = pd.read_parquet(ddir / "test.parquet")
+    full_df = pd.concat([train_df, valid_df, test_df], ignore_index=True)
+    full_df["date"] = pd.to_datetime(full_df["date"])
+    full_df["symbol"] = full_df["symbol"].astype(str)
+    full_df = full_df.sort_values(["date", "symbol"]).reset_index(drop=True)
+
+    eval_df = test_df.copy()
+    eval_df["date"] = pd.to_datetime(eval_df["date"])
+    eval_df["symbol"] = eval_df["symbol"].astype(str)
+    eval_df = eval_df.sort_values(["date", "symbol"]).reset_index(drop=True)
+    months = sorted(eval_df["date"].dt.to_period("M").unique())
+
+    # history for walk-forward calibration uses realized OOS predictions from prior months
+    hist_rows: list[pd.DataFrame] = []
+    oos_rows: list[pd.DataFrame] = []
+    month_logs: list[dict[str, object]] = []
+
+    ckpt_dir = Path("models/rolling_dim19")
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
+
+    for i, m in enumerate(months):
+        month = str(m)
+        month_start = pd.Period(month, freq="M").start_time
+        month_mask = eval_df["date"].dt.to_period("M") == m
+        month_df = eval_df.loc[month_mask].copy()
+        if month_df.empty:
+            continue
+
+        print(f"\n=== month {month} ===")
+        tr_df, va_df = _select_train_valid_for_month(
+            full_df,
+            month_start=month_start,
+            train_window_months=args.train_window_months,
+            valid_window_months=args.valid_window_months,
+        )
+        print(
+            f"train_rows={len(tr_df)} valid_rows={len(va_df)} month_rows={len(month_df)} "
+            f"train_range=[{tr_df['date'].min().date()}..{tr_df['date'].max().date()}]"
+        )
+
+        # month-specific seed for reproducibility and mild de-correlation
+        _set_seed(args.seed + i)
+
+        x_tr, y_tr = _extract_xy(tr_df, FEATURES_DIM19, args.seq_len)
+        x_va, y_va = _extract_xy(va_df, FEATURES_DIM19, args.seq_len)
+        x_mo, y_mo = _extract_xy(month_df, FEATURES_DIM19, args.seq_len)
+
+        model, val_metrics, epochs_ran, train_seconds = _train_one_model(x_tr, y_tr, x_va, y_va, cfg, device)
+        pred_val = _predict(model, x_va, cfg.batch_size, device)
+        pred_month = _predict(model, x_mo, cfg.batch_size, device)
+
+        # build calibration score per horizon from trailing realized history
+        hist_df = pd.concat(hist_rows, ignore_index=True) if hist_rows else pd.DataFrame()
+        if not hist_df.empty:
+            hist_df["date"] = pd.to_datetime(hist_df["date"])
+            hist_left = month_start - pd.DateOffset(months=args.calibration_months)
+            hist_use = hist_df[(hist_df["date"] >= hist_left) & (hist_df["date"] < month_start)].copy()
+        else:
+            hist_use = pd.DataFrame()
+
+        signs: list[int] = []
+        decisions: list[dict[str, float | int]] = []
+        for h in range(3):
+            val_ic = float(information_coefficient(pred_val[:, h], y_va[:, h]))
+            hist_ic = float("nan")
+            if not hist_use.empty:
+                hist_ic = float(
+                    information_coefficient(
+                        hist_use[PRED_COLS[h]].to_numpy(dtype=float, copy=False),
+                        hist_use[LABEL_COLS[h]].to_numpy(dtype=float, copy=False),
+                    )
+                )
+            score = hist_ic if np.isfinite(hist_ic) else val_ic
+            sign, reason = _choose_sign_consensus(hist_ic, val_ic, args.sign_threshold)
+            signs.append(sign)
+            decisions.append(
+                {
+                    "horizon": int([3, 5, 10][h]),
+                    "val_ic": val_ic,
+                    "hist_ic": hist_ic,
+                    "score_used": float(score),
+                    "sign": int(sign),
+                    "rule": reason,
+                }
+            )
+
+        pred_cal = pred_month.copy()
+        for h in range(3):
+            pred_cal[:, h] = signs[h] * pred_cal[:, h]
+
+        month_raw = _metrics(pred_month, y_mo)
+        month_cal = _metrics(pred_cal, y_mo)
+        print(
+            f"month_raw_avg_ic={month_raw['avg_ic']:.4f} month_cal_avg_ic={month_cal['avg_ic']:.4f} "
+            f"signs={signs}"
+        )
+
+        month_out = month_df[["date", "symbol"] + LABEL_COLS].copy()
+        for h, c in enumerate(PRED_COLS):
+            month_out[c] = pred_month[:, h]
+            month_out[f"{c}_cal"] = pred_cal[:, h]
+        oos_rows.append(month_out)
+        hist_rows.append(month_out[["date"] + LABEL_COLS + PRED_COLS].copy())
+
+        if args.save_monthly_checkpoints:
+            ckpt_path = ckpt_dir / f"best_dim19_{month}.pt"
+            torch.save({"model_state_dict": model.state_dict()}, ckpt_path)
+        month_logs.append(
+            {
+                "month": month,
+                "month_rows": int(len(month_df)),
+                "train_rows": int(len(tr_df)),
+                "valid_rows": int(len(va_df)),
+                "epochs_ran": int(epochs_ran),
+                "train_seconds": float(train_seconds),
+                "valid_avg_ic": float(val_metrics["avg_ic"]),
+                "raw_avg_ic": float(month_raw["avg_ic"]),
+                "cal_avg_ic": float(month_cal["avg_ic"]),
+                "signs": signs,
+                "decisions": decisions,
+            }
+        )
+
+    if not oos_rows:
+        raise RuntimeError("no out-of-sample predictions generated")
+
+    oos = pd.concat(oos_rows, ignore_index=True)
+    y = oos[LABEL_COLS].to_numpy(dtype=float, copy=False)
+    raw = oos[PRED_COLS].to_numpy(dtype=float, copy=False)
+    cal = oos[[f"{c}_cal" for c in PRED_COLS]].to_numpy(dtype=float, copy=False)
+
+    raw_metrics = _metrics(raw, y)
+    cal_metrics = _metrics(cal, y)
+
+    out = {
+        "config": {
+            "dataset_dir": str(ddir),
+            "features": FEATURES_DIM19,
+            "seq_len": int(args.seq_len),
+            "train_window_months": int(args.train_window_months),
+            "valid_window_months": int(args.valid_window_months),
+            "calibration_months": int(args.calibration_months),
+            "sign_threshold": float(args.sign_threshold),
+            "hidden_size": int(args.hidden_size),
+            "num_layers": int(args.num_layers),
+            "dropout": float(args.dropout),
+            "lr": float(args.lr),
+            "batch_size": int(args.batch_size),
+            "max_epochs": int(args.max_epochs),
+            "patience": int(args.patience),
+            "seed": int(args.seed),
+            "device": str(device),
+            "months": [str(m) for m in months],
+        },
+        "raw_oos_metrics": raw_metrics,
+        "calibrated_oos_metrics": cal_metrics,
+        "delta_cal_minus_raw": {
+            "avg_ic": float(cal_metrics["avg_ic"] - raw_metrics["avg_ic"]),
+            "avg_rank_ic": float(cal_metrics["avg_rank_ic"] - raw_metrics["avg_rank_ic"]),
+            "avg_mae": float(cal_metrics["avg_mae"] - raw_metrics["avg_mae"]),
+        },
+        "monthly_logs": month_logs,
+    }
+
+    report = Path(args.report)
+    report.parent.mkdir(parents=True, exist_ok=True)
+    report.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"\nSaved report: {report}")
+
+
+if __name__ == "__main__":
+    main()

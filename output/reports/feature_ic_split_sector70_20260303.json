@@ -1,0 +1,191 @@
+{
+  "dataset": "data/datasets/lstm_sector70_20210101_20260120",
+  "target_label": "label_5d",
+  "timestep": "t19",
+  "features": [
+    "return_1d",
+    "return_5d",
+    "return_20d",
+    "volume_ratio_5d",
+    "volume_change",
+    "amount_change",
+    "rsi_14",
+    "macd_hist",
+    "bollinger_deviation",
+    "price_slope_5d",
+    "price_slope_20d"
+  ],
+  "splits": {
+    "train": [
+      {
+        "feature": "return_1d",
+        "ic": -0.02102378141639863,
+        "rank_ic": -0.016238165208984804
+      },
+      {
+        "feature": "price_slope_5d",
+        "ic": -0.016582269172846976,
+        "rank_ic": -0.014719550549668432
+      },
+      {
+        "feature": "rsi_14",
+        "ic": -0.012435700131621591,
+        "rank_ic": -0.028818354182411566
+      },
+      {
+        "feature": "bollinger_deviation",
+        "ic": -0.012195682208966479,
+        "rank_ic": -0.021850013060887994
+      },
+      {
+        "feature": "return_20d",
+        "ic": -0.009521906021174665,
+        "rank_ic": -0.026138417113340497
+      },
+      {
+        "feature": "return_5d",
+        "ic": -0.007929158269528684,
+        "rank_ic": -0.013536149851896728
+      },
+      {
+        "feature": "volume_ratio_5d",
+        "ic": 0.007928548886884634,
+        "rank_ic": 0.012190863996529444
+      },
+      {
+        "feature": "macd_hist",
+        "ic": 0.007146502100617344,
+        "rank_ic": 0.0019573771095080595
+      },
+      {
+        "feature": "amount_change",
+        "ic": -0.003918202138070418,
+        "rank_ic": 0.006709407799425891
+      },
+      {
+        "feature": "volume_change",
+        "ic": -0.0024808431029990775,
+        "rank_ic": 0.007651590524736177
+      },
+      {
+        "feature": "price_slope_20d",
+        "ic": -0.0021527823999306045,
+        "rank_ic": -0.019344960216854043
+      }
+    ],
+    "valid": [
+      {
+        "feature": "rsi_14",
+        "ic": -0.07301771746979542,
+        "rank_ic": -0.1026524640375075
+      },
+      {
+        "feature": "return_5d",
+        "ic": -0.04949409127294085,
+        "rank_ic": -0.05735545931186038
+      },
+      {
+        "feature": "price_slope_5d",
+        "ic": -0.04546976706726926,
+        "rank_ic": -0.046103319459484704
+      },
+      {
+        "feature": "return_1d",
+        "ic": -0.04037572633237466,
+        "rank_ic": -0.036610169110124775
+      },
+      {
+        "feature": "bollinger_deviation",
+        "ic": -0.0388901052519648,
+        "rank_ic": -0.07332453301548696
+      },
+      {
+        "feature": "price_slope_20d",
+        "ic": -0.03461017526649944,
+        "rank_ic": -0.08497495592483988
+      },
+      {
+        "feature": "volume_change",
+        "ic": 0.031901964883377175,
+        "rank_ic": -0.00856363716923365
+      },
+      {
+        "feature": "amount_change",
+        "ic": 0.02911107927605686,
+        "rank_ic": -0.010969128458631676
+      },
+      {
+        "feature": "volume_ratio_5d",
+        "ic": 0.027049629753233263,
+        "rank_ic": -0.019943039144383886
+      },
+      {
+        "feature": "return_20d",
+        "ic": -0.02308535994910524,
+        "rank_ic": -0.07336820405792471
+      },
+      {
+        "feature": "macd_hist",
+        "ic": 0.017664098290142222,
+        "rank_ic": -0.00022915805105592238
+      }
+    ],
+    "test": [
+      {
+        "feature": "price_slope_20d",
+        "ic": 0.07412236711114373,
+        "rank_ic": 0.02556255655301527
+      },
+      {
+        "feature": "return_20d",
+        "ic": 0.06889823660279513,
+        "rank_ic": -0.0051232701474177725
+      },
+      {
+        "feature": "rsi_14",
+        "ic": 0.045047619117395854,
+        "rank_ic": -0.013775127340265016
+      },
+      {
+        "feature": "return_5d",
+        "ic": -0.034560609843718226,
+        "rank_ic": -0.08256144123586544
+      },
+      {
+        "feature": "price_slope_5d",
+        "ic": -0.028749320287731157,
+        "rank_ic": -0.07406804120514976
+      },
+      {
+        "feature": "macd_hist",
+        "ic": -0.028462324728679694,
+        "rank_ic": -0.03312736067786795
+      },
+      {
+        "feature": "volume_change",
+        "ic": -0.026995565206282154,
+        "rank_ic": -0.019816351925701938
+      },
+      {
+        "feature": "amount_change",
+        "ic": -0.026834493056573396,
+        "rank_ic": -0.02155234363507466
+      },
+      {
+        "feature": "volume_ratio_5d",
+        "ic": -0.024256661416040177,
+        "rank_ic": -0.03306710238130558
+      },
+      {
+        "feature": "bollinger_deviation",
+        "ic": 0.018476380464993752,
+        "rank_ic": -0.036320484046134055
+      },
+      {
+        "feature": "return_1d",
+        "ic": -0.010231969900917903,
+        "rank_ic": -0.028198116558118665
+      }
+    ]
+  }
+}
