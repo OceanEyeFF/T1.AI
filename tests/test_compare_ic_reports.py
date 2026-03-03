@@ -36,6 +36,37 @@ def test_extract_monthly_series_prefers_5_10() -> None:
     assert out == {"2025-01": 0.03, "2025-02": 0.03, "2025-03": 0.01}
 
 
+def test_extract_monthly_series_falls_back_to_monthly_decisions() -> None:
+    report = {
+        "monthly_decisions": [
+            {"month": "2025-01", "month_raw_avg_ic": 0.02, "month_cal_avg_ic": 0.04},
+            {"month": "2025-02", "month_raw_avg_ic": -0.01, "month_cal_avg_ic": 0.01},
+        ]
+    }
+    assert extract_monthly_series(report, monthly_source="raw") == {
+        "2025-01": 0.02,
+        "2025-02": -0.01,
+    }
+    assert extract_monthly_series(report, monthly_source="calibrated") == {
+        "2025-01": 0.04,
+        "2025-02": 0.01,
+    }
+
+
+def test_extract_monthly_series_accepts_walkforward_field_names() -> None:
+    report = {
+        "monthly_logs": [
+            {"month": "2025-01", "month_raw_avg_ic": 0.03, "month_cal_avg_ic": 0.05},
+            {"month": "2025-02", "month_raw_avg_ic": 0.00, "month_cal_avg_ic": 0.01},
+        ]
+    }
+    assert extract_monthly_series(report, monthly_source="raw") == {"2025-01": 0.03, "2025-02": 0.0}
+    assert extract_monthly_series(report, monthly_source="calibrated") == {
+        "2025-01": 0.05,
+        "2025-02": 0.01,
+    }
+
+
 def test_monthly_summary_and_gate() -> None:
     summary = summarize_monthly([0.1, -0.2, -0.05, 0.03])
     assert summary.month_count == 4

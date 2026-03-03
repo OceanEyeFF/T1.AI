@@ -70,15 +70,26 @@ def compute_rank_ic_5_10(metrics: dict[str, Any]) -> float | None:
     return (r5 + r10) / 2.0
 
 
-def extract_monthly_series(report: dict[str, Any], monthly_source: str) -> dict[str, float]:
+def _monthly_rows(report: dict[str, Any]) -> list[dict[str, Any]]:
     rows = report.get("monthly_logs")
-    if not isinstance(rows, list):
+    if isinstance(rows, list):
+        return [row for row in rows if isinstance(row, dict)]
+
+    # Backward compatibility for walk-forward report format.
+    rows = report.get("monthly_decisions")
+    if isinstance(rows, list):
+        return [row for row in rows if isinstance(row, dict)]
+
+    return []
+
+
+def extract_monthly_series(report: dict[str, Any], monthly_source: str) -> dict[str, float]:
+    rows = _monthly_rows(report)
+    if not rows:
         return {}
 
     month_to_ic: dict[str, float] = {}
     for row in rows:
-        if not isinstance(row, dict):
-            continue
         month = row.get("month")
         if not isinstance(month, str):
             continue
@@ -93,8 +104,12 @@ def extract_monthly_series(report: dict[str, Any], monthly_source: str) -> dict[
                 value = (ic5 + ic10) / 2.0
         elif monthly_source == "raw":
             value = _safe_float(row.get("raw_avg_ic"))
+            if value is None:
+                value = _safe_float(row.get("month_raw_avg_ic"))
         else:
             value = _safe_float(row.get("cal_avg_ic"))
+            if value is None:
+                value = _safe_float(row.get("month_cal_avg_ic"))
 
         if value is not None:
             month_to_ic[month] = value
