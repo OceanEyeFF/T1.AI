@@ -4,7 +4,6 @@
 name: ashare-lab
 
 channels:
-  - pytorch
   - conda-forge
   - defaults
 
@@ -17,10 +16,7 @@ dependencies:
   - pandas>=2.1
   - scikit-learn>=1.3
 
-  # PyTorch (深度学习框架)
-  # CPU 版本（如果需要 GPU，请修改为 pytorch-cuda）
-  - pytorch>=2.0
-  - pytorch-mutex=1.0=cpu
+  # PyTorch 通过 pip 安装（CUDA 轮子），不通过 conda 安装
 
   # 数据存储
   - pyarrow>=14.0

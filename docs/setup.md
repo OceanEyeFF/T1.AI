@@ -23,11 +23,19 @@ bash Miniconda3-latest-Linux-x86_64.sh
 brew install miniconda
 ```
 
+### 1.3 检查 NVIDIA 驱动（GPU 训练必需）
+
+```bash
+nvidia-smi
+```
+
+如果该命令不可用，先安装/修复 NVIDIA 驱动与 CUDA 运行时（WSL 用户需确认 WSL CUDA 已启用）。
+
 ---
 
 ## 2. 环境安装
 
-### 方法A：使用 Conda（推荐）
+### 方法A：使用 Conda + CUDA（默认推荐）
 
 ```bash
 # 创建环境
@@ -36,11 +44,19 @@ conda env create -f environment.yml
 # 激活环境
 conda activate ashare-lab
 
+# 使用 pip 安装 CUDA 版 PyTorch
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
 # 安装项目（开发模式）
-pip install -e ".[dev]"
+pip install -e ".[dev]" --no-deps
+
+# 验证 GPU PyTorch
+python -c "import torch; print('torch=', torch.__version__); print('cuda_available=', torch.cuda.is_available())"
 ```
 
-### 方法B：使用 pip
+默认通过 pip 的 cu121 索引安装 GPU 版本 PyTorch。
+
+### 方法B：使用 pip（仅 CPU 或临时调试）
 
 ```bash
 python -m pip install -e ".[dev]"
@@ -92,6 +108,14 @@ mkdir -p models logs
 ## 5. 验证安装
 
 ```bash
+# 验证 PyTorch CUDA
+python -c "
+import torch
+print('cuda_available=', torch.cuda.is_available())
+print('device_count=', torch.cuda.device_count())
+print('device_0=', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A')
+"
+
 # 运行测试
 pytest tests/
 
@@ -183,6 +207,19 @@ training:
 # 删除并重建
 conda env remove -n ashare-lab
 conda env create -f environment.yml
+```
+
+### Q4: CUDA 不可用
+
+```bash
+# 1) 驱动可见性
+nvidia-smi
+
+# 2) pip 包检查
+pip show torch torchvision torchaudio
+
+# 3) Python 内验证
+python -c "import torch; print(torch.cuda.is_available())"
 ```
 
 ---

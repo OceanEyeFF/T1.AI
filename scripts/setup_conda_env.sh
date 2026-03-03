@@ -54,8 +54,25 @@ echo "📥 安装项目到开发模式..."
 eval "$(conda shell.bash hook)"
 conda activate "$ENV_NAME"
 
+# 安装 CUDA 版 PyTorch（pip）
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
 # 安装项目（开发模式）
-pip install -e ".[dev]"
+# --no-deps: 避免重复安装依赖并覆盖已安装的 CUDA 版 PyTorch
+pip install -e ".[dev]" --no-deps
+
+echo ""
+echo "🔎 检查 PyTorch CUDA 可用性..."
+python - <<'PY'
+import torch
+print(f"torch_version={torch.__version__}")
+print(f"cuda_available={torch.cuda.is_available()}")
+if torch.cuda.is_available():
+    print(f"cuda_device_count={torch.cuda.device_count()}")
+    print(f"cuda_device_0={torch.cuda.get_device_name(0)}")
+else:
+    print("warning=CUDA 不可用，请检查 NVIDIA 驱动、WSL CUDA 支持和 conda 包解析结果")
+PY
 
 echo ""
 echo "🎉 安装完成！"

@@ -14,8 +14,11 @@
 1) 安装依赖
 
 ```bash
-python -m pip install -U pip
-python -m pip install -e ".[dev]"
+conda env create -f environment.yml
+conda activate ashare-lab
+python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+python -m pip install -e ".[dev]" --no-deps
+python -c "import torch; print('cuda_available=', torch.cuda.is_available())"
 ```
 
 2) 构建股票池快照（可选，用于全市场回测）
