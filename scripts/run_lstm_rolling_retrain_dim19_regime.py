@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
 
 from ashare_lab.evaluation.metrics import (
@@ -21,7 +22,6 @@ from ashare_lab.evaluation.metrics import (
     mean_absolute_error,
     rank_information_coefficient,
 )
-from ashare_lab.models.transformer import compute_mtl_loss
 
 FEATURES_DIM19 = [
     "return_1d",
@@ -47,6 +47,7 @@ FEATURES_DIM19 = [
 
 LABEL_COLS = ["label_3d", "label_5d", "label_10d"]
 PRED_COLS = ["pred_3d", "pred_5d", "pred_10d"]
+LOSS_TYPES = ("l1", "ic_aware", "rank_aware", "ic_rank_aware")
 
 
 def _set_seed(seed: int) -> None:
@@ -85,6 +86,70 @@ def _extract_xy(df: pd.DataFrame, feature_bases: list[str], seq_len: int) -> tup
     return x, y
 
 
+def _masked_l1_loss(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    mask = ~torch.isnan(target)
+    if mask.sum() == 0:
+        return torch.zeros((), device=pred.device, dtype=pred.dtype)
+    return torch.mean(torch.abs(pred[mask] - target[mask]))
+
+
+def _pearson_corr(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    mask = ~torch.isnan(target)
+    if mask.sum() < 2:
+        return torch.zeros((), device=pred.device, dtype=pred.dtype)
+    p = pred[mask]
+    t = target[mask]
+    p = p - p.mean()
+    t = t - t.mean()
+    denom = torch.sqrt((p.square().sum() * t.square().sum()).clamp_min(1e-8))
+    return (p * t).sum() / denom
+
+
+def _pairwise_rank_logistic_loss(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    mask = ~torch.isnan(target)
+    if mask.sum() < 2:
+        return torch.zeros((), device=pred.device, dtype=pred.dtype)
+    p = pred[mask]
+    t = target[mask]
+
+    pdiff = p.unsqueeze(1) - p.unsqueeze(0)
+    tdiff = t.unsqueeze(1) - t.unsqueeze(0)
+    upper = torch.triu(torch.ones_like(tdiff, dtype=torch.bool), diagonal=1)
+    pair_mask = upper & (tdiff != 0)
+    if pair_mask.sum() == 0:
+        return torch.zeros((), device=pred.device, dtype=pred.dtype)
+
+    sign = torch.sign(tdiff[pair_mask])
+    margin = sign * pdiff[pair_mask]
+    return F.softplus(-margin).mean()
+
+
+def _compute_head_loss(
+    pred: torch.Tensor,
+    target: torch.Tensor,
+    *,
+    loss_type: str,
+    loss_alpha: float,
+    ic_rank_beta: float,
+) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+    l1 = _masked_l1_loss(pred, target)
+    ic_loss = 1.0 - _pearson_corr(pred, target)
+    rank_loss = _pairwise_rank_logistic_loss(pred, target)
+
+    if loss_type == "l1":
+        total = l1
+    elif loss_type == "ic_aware":
+        total = loss_alpha * l1 + (1.0 - loss_alpha) * ic_loss
+    elif loss_type == "rank_aware":
+        total = loss_alpha * l1 + (1.0 - loss_alpha) * rank_loss
+    elif loss_type == "ic_rank_aware":
+        total = loss_alpha * l1 + (1.0 - loss_alpha) * (ic_rank_beta * ic_loss + (1.0 - ic_rank_beta) * rank_loss)
+    else:
+        raise ValueError(f"unsupported loss_type: {loss_type}")
+
+    return total, {"l1": l1, "ic_loss": ic_loss, "rank_loss": rank_loss}
+
+
 class MtlLSTM(nn.Module):
     def __init__(
         self,
@@ -94,9 +159,15 @@ class MtlLSTM(nn.Module):
         num_layers: int,
         dropout: float,
         loss_weights: tuple[float, float, float],
+        loss_type: str,
+        loss_alpha: float,
+        ic_rank_beta: float,
     ) -> None:
         super().__init__()
         self.loss_weights = torch.tensor(loss_weights, dtype=torch.float32)
+        self.loss_type = loss_type
+        self.loss_alpha = float(loss_alpha)
+        self.ic_rank_beta = float(ic_rank_beta)
         self.lstm = nn.LSTM(
             input_size=input_dim,
             hidden_size=hidden_size,
@@ -127,8 +198,27 @@ class MtlLSTM(nn.Module):
         }
         if labels is None:
             return preds
-        total, head = compute_mtl_loss(preds, labels, self.loss_weights.to(labels.device))
-        return preds, {"total": total, **head}
+        weights = self.loss_weights.to(device=labels.device, dtype=labels.dtype)
+        per_head: list[torch.Tensor] = []
+        details: dict[str, torch.Tensor] = {}
+
+        for idx, pred_key in enumerate(PRED_COLS):
+            head_total, head_parts = _compute_head_loss(
+                preds[pred_key],
+                labels[:, idx],
+                loss_type=self.loss_type,
+                loss_alpha=self.loss_alpha,
+                ic_rank_beta=self.ic_rank_beta,
+            )
+            per_head.append(head_total)
+            horizon = pred_key.replace("pred_", "")
+            details[f"obj_{horizon}"] = head_total
+            details[f"l1_{horizon}"] = head_parts["l1"]
+            details[f"ic_loss_{horizon}"] = head_parts["ic_loss"]
+            details[f"rank_loss_{horizon}"] = head_parts["rank_loss"]
+
+        total = torch.stack(per_head).mul(weights).sum()
+        return preds, {"total": total, **details}
 
 
 @torch.no_grad()
@@ -160,6 +250,9 @@ class TrainConfig:
     max_epochs: int
     patience: int
     loss_weights: tuple[float, float, float]
+    loss_type: str
+    loss_alpha: float
+    ic_rank_beta: float
 
 
 def _train_one_model(
@@ -176,6 +269,9 @@ def _train_one_model(
         num_layers=cfg.num_layers,
         dropout=cfg.dropout,
         loss_weights=cfg.loss_weights,
+        loss_type=cfg.loss_type,
+        loss_alpha=cfg.loss_alpha,
+        ic_rank_beta=cfg.ic_rank_beta,
     ).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=1e-5)
 
@@ -333,6 +429,14 @@ def main() -> None:
     parser.add_argument("--w3", type=float, default=1.0)
     parser.add_argument("--w5", type=float, default=1.0)
     parser.add_argument("--w10", type=float, default=1.0)
+    parser.add_argument("--loss-type", choices=list(LOSS_TYPES), default="l1")
+    parser.add_argument("--loss-alpha", type=float, default=0.3, help="混合损失里 L1 占比，范围 [0,1]")
+    parser.add_argument(
+        "--ic-rank-beta",
+        type=float,
+        default=0.5,
+        help="仅在 ic_rank_aware 下生效：非L1部分中 IC loss 占比，范围 [0,1]",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--save-monthly-checkpoints", action="store_true")
     parser.add_argument(
@@ -348,6 +452,10 @@ def main() -> None:
 
     if args.w3 < 0 or args.w5 < 0 or args.w10 < 0 or (args.w3 + args.w5 + args.w10) <= 0:
         raise ValueError("loss weights must be non-negative and sum to > 0")
+    if not (0.0 <= args.loss_alpha <= 1.0):
+        raise ValueError("loss_alpha must be within [0,1]")
+    if not (0.0 <= args.ic_rank_beta <= 1.0):
+        raise ValueError("ic_rank_beta must be within [0,1]")
 
     _set_seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -360,6 +468,9 @@ def main() -> None:
         max_epochs=args.max_epochs,
         patience=args.patience,
         loss_weights=(float(args.w3), float(args.w5), float(args.w10)),
+        loss_type=str(args.loss_type),
+        loss_alpha=float(args.loss_alpha),
+        ic_rank_beta=float(args.ic_rank_beta),
     )
 
     ddir = Path(args.dataset_dir)
@@ -516,6 +627,9 @@ def main() -> None:
             "max_epochs": int(args.max_epochs),
             "patience": int(args.patience),
             "loss_weights": {"3d": float(args.w3), "5d": float(args.w5), "10d": float(args.w10)},
+            "loss_type": str(args.loss_type),
+            "loss_alpha": float(args.loss_alpha),
+            "ic_rank_beta": float(args.ic_rank_beta),
             "seed": int(args.seed),
             "device": str(device),
             "months": [str(m) for m in months],
