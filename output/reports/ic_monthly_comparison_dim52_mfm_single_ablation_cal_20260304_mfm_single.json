@@ -1,0 +1,342 @@
+{
+  "metric_source": "calibrated",
+  "monthly_source": "calibrated",
+  "daily_cs_mode": "required",
+  "daily_cs_reports": 11,
+  "common_months": [
+    "2025-08",
+    "2025-09",
+    "2025-10",
+    "2025-11",
+    "2025-12",
+    "2026-01"
+  ],
+  "gate": {
+    "mean_ic_5_10": 0.05,
+    "mean_rank_ic_5_10": 0.08,
+    "monthly_win_rate": 0.6,
+    "worst_month": -0.1,
+    "max_consecutive_negative_months": 2
+  },
+  "results": [
+    {
+      "report": "lstm_dim52_no_hist_hl_auto_window24_l1_20260304.json",
+      "metric_mode": "daily_cs",
+      "available_months": [
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12",
+        "2026-01"
+      ],
+      "missing_common_months": [],
+      "mean_ic_5_10": 0.057460669809677206,
+      "mean_rank_ic_5_10": 0.07605820105820106,
+      "daily_cs": {
+        "source_path": "/home/oceaneye/github/T1.AI/output/reports/lstm_dim52_no_hist_hl_auto_window24_l1_20260304_oos.parquet",
+        "day_count": 108,
+        "month_count": 6
+      },
+      "monthly": {
+        "month_count": 6,
+        "mean": 0.051829486838360195,
+        "median": 0.020600269046937764,
+        "worst": -0.03405711637155772,
+        "win_rate": 0.6666666666666666,
+        "max_consecutive_negative_months": 1
+      },
+      "pass_gate": false
+    },
+    {
+      "report": "lstm_dim52_ablation_drop_moneyflow_momentum_auto_window24_l1_20260304_gabl52.json",
+      "metric_mode": "daily_cs",
+      "available_months": [
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12",
+        "2026-01"
+      ],
+      "missing_common_months": [],
+      "mean_ic_5_10": 0.007767994948748317,
+      "mean_rank_ic_5_10": 0.012676366843033512,
+      "daily_cs": {
+        "source_path": "/home/oceaneye/github/T1.AI/output/reports/lstm_dim52_ablation_drop_moneyflow_momentum_auto_window24_l1_20260304_gabl52_oos.parquet",
+        "day_count": 108,
+        "month_count": 6
+      },
+      "monthly": {
+        "month_count": 6,
+        "mean": 0.012445441453316906,
+        "median": 0.025483649142846336,
+        "worst": -0.08058116918555124,
+        "win_rate": 0.5,
+        "max_consecutive_negative_months": 2
+      },
+      "pass_gate": false
+    },
+    {
+      "report": "lstm_dim52_ablation_mfm_single_drop_mf_net_amount_ratio_ma5_auto_window24_l1_20260304_mfm_single.json",
+      "metric_mode": "daily_cs",
+      "available_months": [
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12",
+        "2026-01"
+      ],
+      "missing_common_months": [],
+      "mean_ic_5_10": 0.027830309509613432,
+      "mean_rank_ic_5_10": -0.01840828924162258,
+      "daily_cs": {
+        "source_path": "/home/oceaneye/github/T1.AI/output/reports/lstm_dim52_ablation_mfm_single_drop_mf_net_amount_ratio_ma5_auto_window24_l1_20260304_mfm_single_oos.parquet",
+        "day_count": 108,
+        "month_count": 6
+      },
+      "monthly": {
+        "month_count": 6,
+        "mean": 0.013593823350606868,
+        "median": 0.033780684903431196,
+        "worst": -0.26134574264063065,
+        "win_rate": 0.5,
+        "max_consecutive_negative_months": 1
+      },
+      "pass_gate": false
+    },
+    {
+      "report": "lstm_dim52_ablation_mfm_single_drop_mf_net_amount_ratio_ma10_auto_window24_l1_20260304_mfm_single.json",
+      "metric_mode": "daily_cs",
+      "available_months": [
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12",
+        "2026-01"
+      ],
+      "missing_common_months": [],
+      "mean_ic_5_10": -0.0013950417601604924,
+      "mean_rank_ic_5_10": -0.04508377425044093,
+      "daily_cs": {
+        "source_path": "/home/oceaneye/github/T1.AI/output/reports/lstm_dim52_ablation_mfm_single_drop_mf_net_amount_ratio_ma10_auto_window24_l1_20260304_mfm_single_oos.parquet",
+        "day_count": 108,
+        "month_count": 6
+      },
+      "monthly": {
+        "month_count": 6,
+        "mean": -0.017077236097676588,
+        "median": -0.012130820914562,
+        "worst": -0.26837366587152395,
+        "win_rate": 0.5,
+        "max_consecutive_negative_months": 1
+      },
+      "pass_gate": false
+    },
+    {
+      "report": "lstm_dim52_ablation_mfm_single_drop_mf_net_amount_ratio_mom5_auto_window24_l1_20260304_mfm_single.json",
+      "metric_mode": "daily_cs",
+      "available_months": [
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12",
+        "2026-01"
+      ],
+      "missing_common_months": [],
+      "mean_ic_5_10": 0.02198611164569826,
+      "mean_rank_ic_5_10": -0.028328924162257497,
+      "daily_cs": {
+        "source_path": "/home/oceaneye/github/T1.AI/output/reports/lstm_dim52_ablation_mfm_single_drop_mf_net_amount_ratio_mom5_auto_window24_l1_20260304_mfm_single_oos.parquet",
+        "day_count": 108,
+        "month_count": 6
+      },
+      "monthly": {
+        "month_count": 6,
+        "mean": 0.007571500781579897,
+        "median": 0.024173786204352607,
+        "worst": -0.26624860253305077,
+        "win_rate": 0.5,
+        "max_consecutive_negative_months": 1
+      },
+      "pass_gate": false
+    },
+    {
+      "report": "lstm_dim52_ablation_mfm_single_drop_mf_net_amount_ratio_mom10_auto_window24_l1_20260304_mfm_single.json",
+      "metric_mode": "daily_cs",
+      "available_months": [
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12",
+        "2026-01"
+      ],
+      "missing_common_months": [],
+      "mean_ic_5_10": -0.024217510649073487,
+      "mean_rank_ic_5_10": -0.05456349206349208,
+      "daily_cs": {
+        "source_path": "/home/oceaneye/github/T1.AI/output/reports/lstm_dim52_ablation_mfm_single_drop_mf_net_amount_ratio_mom10_auto_window24_l1_20260304_mfm_single_oos.parquet",
+        "day_count": 108,
+        "month_count": 6
+      },
+      "monthly": {
+        "month_count": 6,
+        "mean": -0.04399858462158798,
+        "median": -0.08534519026478413,
+        "worst": -0.2782859910011107,
+        "win_rate": 0.3333333333333333,
+        "max_consecutive_negative_months": 2
+      },
+      "pass_gate": false
+    },
+    {
+      "report": "lstm_dim52_ablation_mfm_single_drop_mf_large_amount_ratio_ma5_auto_window24_l1_20260304_mfm_single.json",
+      "metric_mode": "daily_cs",
+      "available_months": [
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12",
+        "2026-01"
+      ],
+      "missing_common_months": [],
+      "mean_ic_5_10": 0.03312827760817007,
+      "mean_rank_ic_5_10": -0.03251763668430335,
+      "daily_cs": {
+        "source_path": "/home/oceaneye/github/T1.AI/output/reports/lstm_dim52_ablation_mfm_single_drop_mf_large_amount_ratio_ma5_auto_window24_l1_20260304_mfm_single_oos.parquet",
+        "day_count": 108,
+        "month_count": 6
+      },
+      "monthly": {
+        "month_count": 6,
+        "mean": 0.016055689820145738,
+        "median": 0.05111530684258997,
+        "worst": -0.26569234357632227,
+        "win_rate": 0.6666666666666666,
+        "max_consecutive_negative_months": 1
+      },
+      "pass_gate": false
+    },
+    {
+      "report": "lstm_dim52_ablation_mfm_single_drop_mf_large_amount_ratio_mom5_auto_window24_l1_20260304_mfm_single.json",
+      "metric_mode": "daily_cs",
+      "available_months": [
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12",
+        "2026-01"
+      ],
+      "missing_common_months": [],
+      "mean_ic_5_10": 0.017711630619904845,
+      "mean_rank_ic_5_10": -0.024801587301587304,
+      "daily_cs": {
+        "source_path": "/home/oceaneye/github/T1.AI/output/reports/lstm_dim52_ablation_mfm_single_drop_mf_large_amount_ratio_mom5_auto_window24_l1_20260304_mfm_single_oos.parquet",
+        "day_count": 108,
+        "month_count": 6
+      },
+      "monthly": {
+        "month_count": 6,
+        "mean": -0.007986876471388777,
+        "median": -0.024583687136366973,
+        "worst": -0.2719157918227205,
+        "win_rate": 0.5,
+        "max_consecutive_negative_months": 1
+      },
+      "pass_gate": false
+    },
+    {
+      "report": "lstm_dim52_ablation_mfm_single_drop_mf_retail_amount_ratio_ma5_auto_window24_l1_20260304_mfm_single.json",
+      "metric_mode": "daily_cs",
+      "available_months": [
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12",
+        "2026-01"
+      ],
+      "missing_common_months": [],
+      "mean_ic_5_10": 0.030394615080554167,
+      "mean_rank_ic_5_10": -0.023478835978835978,
+      "daily_cs": {
+        "source_path": "/home/oceaneye/github/T1.AI/output/reports/lstm_dim52_ablation_mfm_single_drop_mf_retail_amount_ratio_ma5_auto_window24_l1_20260304_mfm_single_oos.parquet",
+        "day_count": 108,
+        "month_count": 6
+      },
+      "monthly": {
+        "month_count": 6,
+        "mean": 0.01447909014573754,
+        "median": 0.0388370618876234,
+        "worst": -0.2633230960077969,
+        "win_rate": 0.6666666666666666,
+        "max_consecutive_negative_months": 1
+      },
+      "pass_gate": false
+    },
+    {
+      "report": "lstm_dim52_ablation_mfm_single_drop_mf_buy_pressure_amount_ma5_auto_window24_l1_20260304_mfm_single.json",
+      "metric_mode": "daily_cs",
+      "available_months": [
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12",
+        "2026-01"
+      ],
+      "missing_common_months": [],
+      "mean_ic_5_10": 0.01376484704581751,
+      "mean_rank_ic_5_10": -0.02976190476190477,
+      "daily_cs": {
+        "source_path": "/home/oceaneye/github/T1.AI/output/reports/lstm_dim52_ablation_mfm_single_drop_mf_buy_pressure_amount_ma5_auto_window24_l1_20260304_mfm_single_oos.parquet",
+        "day_count": 108,
+        "month_count": 6
+      },
+      "monthly": {
+        "month_count": 6,
+        "mean": 0.0013961699854555,
+        "median": 0.0031685011844839565,
+        "worst": -0.2505991546662479,
+        "win_rate": 0.5,
+        "max_consecutive_negative_months": 1
+      },
+      "pass_gate": false
+    },
+    {
+      "report": "lstm_dim52_ablation_mfm_single_drop_mf_activity_ratio_20d_auto_window24_l1_20260304_mfm_single.json",
+      "metric_mode": "daily_cs",
+      "available_months": [
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12",
+        "2026-01"
+      ],
+      "missing_common_months": [],
+      "mean_ic_5_10": 0.03640890499153491,
+      "mean_rank_ic_5_10": -0.008708112874779541,
+      "daily_cs": {
+        "source_path": "/home/oceaneye/github/T1.AI/output/reports/lstm_dim52_ablation_mfm_single_drop_mf_activity_ratio_20d_auto_window24_l1_20260304_mfm_single_oos.parquet",
+        "day_count": 108,
+        "month_count": 6
+      },
+      "monthly": {
+        "month_count": 6,
+        "mean": 0.020373681047566095,
+        "median": 0.05748391372770281,
+        "worst": -0.25082885196940097,
+        "win_rate": 0.6666666666666666,
+        "max_consecutive_negative_months": 1
+      },
+      "pass_gate": false
+    }
+  ]
+}

@@ -1,0 +1,226 @@
+{
+  "metric_source": "calibrated",
+  "monthly_source": "calibrated",
+  "daily_cs_mode": "required",
+  "daily_cs_reports": 7,
+  "common_months": [
+    "2025-08",
+    "2025-09",
+    "2025-10",
+    "2025-11",
+    "2025-12",
+    "2026-01"
+  ],
+  "gate": {
+    "mean_ic_5_10": 0.05,
+    "mean_rank_ic_5_10": 0.08,
+    "monthly_win_rate": 0.6,
+    "worst_month": -0.1,
+    "max_consecutive_negative_months": 2
+  },
+  "results": [
+    {
+      "report": "lstm_dim52_no_hist_hl_auto_window24_l1_20260304.json",
+      "metric_mode": "daily_cs",
+      "available_months": [
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12",
+        "2026-01"
+      ],
+      "missing_common_months": [],
+      "mean_ic_5_10": 0.057460669809677206,
+      "mean_rank_ic_5_10": 0.07605820105820106,
+      "daily_cs": {
+        "source_path": "/home/oceaneye/github/T1.AI/output/reports/lstm_dim52_no_hist_hl_auto_window24_l1_20260304_oos.parquet",
+        "day_count": 108,
+        "month_count": 6
+      },
+      "monthly": {
+        "month_count": 6,
+        "mean": 0.051829486838360195,
+        "median": 0.020600269046937764,
+        "worst": -0.03405711637155772,
+        "win_rate": 0.6666666666666666,
+        "max_consecutive_negative_months": 1
+      },
+      "pass_gate": false
+    },
+    {
+      "report": "lstm_dim52_ablation_drop_price_tech_core_auto_window24_l1_20260304_gabl52.json",
+      "metric_mode": "daily_cs",
+      "available_months": [
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12",
+        "2026-01"
+      ],
+      "missing_common_months": [],
+      "mean_ic_5_10": -0.03519783673503014,
+      "mean_rank_ic_5_10": -0.058090828924162265,
+      "daily_cs": {
+        "source_path": "/home/oceaneye/github/T1.AI/output/reports/lstm_dim52_ablation_drop_price_tech_core_auto_window24_l1_20260304_gabl52_oos.parquet",
+        "day_count": 108,
+        "month_count": 6
+      },
+      "monthly": {
+        "month_count": 6,
+        "mean": -0.06702890148182461,
+        "median": -0.05667404170571666,
+        "worst": -0.44326274888701317,
+        "win_rate": 0.5,
+        "max_consecutive_negative_months": 2
+      },
+      "pass_gate": false
+    },
+    {
+      "report": "lstm_dim52_ablation_drop_turnover_volume_micro_auto_window24_l1_20260304_gabl52.json",
+      "metric_mode": "daily_cs",
+      "available_months": [
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12",
+        "2026-01"
+      ],
+      "missing_common_months": [],
+      "mean_ic_5_10": -0.05123821881387157,
+      "mean_rank_ic_5_10": -0.051366843033509704,
+      "daily_cs": {
+        "source_path": "/home/oceaneye/github/T1.AI/output/reports/lstm_dim52_ablation_drop_turnover_volume_micro_auto_window24_l1_20260304_gabl52_oos.parquet",
+        "day_count": 108,
+        "month_count": 6
+      },
+      "monthly": {
+        "month_count": 6,
+        "mean": -0.045461454077081444,
+        "median": -0.03304420529416037,
+        "worst": -0.09897052069596675,
+        "win_rate": 0.16666666666666666,
+        "max_consecutive_negative_months": 5
+      },
+      "pass_gate": false
+    },
+    {
+      "report": "lstm_dim52_ablation_drop_valuation_size_auto_window24_l1_20260304_gabl52.json",
+      "metric_mode": "daily_cs",
+      "available_months": [
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12",
+        "2026-01"
+      ],
+      "missing_common_months": [],
+      "mean_ic_5_10": -0.05503293242888743,
+      "mean_rank_ic_5_10": -0.02810846560846562,
+      "daily_cs": {
+        "source_path": "/home/oceaneye/github/T1.AI/output/reports/lstm_dim52_ablation_drop_valuation_size_auto_window24_l1_20260304_gabl52_oos.parquet",
+        "day_count": 108,
+        "month_count": 6
+      },
+      "monthly": {
+        "month_count": 6,
+        "mean": -0.07333010590878652,
+        "median": -0.029920686372326633,
+        "worst": -0.369687538227208,
+        "win_rate": 0.3333333333333333,
+        "max_consecutive_negative_months": 2
+      },
+      "pass_gate": false
+    },
+    {
+      "report": "lstm_dim52_ablation_drop_moneyflow_structure_auto_window24_l1_20260304_gabl52.json",
+      "metric_mode": "daily_cs",
+      "available_months": [
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12",
+        "2026-01"
+      ],
+      "missing_common_months": [],
+      "mean_ic_5_10": -0.04290582418268154,
+      "mean_rank_ic_5_10": -0.04442239858906526,
+      "daily_cs": {
+        "source_path": "/home/oceaneye/github/T1.AI/output/reports/lstm_dim52_ablation_drop_moneyflow_structure_auto_window24_l1_20260304_gabl52_oos.parquet",
+        "day_count": 108,
+        "month_count": 6
+      },
+      "monthly": {
+        "month_count": 6,
+        "mean": -0.03639004214764029,
+        "median": -0.02457645902666426,
+        "worst": -0.24650275289366394,
+        "win_rate": 0.5,
+        "max_consecutive_negative_months": 2
+      },
+      "pass_gate": false
+    },
+    {
+      "report": "lstm_dim52_ablation_drop_moneyflow_momentum_auto_window24_l1_20260304_gabl52.json",
+      "metric_mode": "daily_cs",
+      "available_months": [
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12",
+        "2026-01"
+      ],
+      "missing_common_months": [],
+      "mean_ic_5_10": 0.007767994948748317,
+      "mean_rank_ic_5_10": 0.012676366843033512,
+      "daily_cs": {
+        "source_path": "/home/oceaneye/github/T1.AI/output/reports/lstm_dim52_ablation_drop_moneyflow_momentum_auto_window24_l1_20260304_gabl52_oos.parquet",
+        "day_count": 108,
+        "month_count": 6
+      },
+      "monthly": {
+        "month_count": 6,
+        "mean": 0.012445441453316906,
+        "median": 0.025483649142846336,
+        "worst": -0.08058116918555124,
+        "win_rate": 0.5,
+        "max_consecutive_negative_months": 2
+      },
+      "pass_gate": false
+    },
+    {
+      "report": "lstm_dim52_ablation_drop_market_state_auto_window24_l1_20260304_gabl52.json",
+      "metric_mode": "daily_cs",
+      "available_months": [
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12",
+        "2026-01"
+      ],
+      "missing_common_months": [],
+      "mean_ic_5_10": -0.03275239815058265,
+      "mean_rank_ic_5_10": -0.009920634920634927,
+      "daily_cs": {
+        "source_path": "/home/oceaneye/github/T1.AI/output/reports/lstm_dim52_ablation_drop_market_state_auto_window24_l1_20260304_gabl52_oos.parquet",
+        "day_count": 108,
+        "month_count": 6
+      },
+      "monthly": {
+        "month_count": 6,
+        "mean": -0.01745643534672069,
+        "median": -0.04685471066000159,
+        "worst": -0.11787529685830526,
+        "win_rate": 0.3333333333333333,
+        "max_consecutive_negative_months": 4
+      },
+      "pass_gate": false
+    }
+  ]
+}
