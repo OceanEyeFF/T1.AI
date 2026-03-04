@@ -1,0 +1,378 @@
+{
+  "config": {
+    "dataset_dir": "data/datasets/lstm_quick8_52d_no_hist_hl_20230101_20260120_ts",
+    "feature_mode": "auto",
+    "features": [
+      "return_1d",
+      "return_5d",
+      "return_10d",
+      "return_20d",
+      "return_60d",
+      "volume_ratio_5d",
+      "amount_change",
+      "rsi_14",
+      "macd_line",
+      "macd_signal",
+      "macd_hist",
+      "bollinger_deviation",
+      "price_slope_5d",
+      "price_slope_20d",
+      "turnover_rate",
+      "turnover_rate_f",
+      "turnover_spread",
+      "turnover_rate_z20",
+      "db_volume_ratio",
+      "db_volume_ratio_z20",
+      "pe_ttm_z20",
+      "pb_z20",
+      "ps_ttm_z20",
+      "dv_ttm",
+      "total_mv_log",
+      "circ_mv_log",
+      "float_share_ratio",
+      "mf_net_amount_ratio",
+      "mf_net_amount_abs_ratio",
+      "mf_md_amount_ratio",
+      "mf_lg_amount_ratio",
+      "mf_elg_amount_ratio",
+      "mf_buy_pressure_amount",
+      "mf_buy_pressure_vol",
+      "mf_flow_concentration",
+      "mf_net_amount_z20",
+      "mf_net_amount_impulse",
+      "mf_large_amount_ratio",
+      "mf_retail_amount_ratio",
+      "mf_large_retail_spread",
+      "mf_net_amount_ratio_ma5",
+      "mf_net_amount_ratio_ma10",
+      "mf_net_amount_ratio_mom5",
+      "mf_net_amount_ratio_mom10",
+      "mf_large_amount_ratio_ma5",
+      "mf_large_amount_ratio_mom5",
+      "mf_retail_amount_ratio_ma5",
+      "mf_buy_pressure_amount_ma5",
+      "mf_activity_ratio_20d",
+      "market_mom_5d",
+      "market_vol_20d",
+      "market_amount_z20"
+    ],
+    "seq_len": 20,
+    "train_window_months": 24,
+    "valid_window_months": 2,
+    "calibration_months": 3,
+    "sign_threshold": 0.02,
+    "hidden_size": 64,
+    "num_layers": 2,
+    "dropout": 0.3,
+    "lr": 0.0001,
+    "batch_size": 32,
+    "max_epochs": 40,
+    "patience": 8,
+    "loss_weights": {
+      "3d": 0.1,
+      "5d": 0.45,
+      "10d": 0.45
+    },
+    "loss_type": "l1",
+    "loss_alpha": 0.3,
+    "ic_rank_beta": 0.5,
+    "seed": 42,
+    "device": "cuda",
+    "months": [
+      "2025-08",
+      "2025-09",
+      "2025-10",
+      "2025-11",
+      "2025-12",
+      "2026-01"
+    ]
+  },
+  "raw_oos_metrics": {
+    "ic_3d": -0.06161449544846413,
+    "ic_5d": 0.16067727916778438,
+    "ic_10d": -0.10330038406005508,
+    "avg_ic": -0.0014125334469116124,
+    "rank_ic_3d": 0.016943236440716773,
+    "rank_ic_5d": 0.18189497974034144,
+    "rank_ic_10d": -0.17518906905228868,
+    "avg_rank_ic": 0.007883049042923177,
+    "mae_3d": 0.019123115909037768,
+    "mae_5d": 0.02089761412510827,
+    "mae_10d": 0.035504360997620374,
+    "avg_mae": 0.02517503034392214
+  },
+  "calibrated_oos_metrics": {
+    "ic_3d": -0.06161449544846413,
+    "ic_5d": 0.16067727916778438,
+    "ic_10d": 0.04635019552131208,
+    "avg_ic": 0.04847099308021077,
+    "rank_ic_3d": 0.016943236440716773,
+    "rank_ic_5d": 0.18189497974034144,
+    "rank_ic_10d": -0.031431875298610495,
+    "avg_rank_ic": 0.05580211362748257,
+    "mae_3d": 0.019123115909037768,
+    "mae_5d": 0.02089761412510827,
+    "mae_10d": 0.033863989319879044,
+    "avg_mae": 0.024628239784675026
+  },
+  "delta_cal_minus_raw": {
+    "avg_ic": 0.049883526527122385,
+    "avg_rank_ic": 0.0479190645845594,
+    "avg_mae": -0.0005467905592471123
+  },
+  "monthly_logs": [
+    {
+      "month": "2025-08",
+      "month_rows": 112,
+      "train_rows": 3536,
+      "valid_rows": 344,
+      "epochs_ran": 11,
+      "train_seconds": 22.110726245911792,
+      "valid_avg_ic": -0.001894986353403708,
+      "raw_avg_ic": -0.22185418958430372,
+      "cal_avg_ic": -0.007381637160631467,
+      "signs": [
+        1,
+        1,
+        -1
+      ],
+      "decisions": [
+        {
+          "horizon": 3,
+          "val_ic": 0.011432342569594618,
+          "hist_ic": NaN,
+          "score_used": 0.011432342569594618,
+          "sign": 1,
+          "rule": "val_only"
+        },
+        {
+          "horizon": 5,
+          "val_ic": 0.0074927037928354725,
+          "hist_ic": NaN,
+          "score_used": 0.0074927037928354725,
+          "sign": 1,
+          "rule": "val_only"
+        },
+        {
+          "horizon": 10,
+          "val_ic": -0.024610005422641214,
+          "hist_ic": NaN,
+          "score_used": -0.024610005422641214,
+          "sign": -1,
+          "rule": "val_only"
+        }
+      ]
+    },
+    {
+      "month": "2025-09",
+      "month_rows": 176,
+      "train_rows": 3512,
+      "valid_rows": 352,
+      "epochs_ran": 9,
+      "train_seconds": 19.113156953942962,
+      "valid_avg_ic": 0.05371337546605981,
+      "raw_avg_ic": 0.15139335217563715,
+      "cal_avg_ic": 0.15139335217563715,
+      "signs": [
+        1,
+        1,
+        1
+      ],
+      "decisions": [
+        {
+          "horizon": 3,
+          "val_ic": -0.0269688440609247,
+          "hist_ic": 0.08840632856032753,
+          "score_used": 0.08840632856032753,
+          "sign": 1,
+          "rule": "no_consensus_or_low_conf"
+        },
+        {
+          "horizon": 5,
+          "val_ic": 0.05295121638338911,
+          "hist_ic": -0.4322600686777303,
+          "score_used": -0.4322600686777303,
+          "sign": 1,
+          "rule": "no_consensus_or_low_conf"
+        },
+        {
+          "horizon": 10,
+          "val_ic": 0.135157754075715,
+          "hist_ic": -0.32170882863550837,
+          "score_used": -0.32170882863550837,
+          "sign": 1,
+          "rule": "no_consensus_or_low_conf"
+        }
+      ]
+    },
+    {
+      "month": "2025-10",
+      "month_rows": 136,
+      "train_rows": 3536,
+      "valid_rows": 344,
+      "epochs_ran": 9,
+      "train_seconds": 19.48766203993,
+      "valid_avg_ic": -0.026699435955665634,
+      "raw_avg_ic": -0.09532066190322813,
+      "cal_avg_ic": -0.03404450572724865,
+      "signs": [
+        1,
+        1,
+        -1
+      ],
+      "decisions": [
+        {
+          "horizon": 3,
+          "val_ic": 0.18595119457397696,
+          "hist_ic": 0.042501902551760534,
+          "score_used": 0.042501902551760534,
+          "sign": 1,
+          "rule": "hist_val_consensus"
+        },
+        {
+          "horizon": 5,
+          "val_ic": -0.23249300504161144,
+          "hist_ic": 0.20840504445197236,
+          "score_used": 0.20840504445197236,
+          "sign": 1,
+          "rule": "no_consensus_or_low_conf"
+        },
+        {
+          "horizon": 10,
+          "val_ic": -0.033556497399362416,
+          "hist_ic": -0.10730986521402444,
+          "score_used": -0.10730986521402444,
+          "sign": -1,
+          "rule": "hist_val_consensus"
+        }
+      ]
+    },
+    {
+      "month": "2025-11",
+      "month_rows": 160,
+      "train_rows": 3568,
+      "valid_rows": 312,
+      "epochs_ran": 10,
+      "train_seconds": 19.995498597971164,
+      "valid_avg_ic": 0.14700439453114733,
+      "raw_avg_ic": -0.04999088823451819,
+      "cal_avg_ic": -0.04999088823451819,
+      "signs": [
+        1,
+        1,
+        1
+      ],
+      "decisions": [
+        {
+          "horizon": 3,
+          "val_ic": 0.1874738981157391,
+          "hist_ic": -0.0510799735576377,
+          "score_used": -0.0510799735576377,
+          "sign": 1,
+          "rule": "no_consensus_or_low_conf"
+        },
+        {
+          "horizon": 5,
+          "val_ic": 0.10621622711772842,
+          "hist_ic": 0.10191846803910047,
+          "score_used": 0.10191846803910047,
+          "sign": 1,
+          "rule": "hist_val_consensus"
+        },
+        {
+          "horizon": 10,
+          "val_ic": 0.14732305835997445,
+          "hist_ic": -0.10936559268125964,
+          "score_used": -0.10936559268125964,
+          "sign": 1,
+          "rule": "no_consensus_or_low_conf"
+        }
+      ]
+    },
+    {
+      "month": "2025-12",
+      "month_rows": 184,
+      "train_rows": 3568,
+      "valid_rows": 296,
+      "epochs_ran": 40,
+      "train_seconds": 84.53237682208419,
+      "valid_avg_ic": 0.24211093913751838,
+      "raw_avg_ic": -0.013727290316295123,
+      "cal_avg_ic": -0.013727290316295123,
+      "signs": [
+        1,
+        1,
+        1
+      ],
+      "decisions": [
+        {
+          "horizon": 3,
+          "val_ic": 0.19876577213590899,
+          "hist_ic": -0.05552795683003533,
+          "score_used": -0.05552795683003533,
+          "sign": 1,
+          "rule": "no_consensus_or_low_conf"
+        },
+        {
+          "horizon": 5,
+          "val_ic": 0.2790445185123036,
+          "hist_ic": 0.15373019916548436,
+          "score_used": 0.15373019916548436,
+          "sign": 1,
+          "rule": "hist_val_consensus"
+        },
+        {
+          "horizon": 10,
+          "val_ic": 0.24852252676434264,
+          "hist_ic": -0.06997241270408164,
+          "score_used": -0.06997241270408164,
+          "sign": 1,
+          "rule": "no_consensus_or_low_conf"
+        }
+      ]
+    },
+    {
+      "month": "2026-01",
+      "month_rows": 96,
+      "train_rows": 3536,
+      "valid_rows": 344,
+      "epochs_ran": 9,
+      "train_seconds": 20.09334293496795,
+      "valid_avg_ic": 0.07401317449524292,
+      "raw_avg_ic": 0.03205652709204094,
+      "cal_avg_ic": 0.03205652709204094,
+      "signs": [
+        1,
+        1,
+        1
+      ],
+      "decisions": [
+        {
+          "horizon": 3,
+          "val_ic": 0.10317663827611485,
+          "hist_ic": -0.11618592003366142,
+          "score_used": -0.11618592003366142,
+          "sign": 1,
+          "rule": "no_consensus_or_low_conf"
+        },
+        {
+          "horizon": 5,
+          "val_ic": -0.04308854755896282,
+          "hist_ic": -0.002735346653567974,
+          "score_used": -0.002735346653567974,
+          "sign": 1,
+          "rule": "no_consensus_or_low_conf"
+        },
+        {
+          "horizon": 10,
+          "val_ic": 0.1619514327685767,
+          "hist_ic": -0.09024953483068171,
+          "score_used": -0.09024953483068171,
+          "sign": 1,
+          "rule": "no_consensus_or_low_conf"
+        }
+      ]
+    }
+  ],
+  "oos_predictions_path": "output/reports/lstm_dim52_no_hist_hl_auto_window24_l1_20260304_oos.parquet"
+}

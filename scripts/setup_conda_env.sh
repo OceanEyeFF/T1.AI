@@ -54,12 +54,15 @@ echo "📥 安装项目到开发模式..."
 eval "$(conda shell.bash hook)"
 conda activate "$ENV_NAME"
 
+# 统一使用当前解释器的 pip，避免 PATH 中其他 pip（如 ~/.local/bin/pip）被误用
+PIP_CMD=(python -m pip)
+
 # 安装 CUDA 版 PyTorch（pip）
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+"${PIP_CMD[@]}" install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
 # 安装项目（开发模式）
 # --no-deps: 避免重复安装依赖并覆盖已安装的 CUDA 版 PyTorch
-pip install -e ".[dev]" --no-deps
+"${PIP_CMD[@]}" install -e ".[dev]" --no-deps
 
 echo ""
 echo "🔎 检查 PyTorch CUDA 可用性..."

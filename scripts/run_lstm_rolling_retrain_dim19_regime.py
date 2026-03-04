@@ -48,6 +48,7 @@ FEATURES_DIM19 = [
 LABEL_COLS = ["label_3d", "label_5d", "label_10d"]
 PRED_COLS = ["pred_3d", "pred_5d", "pred_10d"]
 LOSS_TYPES = ("l1", "ic_aware", "rank_aware", "ic_rank_aware")
+FEATURE_MODES = ("dim19", "auto")
 
 
 def _set_seed(seed: int) -> None:
@@ -84,6 +85,24 @@ def _extract_xy(df: pd.DataFrame, feature_bases: list[str], seq_len: int) -> tup
     x = np.nan_to_num(x, nan=0.0)
     y = df[LABEL_COLS].to_numpy(dtype=np.float32, copy=False)
     return x, y
+
+
+def _infer_feature_bases(df: pd.DataFrame, seq_len: int) -> list[str]:
+    bases: list[str] = []
+    seen: set[str] = set()
+    for col in df.columns:
+        if not col.endswith("_t0"):
+            continue
+        base = col[:-3]
+        if not base or base in seen:
+            continue
+        required = [f"{base}_t{t}" for t in range(seq_len)]
+        if all(c in df.columns for c in required):
+            bases.append(base)
+            seen.add(base)
+    if not bases:
+        raise ValueError("no feature columns inferred from dataset (expected pattern '*_t0')")
+    return bases
 
 
 def _masked_l1_loss(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
@@ -432,6 +451,12 @@ def main() -> None:
     parser.add_argument("--loss-type", choices=list(LOSS_TYPES), default="l1")
     parser.add_argument("--loss-alpha", type=float, default=0.3, help="混合损失里 L1 占比，范围 [0,1]")
     parser.add_argument(
+        "--feature-mode",
+        choices=list(FEATURE_MODES),
+        default="dim19",
+        help="dim19: 使用固定19维；auto: 从数据集自动推断全部特征",
+    )
+    parser.add_argument(
         "--ic-rank-beta",
         type=float,
         default=0.5,
@@ -482,6 +507,17 @@ def main() -> None:
     full_df["symbol"] = full_df["symbol"].astype(str)
     full_df = full_df.sort_values(["date", "symbol"]).reset_index(drop=True)
 
+    if args.feature_mode == "dim19":
+        feature_bases = list(FEATURES_DIM19)
+    else:
+        feature_bases = _infer_feature_bases(train_df, args.seq_len)
+
+    required_x = [f"{b}_t{t}" for b in feature_bases for t in range(args.seq_len)]
+    missing_x = [c for c in required_x if c not in full_df.columns]
+    if missing_x:
+        preview = ", ".join(missing_x[:5])
+        raise ValueError(f"dataset missing required feature columns (showing up to 5): {preview}")
+
     eval_df = test_df.copy()
     eval_df["date"] = pd.to_datetime(eval_df["date"])
     eval_df["symbol"] = eval_df["symbol"].astype(str)
@@ -519,9 +555,9 @@ def main() -> None:
         # month-specific seed for reproducibility and mild de-correlation
         _set_seed(args.seed + i)
 
-        x_tr, y_tr = _extract_xy(tr_df, FEATURES_DIM19, args.seq_len)
-        x_va, y_va = _extract_xy(va_df, FEATURES_DIM19, args.seq_len)
-        x_mo, y_mo = _extract_xy(month_df, FEATURES_DIM19, args.seq_len)
+        x_tr, y_tr = _extract_xy(tr_df, feature_bases, args.seq_len)
+        x_va, y_va = _extract_xy(va_df, feature_bases, args.seq_len)
+        x_mo, y_mo = _extract_xy(month_df, feature_bases, args.seq_len)
 
         model, val_metrics, epochs_ran, train_seconds = _train_one_model(x_tr, y_tr, x_va, y_va, cfg, device)
         pred_val = _predict(model, x_va, cfg.batch_size, device)
@@ -613,7 +649,8 @@ def main() -> None:
     out = {
         "config": {
             "dataset_dir": str(ddir),
-            "features": FEATURES_DIM19,
+            "feature_mode": str(args.feature_mode),
+            "features": feature_bases,
             "seq_len": int(args.seq_len),
             "train_window_months": int(args.train_window_months),
             "valid_window_months": int(args.valid_window_months),

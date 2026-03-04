@@ -11,6 +11,7 @@ All market features are shifted by 1 day to avoid look-ahead leakage.
 from __future__ import annotations
 
 import argparse
+import os
 import time
 from pathlib import Path
 
@@ -18,7 +19,16 @@ import numpy as np
 import pandas as pd
 
 from ashare_lab.data.akshare_source import AkshareDailyBarsRequest, load_or_fetch_daily_bars
-from ashare_lab.data.tushare_source import TushareDailyBarsRequest, load_or_fetch_daily_bars as load_tushare_daily_bars
+from ashare_lab.data.tushare_source import (
+    SUPPORTED_DAILY_BASIC_FIELDS,
+    SUPPORTED_MONEYFLOW_FIELDS,
+    TushareDailyBarsRequest,
+    TushareDailyBasicRequest,
+    TushareMoneyflowRequest,
+    load_or_fetch_daily_bars as load_tushare_daily_bars,
+    load_or_fetch_daily_basic as load_tushare_daily_basic,
+    load_or_fetch_moneyflow as load_tushare_moneyflow,
+)
 from ashare_lab.dataset.sequence_builder import SequenceDatasetBuilder
 from ashare_lab.features.momentum import Return1D, Return5D, Return10D, Return20D, Return60D
 from ashare_lab.features.price_slope import PriceSlope
@@ -46,6 +56,96 @@ SYMBOL_FEATURES_16 = [
 ]
 
 MARKET_FEATURE_NAMES = ["market_mom_5d", "market_vol_20d", "market_amount_z20"]
+ETF_FEATURE_NAMES = [
+    "etf_ret_1d",
+    "etf_ret_1d_ma5",
+    "etf_ret_1d_ma10",
+    "etf_mom_5d",
+    "etf_slope_10d",
+]
+SHORT_TERM_FEATURE_NAMES = [
+    "hist_high_5d",
+    "hist_low_5d",
+    "hist_high_10d",
+    "hist_low_10d",
+    "turnover_rate",
+    "turnover_rate_f",
+    "turnover_spread",
+    "turnover_rate_z20",
+    "turnover_rate_f_z20",
+    "turnover_spread_z20",
+    "db_volume_ratio",
+    "db_volume_ratio_z20",
+    "volume_volatility_10d",
+    "pe_ttm_z20",
+    "pb_z20",
+    "ps_ttm_z20",
+    "dv_ttm",
+    "total_mv_log",
+    "circ_mv_log",
+    "float_share_ratio",
+    "float_share_ratio_z20",
+    "mf_net_amount_ratio",
+    "mf_net_vol_ratio",
+    "mf_net_amount_abs_ratio",
+    "mf_sm_amount_ratio",
+    "mf_md_amount_ratio",
+    "mf_lg_amount_ratio",
+    "mf_elg_amount_ratio",
+    "mf_sm_vol_ratio",
+    "mf_md_vol_ratio",
+    "mf_lg_vol_ratio",
+    "mf_elg_vol_ratio",
+    "mf_buy_pressure_amount",
+    "mf_buy_pressure_vol",
+    "mf_flow_concentration",
+    "mf_net_amount_z20",
+    "mf_net_vol_z20",
+    "mf_net_amount_impulse",
+    "mf_net_vol_impulse",
+    "mf_large_amount_ratio",
+    "mf_retail_amount_ratio",
+    "mf_large_retail_spread",
+    "mf_net_amount_ratio_ma5",
+    "mf_net_amount_ratio_ma10",
+    "mf_net_amount_ratio_mom5",
+    "mf_net_amount_ratio_mom10",
+    "mf_large_amount_ratio_ma5",
+    "mf_large_amount_ratio_mom5",
+    "mf_retail_amount_ratio_ma5",
+    "mf_buy_pressure_amount_ma5",
+    "mf_activity_ratio_5d",
+    "mf_activity_ratio_20d",
+]
+HIST_HIGH_LOW_FEATURES = {
+    "hist_high_5d",
+    "hist_low_5d",
+    "hist_high_10d",
+    "hist_low_10d",
+}
+COMPACT44_DROP_FEATURES = {
+    "relative_volume",
+    "volume_change",
+    "turnover_rate_f_z20",
+    "turnover_spread_z20",
+    "mf_net_vol_ratio",
+    "mf_sm_amount_ratio",
+    "mf_sm_vol_ratio",
+    "mf_md_vol_ratio",
+    "mf_lg_vol_ratio",
+    "mf_elg_vol_ratio",
+    "mf_net_vol_z20",
+    "mf_net_vol_impulse",
+    "mf_activity_ratio_5d",
+    "float_share_ratio_z20",
+}
+NO_HIST_HL_DROP_FEATURES = COMPACT44_DROP_FEATURES | HIST_HIGH_LOW_FEATURES
+PROFILE_DROP_FEATURES: dict[str, set[str]] = {
+    "compact44": COMPACT44_DROP_FEATURES,
+    "full58": set(),
+    "no_hist_hl": NO_HIST_HL_DROP_FEATURES,
+}
+FEATURE_PROFILES = tuple(PROFILE_DROP_FEATURES.keys())
 
 
 def _parse_symbols(path: Path) -> list[str]:
@@ -63,10 +163,30 @@ def _to_ts_code(symbol: str) -> str:
     return f"{symbol}.SH" if symbol[:2] in {"60", "68", "90", "93"} else f"{symbol}.SZ"
 
 
-def _load_tushare_cache_only(ts_code: str, start: str, end: str, cache_dir: Path) -> pd.DataFrame:
-    symbol_dir = cache_dir / "tushare" / ts_code
+def _to_etf_ts_code(code_or_ts: str) -> str:
+    raw = str(code_or_ts).strip().upper()
+    if not raw:
+        raise ValueError("empty etf code")
+    if "." in raw:
+        return raw
+
+    code = raw.zfill(6)
+    if code[:2] in {"15", "16", "18"}:
+        return f"{code}.SZ"
+    return f"{code}.SH"
+
+
+def _load_tushare_cache_only(
+    ts_code: str,
+    start: str,
+    end: str,
+    cache_dir: Path,
+    dataset_name: str,
+    columns: list[str],
+) -> pd.DataFrame:
+    symbol_dir = cache_dir / dataset_name / ts_code
     if not symbol_dir.exists():
-        return pd.DataFrame(columns=["open", "high", "low", "close", "volume", "amount"])
+        return pd.DataFrame(index=pd.DatetimeIndex([], name="date"), columns=columns)
 
     frames: list[pd.DataFrame] = []
     for part in symbol_dir.glob("year=*/part.parquet"):
@@ -75,11 +195,11 @@ def _load_tushare_cache_only(ts_code: str, start: str, end: str, cache_dir: Path
             continue
         df["date"] = pd.to_datetime(df["date"])
         df = df.set_index("date").sort_index()
-        keep = [c for c in ["open", "high", "low", "close", "volume", "amount"] if c in df.columns]
+        keep = [c for c in columns if c in df.columns]
         frames.append(df[keep])
 
     if not frames:
-        return pd.DataFrame(columns=["open", "high", "low", "close", "volume", "amount"])
+        return pd.DataFrame(index=pd.DatetimeIndex([], name="date"), columns=columns)
 
     out = pd.concat(frames).sort_index()
     out = out[~out.index.duplicated(keep="last")]
@@ -87,7 +207,120 @@ def _load_tushare_cache_only(ts_code: str, start: str, end: str, cache_dir: Path
 
     start_ts = pd.to_datetime(start)
     end_ts = pd.to_datetime(end)
-    return out.loc[(out.index >= start_ts) & (out.index <= end_ts)].copy()
+    return out.loc[(out.index >= start_ts) & (out.index <= end_ts)].copy().reindex(columns=columns)
+
+
+def _normalize_tushare_fund_daily(df: pd.DataFrame) -> pd.DataFrame:
+    cols = ["open", "high", "low", "close", "volume", "amount"]
+    if df is None or df.empty:
+        return pd.DataFrame(index=pd.DatetimeIndex([], name="date"), columns=cols)
+
+    work = df.rename(columns={"trade_date": "date", "vol": "volume"}).copy()
+    work["date"] = pd.to_datetime(work["date"], errors="coerce")
+    work = work.dropna(subset=["date"]).set_index("date").sort_index()
+    out = work.reindex(columns=cols).copy()
+    for c in cols:
+        out[c] = pd.to_numeric(out[c], errors="coerce")
+    out.index.name = "date"
+    return out
+
+
+def _write_partitioned(df: pd.DataFrame, symbol_dir: Path) -> None:
+    symbol_dir.mkdir(parents=True, exist_ok=True)
+    if df.empty:
+        return
+
+    out = df.copy().reset_index()
+    if "date" not in out.columns and "index" in out.columns:
+        out = out.rename(columns={"index": "date"})
+    out["year"] = pd.to_datetime(out["date"]).dt.year
+    for year, part in out.groupby("year"):
+        year_dir = symbol_dir / f"year={year}"
+        year_dir.mkdir(parents=True, exist_ok=True)
+        part.drop(columns=["year"]).to_parquet(year_dir / "part.parquet", index=False)
+
+
+def _fetch_tushare_fund_daily(ts_code: str, start: str, end: str, token: str | None = None) -> pd.DataFrame:
+    import tushare as ts  # lazy import
+
+    tk = token or os.environ.get("TUSHARE_TOKEN")
+    if not tk:
+        raise ValueError("TUSHARE_TOKEN not found for ETF fund_daily fetch")
+    pro = ts.pro_api(tk)
+    raw = pro.fund_daily(ts_code=ts_code, start_date=start, end_date=end)
+    return _normalize_tushare_fund_daily(raw)
+
+
+def _load_tushare_fund_daily_cache_or_live(
+    ts_code: str,
+    start: str,
+    end: str,
+    cache_dir: Path,
+    source: str,
+    retries: int = 3,
+) -> pd.DataFrame:
+    cols = ["open", "high", "low", "close", "volume", "amount"]
+    if source == "akshare":
+        return pd.DataFrame(index=pd.DatetimeIndex([], name="date"), columns=cols)
+
+    cache_ds = "tushare_fund_daily"
+    cached = _load_tushare_cache_only(
+        ts_code=ts_code,
+        start=start,
+        end=end,
+        cache_dir=cache_dir,
+        dataset_name=cache_ds,
+        columns=cols,
+    )
+    if source == "tushare_cache":
+        return cached
+
+    need_fetch = cached.empty or cached.index.min() > pd.to_datetime(start) or cached.index.max() < pd.to_datetime(end)
+    if not need_fetch:
+        return cached
+
+    last_err: Exception | None = None
+    fetched = pd.DataFrame(index=pd.DatetimeIndex([], name="date"), columns=cols)
+    for i in range(retries):
+        try:
+            fetched = _fetch_tushare_fund_daily(ts_code=ts_code, start=start, end=end)
+            break
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+            time.sleep(1.0 + float(i))
+    if fetched.empty and last_err is not None:
+        print(f"[warn] ETF {ts_code} fund_daily fetch failed: {type(last_err).__name__}: {last_err}")
+
+    frames = [df for df in [cached, fetched] if not df.empty]
+    merged = pd.concat(frames).sort_index() if frames else cached.copy()
+    merged = merged[~merged.index.duplicated(keep="last")]
+    merged.index.name = "date"
+    _write_partitioned(merged, cache_dir / cache_ds / ts_code)
+    return merged.loc[(merged.index >= pd.to_datetime(start)) & (merged.index <= pd.to_datetime(end))].copy()
+
+
+def _parse_sector_etf_map(path: Path, symbols: list[str]) -> dict[str, str]:
+    if not path.exists():
+        raise FileNotFoundError(f"sector etf map not found: {path}")
+
+    df = pd.read_csv(path, dtype=str)
+    if "symbol" not in df.columns:
+        raise ValueError(f"{path} must contain `symbol` column")
+    etf_col = "etf_ts_code" if "etf_ts_code" in df.columns else "etf_symbol" if "etf_symbol" in df.columns else None
+    if etf_col is None:
+        raise ValueError(f"{path} must contain `etf_ts_code` or `etf_symbol` column")
+
+    sym_set = set(symbols)
+    out: dict[str, str] = {}
+    for _, row in df.iterrows():
+        s = str(row.get("symbol", "")).strip().zfill(6)
+        if not s or s not in sym_set:
+            continue
+        etf_raw = str(row.get(etf_col, "")).strip()
+        if not etf_raw:
+            continue
+        out[s] = _to_etf_ts_code(etf_raw)
+    return out
 
 
 def _load_akshare(symbol: str, start: str, end: str, cache_dir: Path, retries: int = 3) -> pd.DataFrame:
@@ -108,14 +341,58 @@ def _load_akshare(symbol: str, start: str, end: str, cache_dir: Path, retries: i
 
 def _load_tushare_live(symbol: str, start: str, end: str, cache_dir: Path) -> pd.DataFrame:
     ts_code = _to_ts_code(symbol)
-    req = TushareDailyBarsRequest(symbol=ts_code, start_date=start, end_date=end, adjust="qfq")
-    return load_tushare_daily_bars(req, cache_dir, refresh=False, retries=5, backoff_base=1.0)
+    bars_req = TushareDailyBarsRequest(symbol=ts_code, start_date=start, end_date=end, adjust="qfq")
+    basic_req = TushareDailyBasicRequest(symbol=ts_code, start_date=start, end_date=end)
+    moneyflow_req = TushareMoneyflowRequest(symbol=ts_code, start_date=start, end_date=end)
+
+    bars = load_tushare_daily_bars(bars_req, cache_dir, refresh=False, retries=5, backoff_base=1.0)
+    basic = load_tushare_daily_basic(basic_req, cache_dir, refresh=False, retries=5, backoff_base=1.0)
+    moneyflow = load_tushare_moneyflow(
+        moneyflow_req,
+        cache_dir,
+        refresh=False,
+        retries=5,
+        backoff_base=1.0,
+    )
+    return bars.join(basic, how="left").join(moneyflow, how="left")
+
+
+def _load_tushare_cache_with_extras(symbol: str, start: str, end: str, cache_dir: Path) -> pd.DataFrame:
+    ts_code = _to_ts_code(symbol)
+    bars = pd.DataFrame(columns=["open", "high", "low", "close", "volume", "amount"])
+    for dataset_name in ("tushare_qfq", "tushare", "tushare_hfq", "tushare_raw"):
+        bars = _load_tushare_cache_only(
+            ts_code=ts_code,
+            start=start,
+            end=end,
+            cache_dir=cache_dir,
+            dataset_name=dataset_name,
+            columns=["open", "high", "low", "close", "volume", "amount"],
+        )
+        if not bars.empty:
+            break
+    daily_basic = _load_tushare_cache_only(
+        ts_code=ts_code,
+        start=start,
+        end=end,
+        cache_dir=cache_dir,
+        dataset_name="tushare_daily_basic",
+        columns=list(SUPPORTED_DAILY_BASIC_FIELDS),
+    )
+    moneyflow = _load_tushare_cache_only(
+        ts_code=ts_code,
+        start=start,
+        end=end,
+        cache_dir=cache_dir,
+        dataset_name="tushare_moneyflow",
+        columns=list(SUPPORTED_MONEYFLOW_FIELDS),
+    )
+    return bars.join(daily_basic, how="left").join(moneyflow, how="left")
 
 
 def _load_bars(source: str, symbol: str, start: str, end: str, cache_dir: Path) -> pd.DataFrame:
     if source == "tushare_cache":
-        ts_code = _to_ts_code(symbol)
-        return _load_tushare_cache_only(ts_code, start, end, cache_dir)
+        return _load_tushare_cache_with_extras(symbol, start, end, cache_dir)
     if source == "tushare_live":
         return _load_tushare_live(symbol, start, end, cache_dir)
     if source == "akshare":
@@ -123,11 +400,201 @@ def _load_bars(source: str, symbol: str, start: str, end: str, cache_dir: Path) 
     raise ValueError(f"unsupported source: {source}")
 
 
-def _compute_symbol_features(bars: pd.DataFrame) -> pd.DataFrame:
+def _num_col(data: pd.DataFrame, col: str) -> pd.Series:
+    if col not in data.columns:
+        return pd.Series(np.nan, index=data.index, dtype=float)
+    return pd.to_numeric(data[col], errors="coerce")
+
+
+def _safe_div(num: pd.Series, den: pd.Series) -> pd.Series:
+    den_safe = pd.to_numeric(den, errors="coerce").replace(0.0, np.nan)
+    return pd.to_numeric(num, errors="coerce") / den_safe
+
+
+def _rolling_zscore(series: pd.Series, window: int, min_periods: int) -> pd.Series:
+    s = pd.to_numeric(series, errors="coerce")
+    mean = s.rolling(window=window, min_periods=min_periods).mean()
+    std = s.rolling(window=window, min_periods=min_periods).std().replace(0.0, np.nan)
+    return (s - mean) / std
+
+
+def _compute_short_term_features(data: pd.DataFrame) -> pd.DataFrame:
+    out = pd.DataFrame(index=data.index)
+
+    high = _num_col(data, "high")
+    low = _num_col(data, "low")
+    volume = _num_col(data, "volume")
+    turnover_rate = _num_col(data, "turnover_rate")
+    turnover_rate_f = _num_col(data, "turnover_rate_f")
+    turnover_spread = turnover_rate_f - turnover_rate
+    db_volume_ratio = _num_col(data, "volume_ratio")
+    pe_ttm = _num_col(data, "pe_ttm")
+    pb = _num_col(data, "pb")
+    ps_ttm = _num_col(data, "ps_ttm")
+    dv_ttm = _num_col(data, "dv_ttm")
+    total_mv = _num_col(data, "total_mv")
+    circ_mv = _num_col(data, "circ_mv")
+    float_share_ratio = _safe_div(circ_mv, total_mv)
+
+    out["hist_high_5d"] = high.rolling(window=5, min_periods=5).max().shift(1)
+    out["hist_low_5d"] = low.rolling(window=5, min_periods=5).min().shift(1)
+    out["hist_high_10d"] = high.rolling(window=10, min_periods=10).max().shift(1)
+    out["hist_low_10d"] = low.rolling(window=10, min_periods=10).min().shift(1)
+    out["turnover_rate"] = turnover_rate.shift(1)
+    out["turnover_rate_f"] = turnover_rate_f.shift(1)
+    out["turnover_spread"] = turnover_spread.shift(1)
+    out["turnover_rate_z20"] = _rolling_zscore(turnover_rate, window=20, min_periods=10).shift(1)
+    out["turnover_rate_f_z20"] = _rolling_zscore(turnover_rate_f, window=20, min_periods=10).shift(1)
+    out["turnover_spread_z20"] = _rolling_zscore(turnover_spread, window=20, min_periods=10).shift(1)
+    out["db_volume_ratio"] = db_volume_ratio.shift(1)
+    out["db_volume_ratio_z20"] = _rolling_zscore(db_volume_ratio, window=20, min_periods=10).shift(1)
+    out["volume_volatility_10d"] = volume.pct_change(fill_method=None).rolling(window=10, min_periods=5).std().shift(1)
+    out["pe_ttm_z20"] = _rolling_zscore(pe_ttm, window=20, min_periods=10).shift(1)
+    out["pb_z20"] = _rolling_zscore(pb, window=20, min_periods=10).shift(1)
+    out["ps_ttm_z20"] = _rolling_zscore(ps_ttm, window=20, min_periods=10).shift(1)
+    out["dv_ttm"] = dv_ttm.shift(1)
+    out["total_mv_log"] = np.log1p(total_mv.clip(lower=0.0)).shift(1)
+    out["circ_mv_log"] = np.log1p(circ_mv.clip(lower=0.0)).shift(1)
+    out["float_share_ratio"] = float_share_ratio.shift(1)
+    out["float_share_ratio_z20"] = _rolling_zscore(float_share_ratio, window=20, min_periods=10).shift(1)
+
+    buy_sm_amount = _num_col(data, "buy_sm_amount")
+    buy_md_amount = _num_col(data, "buy_md_amount")
+    buy_lg_amount = _num_col(data, "buy_lg_amount")
+    buy_elg_amount = _num_col(data, "buy_elg_amount")
+    sell_sm_amount = _num_col(data, "sell_sm_amount")
+    sell_md_amount = _num_col(data, "sell_md_amount")
+    sell_lg_amount = _num_col(data, "sell_lg_amount")
+    sell_elg_amount = _num_col(data, "sell_elg_amount")
+    buy_sm_vol = _num_col(data, "buy_sm_vol")
+    buy_md_vol = _num_col(data, "buy_md_vol")
+    buy_lg_vol = _num_col(data, "buy_lg_vol")
+    buy_elg_vol = _num_col(data, "buy_elg_vol")
+    sell_sm_vol = _num_col(data, "sell_sm_vol")
+    sell_md_vol = _num_col(data, "sell_md_vol")
+    sell_lg_vol = _num_col(data, "sell_lg_vol")
+    sell_elg_vol = _num_col(data, "sell_elg_vol")
+
+    net_amount = _num_col(data, "net_mf_amount")
+    net_vol = _num_col(data, "net_mf_vol")
+
+    buy_amount_total = buy_sm_amount + buy_md_amount + buy_lg_amount + buy_elg_amount
+    sell_amount_total = sell_sm_amount + sell_md_amount + sell_lg_amount + sell_elg_amount
+    buy_vol_total = buy_sm_vol + buy_md_vol + buy_lg_vol + buy_elg_vol
+    sell_vol_total = sell_sm_vol + sell_md_vol + sell_lg_vol + sell_elg_vol
+
+    total_amount = (buy_amount_total + sell_amount_total).replace(0.0, np.nan)
+    total_vol = (buy_vol_total + sell_vol_total).replace(0.0, np.nan)
+
+    net_sm_amount = buy_sm_amount - sell_sm_amount
+    net_md_amount = buy_md_amount - sell_md_amount
+    net_lg_amount = buy_lg_amount - sell_lg_amount
+    net_elg_amount = buy_elg_amount - sell_elg_amount
+    net_sm_vol = buy_sm_vol - sell_sm_vol
+    net_md_vol = buy_md_vol - sell_md_vol
+    net_lg_vol = buy_lg_vol - sell_lg_vol
+    net_elg_vol = buy_elg_vol - sell_elg_vol
+
+    net_amount_ratio = _safe_div(net_amount, total_amount)
+    out["mf_net_amount_ratio"] = net_amount_ratio.shift(1)
+    out["mf_net_vol_ratio"] = _safe_div(net_vol, total_vol).shift(1)
+    out["mf_net_amount_abs_ratio"] = _safe_div(net_amount.abs(), total_amount).shift(1)
+    out["mf_sm_amount_ratio"] = _safe_div(net_sm_amount, total_amount).shift(1)
+    out["mf_md_amount_ratio"] = _safe_div(net_md_amount, total_amount).shift(1)
+    out["mf_lg_amount_ratio"] = _safe_div(net_lg_amount, total_amount).shift(1)
+    out["mf_elg_amount_ratio"] = _safe_div(net_elg_amount, total_amount).shift(1)
+    out["mf_sm_vol_ratio"] = _safe_div(net_sm_vol, total_vol).shift(1)
+    out["mf_md_vol_ratio"] = _safe_div(net_md_vol, total_vol).shift(1)
+    out["mf_lg_vol_ratio"] = _safe_div(net_lg_vol, total_vol).shift(1)
+    out["mf_elg_vol_ratio"] = _safe_div(net_elg_vol, total_vol).shift(1)
+    buy_pressure_amount = _safe_div(buy_amount_total, total_amount)
+    out["mf_buy_pressure_amount"] = buy_pressure_amount.shift(1)
+    out["mf_buy_pressure_vol"] = _safe_div(buy_vol_total, total_vol).shift(1)
+
+    net_abs_sum_amount = (net_sm_amount.abs() + net_md_amount.abs() + net_lg_amount.abs() + net_elg_amount.abs()).replace(
+        0.0,
+        np.nan,
+    )
+    out["mf_flow_concentration"] = _safe_div(net_lg_amount.abs() + net_elg_amount.abs(), net_abs_sum_amount).shift(1)
+    out["mf_net_amount_z20"] = _rolling_zscore(net_amount, window=20, min_periods=10).shift(1)
+    out["mf_net_vol_z20"] = _rolling_zscore(net_vol, window=20, min_periods=10).shift(1)
+
+    net_amount_abs_scale = net_amount.abs().rolling(20, min_periods=10).mean().replace(0.0, np.nan)
+    net_vol_abs_scale = net_vol.abs().rolling(20, min_periods=10).mean().replace(0.0, np.nan)
+    out["mf_net_amount_impulse"] = _safe_div(net_amount.diff(1), net_amount_abs_scale).shift(1)
+    out["mf_net_vol_impulse"] = _safe_div(net_vol.diff(1), net_vol_abs_scale).shift(1)
+
+    large_net_amount = net_lg_amount + net_elg_amount
+    retail_net_amount = net_sm_amount
+    large_amount_ratio = _safe_div(large_net_amount, total_amount)
+    retail_amount_ratio = _safe_div(retail_net_amount, total_amount)
+    out["mf_large_amount_ratio"] = large_amount_ratio.shift(1)
+    out["mf_retail_amount_ratio"] = retail_amount_ratio.shift(1)
+    out["mf_large_retail_spread"] = _safe_div(large_net_amount - retail_net_amount, total_amount).shift(1)
+
+    out["mf_net_amount_ratio_ma5"] = net_amount_ratio.rolling(window=5, min_periods=3).mean().shift(1)
+    out["mf_net_amount_ratio_ma10"] = net_amount_ratio.rolling(window=10, min_periods=5).mean().shift(1)
+    out["mf_net_amount_ratio_mom5"] = net_amount_ratio.diff(5).shift(1)
+    out["mf_net_amount_ratio_mom10"] = net_amount_ratio.diff(10).shift(1)
+    out["mf_large_amount_ratio_ma5"] = large_amount_ratio.rolling(window=5, min_periods=3).mean().shift(1)
+    out["mf_large_amount_ratio_mom5"] = large_amount_ratio.diff(5).shift(1)
+    out["mf_retail_amount_ratio_ma5"] = retail_amount_ratio.rolling(window=5, min_periods=3).mean().shift(1)
+    out["mf_buy_pressure_amount_ma5"] = buy_pressure_amount.rolling(window=5, min_periods=3).mean().shift(1)
+
+    out["mf_activity_ratio_5d"] = _safe_div(total_amount, total_amount.rolling(5, min_periods=3).mean()).shift(1)
+    out["mf_activity_ratio_20d"] = _safe_div(total_amount, total_amount.rolling(20, min_periods=10).mean()).shift(1)
+    return out
+
+
+def _compute_etf_features(data: pd.DataFrame) -> pd.DataFrame:
+    out = pd.DataFrame(index=data.index)
+    close = _num_col(data, "close")
+
+    ret_1d = close.pct_change(1, fill_method=None)
+    out["etf_ret_1d"] = ret_1d.shift(1)
+    out["etf_ret_1d_ma5"] = ret_1d.rolling(window=5, min_periods=3).mean().shift(1)
+    out["etf_ret_1d_ma10"] = ret_1d.rolling(window=10, min_periods=5).mean().shift(1)
+    out["etf_mom_5d"] = close.pct_change(5, fill_method=None).shift(1)
+    out["etf_slope_10d"] = PriceSlope(window=10).compute(pd.DataFrame({"close": close}, index=data.index))
+    return out
+
+
+def _drop_all_nan_columns(df: pd.DataFrame) -> pd.DataFrame:
+    keep = [c for c in df.columns if df[c].notna().any()]
+    if not keep:
+        return pd.DataFrame(index=df.index)
+    return df[keep].copy()
+
+
+def _compute_symbol_features(
+    bars: pd.DataFrame,
+    include_short_term_features: bool,
+    feature_profile: str,
+    etf_features: pd.DataFrame | None = None,
+) -> pd.DataFrame:
     feat: dict[str, pd.Series] = {}
     for f in SYMBOL_FEATURES_16:
         feat[f.name] = f.compute(bars)
-    return pd.DataFrame(feat, index=bars.index)
+    out = pd.DataFrame(feat, index=bars.index)
+
+    drop_features = PROFILE_DROP_FEATURES.get(feature_profile, set())
+    has_short_term_inputs = any(
+        c in bars.columns and pd.to_numeric(bars[c], errors="coerce").notna().any()
+        for c in ["turnover_rate", "turnover_rate_f", "buy_sm_amount", "sell_sm_amount", "net_mf_amount"]
+    )
+    if include_short_term_features and has_short_term_inputs:
+        short_df = _drop_all_nan_columns(_compute_short_term_features(bars))
+        if drop_features and not short_df.empty:
+            keep_cols = [c for c in short_df.columns if c not in drop_features]
+            short_df = short_df[keep_cols].copy()
+        if not short_df.empty:
+            out = out.join(short_df, how="left")
+    if etf_features is not None and not etf_features.empty:
+        out = out.join(etf_features, how="left")
+    if drop_features:
+        keep_cols = [c for c in out.columns if c not in drop_features]
+        out = out[keep_cols].copy()
+    return out
 
 
 def _compute_market_state_features(all_bars: dict[str, pd.DataFrame]) -> pd.DataFrame:
@@ -205,6 +672,29 @@ def main() -> None:
     parser.add_argument("--valid-ratio", type=float, default=0.15)
     parser.add_argument("--horizons", default="3,5,10")
     parser.add_argument("--output-dir", default="data/datasets/lstm_sector70_19d_mkt_20210101_20260120")
+    parser.add_argument(
+        "--feature-profile",
+        default="compact44",
+        choices=list(FEATURE_PROFILES),
+        help="compact44: 精简特征集合（默认）；full58: 保留扩展后全部特征；no_hist_hl: 去历史高低价特征",
+    )
+    parser.add_argument(
+        "--include-short-term-features",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="是否加入 TuShare 的换手与资金流特征（默认开启）",
+    )
+    parser.add_argument(
+        "--sector-etf-map-csv",
+        default="",
+        help="可选：symbol->etf 映射 CSV，需含 symbol 与 etf_ts_code(etf_symbol) 列",
+    )
+    parser.add_argument(
+        "--include-sector-etf-features",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="是否加入板块ETF特征（默认开启；需配合 --sector-etf-map-csv）",
+    )
     args = parser.parse_args()
 
     symbols = _parse_symbols(Path(args.symbols_csv))
@@ -230,12 +720,51 @@ def main() -> None:
     if not all_bars:
         raise RuntimeError("no symbol bars available from cache")
 
+    etf_map: dict[str, str] = {}
+    etf_features_by_symbol: dict[str, pd.DataFrame] = {}
+    if bool(args.include_sector_etf_features) and str(args.sector_etf_map_csv).strip():
+        etf_map = _parse_sector_etf_map(Path(args.sector_etf_map_csv), symbols)
+        unique_etf_codes = sorted(set(etf_map.values()))
+        etf_feature_by_code: dict[str, pd.DataFrame] = {}
+        for idx, etf_code in enumerate(unique_etf_codes):
+            try:
+                etf_bars = _load_tushare_fund_daily_cache_or_live(
+                    ts_code=etf_code,
+                    start=args.start,
+                    end=args.end,
+                    cache_dir=cache_dir,
+                    source=args.source,
+                    retries=5,
+                )
+            except Exception as e:  # noqa: BLE001
+                print(f"[warn] ETF {etf_code} source={args.source} fetch error: {type(e).__name__}: {e}")
+                continue
+            if etf_bars.empty:
+                print(f"[warn] ETF {etf_code} has no fund_daily data from source={args.source}")
+                continue
+            etf_feat = _drop_all_nan_columns(_compute_etf_features(etf_bars))
+            if not etf_feat.empty:
+                etf_feature_by_code[etf_code] = etf_feat
+
+            if args.source.startswith("tushare") and idx < len(unique_etf_codes) - 1 and args.request_interval_seconds > 0:
+                time.sleep(float(args.request_interval_seconds))
+
+        for s, etf_code in etf_map.items():
+            feat = etf_feature_by_code.get(etf_code)
+            if feat is not None and not feat.empty:
+                etf_features_by_symbol[s] = feat
+
     market_state = _compute_market_state_features(all_bars)
 
     feat_frames: list[pd.DataFrame] = []
     lab_frames: list[pd.DataFrame] = []
     for symbol, bars in all_bars.items():
-        feats = _compute_symbol_features(bars)
+        feats = _compute_symbol_features(
+            bars,
+            include_short_term_features=bool(args.include_short_term_features),
+            feature_profile=str(args.feature_profile),
+            etf_features=etf_features_by_symbol.get(symbol),
+        )
         feats = feats.join(market_state, how="left")
         labs = MultiHorizonLabel(horizons=horizons).compute(bars)
 
@@ -289,7 +818,26 @@ def main() -> None:
     print(f"symbols_loaded: {len(all_bars)}")
     print(f"feature_count: {len(feature_names)}")
     print(f"feature_names: {feature_names}")
+    print(f"feature_profile: {args.feature_profile}")
     print(f"market_features: {MARKET_FEATURE_NAMES}")
+    if args.include_short_term_features:
+        symbol_feature_names = [f.name for f in SYMBOL_FEATURES_16]
+        short_term_features = [
+            n
+            for n in feature_names
+            if n not in symbol_feature_names and n not in MARKET_FEATURE_NAMES and n not in ETF_FEATURE_NAMES
+        ]
+        etf_features = [n for n in feature_names if n in ETF_FEATURE_NAMES]
+        print(f"short_term_features({len(short_term_features)}): {short_term_features}")
+        if etf_features:
+            print(f"sector_etf_features({len(etf_features)}): {etf_features}")
+            print(
+                f"sector_etf_mapping: symbols={len(etf_map)}, mapped_with_data={len(etf_features_by_symbol)}, "
+                f"unique_etf={len(set(etf_map.values())) if etf_map else 0}"
+            )
+        dropped = PROFILE_DROP_FEATURES.get(str(args.feature_profile), set())
+        if dropped:
+            print(f"{args.feature_profile}_dropped_features({len(dropped)}): {sorted(dropped)}")
     print(f"X_shape: {X.shape}, y_shape: {y.shape}")
 
 

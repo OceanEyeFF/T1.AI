@@ -83,7 +83,7 @@ def _latest_cached_bars_path(symbol: str, cache_dir: Path) -> Path | None:
 
 def _load_cached_daily_bars(symbol: str, cache_dir: Path) -> pd.DataFrame:
     """Load daily bars using TuShare format (Parquet with year partitions)."""
-    # TuShare format: cache_dir/tushare/{ts_code}/year={YYYY}/part.parquet
+    # TuShare format: cache_dir/tushare_{adjust}/{ts_code}/year={YYYY}/part.parquet
     # Convert symbol to ts_code if needed
     ts_code = symbol
     if len(ts_code) == 6 and "." not in ts_code:
@@ -108,7 +108,7 @@ def _load_selected_universe() -> list[dict[str, str]]:
 
     Priority:
       1) data/cache/selected_stocks_20210701.csv (small, already cached bars in this repo)
-      2) infer from TuShare cached directories (tushare/{ts_code}/)
+      2) infer from TuShare cached directories (tushare_qfq/{ts_code}/ then tushare/{ts_code}/)
     """
     selected_csv = PROJECT_ROOT / "data" / "cache" / "selected_stocks_20210701.csv"
     if selected_csv.exists():
@@ -125,18 +125,18 @@ def _load_selected_universe() -> list[dict[str, str]]:
                 items[code] = name
         return [{"symbol": k, "name": v} for k, v in sorted(items.items())]
 
-    # Scan TuShare cache directories
-    cache_dir = PROJECT_ROOT / "data" / "cache" / "tushare"
     symbols: set[str] = set()
-    if cache_dir.exists():
+    for subdir in ("tushare_qfq", "tushare"):
+        cache_dir = PROJECT_ROOT / "data" / "cache" / subdir
+        if not cache_dir.exists():
+            continue
         for p in cache_dir.iterdir():
-            if p.is_dir():
-                # Extract ts_code (e.g., "688981.SH")
-                ts_code = p.name
-                # Convert to 6-digit symbol
-                symbol = ts_code.split(".")[0] if "." in ts_code else ts_code
-                if symbol.isdigit() and len(symbol) == 6:
-                    symbols.add(symbol)
+            if not p.is_dir():
+                continue
+            ts_code = p.name
+            symbol = ts_code.split(".")[0] if "." in ts_code else ts_code
+            if symbol.isdigit() and len(symbol) == 6:
+                symbols.add(symbol)
     return [{"symbol": s, "name": ""} for s in sorted(symbols)]
 
 

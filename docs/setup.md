@@ -45,10 +45,10 @@ conda env create -f environment.yml
 conda activate ashare-lab
 
 # 使用 pip 安装 CUDA 版 PyTorch
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
 # 安装项目（开发模式）
-pip install -e ".[dev]" --no-deps
+python -m pip install -e ".[dev]" --no-deps
 
 # 验证 GPU PyTorch
 python -c "import torch; print('torch=', torch.__version__); print('cuda_available=', torch.cuda.is_available())"
@@ -216,7 +216,7 @@ conda env create -f environment.yml
 nvidia-smi
 
 # 2) pip 包检查
-pip show torch torchvision torchaudio
+python -m pip show torch torchvision torchaudio
 
 # 3) Python 内验证
 python -c "import torch; print(torch.cuda.is_available())"

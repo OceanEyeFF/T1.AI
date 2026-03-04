@@ -1,15 +1,48 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Sequence
 import time
 
 import pandas as pd
 
 # Public constants
 SUPPORTED_FIELDS: Sequence[str] = ("open", "high", "low", "close", "volume", "amount")
+SUPPORTED_DAILY_BASIC_FIELDS: Sequence[str] = (
+    "turnover_rate",
+    "turnover_rate_f",
+    "volume_ratio",
+    "pe_ttm",
+    "pb",
+    "ps_ttm",
+    "dv_ttm",
+    "total_mv",
+    "circ_mv",
+)
+SUPPORTED_MONEYFLOW_FIELDS: Sequence[str] = (
+    "buy_sm_vol",
+    "buy_sm_amount",
+    "sell_sm_vol",
+    "sell_sm_amount",
+    "buy_md_vol",
+    "buy_md_amount",
+    "sell_md_vol",
+    "sell_md_amount",
+    "buy_lg_vol",
+    "buy_lg_amount",
+    "sell_lg_vol",
+    "sell_lg_amount",
+    "buy_elg_vol",
+    "buy_elg_amount",
+    "sell_elg_vol",
+    "sell_elg_amount",
+    "net_mf_vol",
+    "net_mf_amount",
+)
+SUPPORTED_ADJ_FACTOR_FIELDS: Sequence[str] = ("adj_factor",)
+ADJUST_MODES: Sequence[str] = ("raw", "qfq", "hfq")
 
 
 @dataclass(frozen=True)
@@ -21,6 +54,36 @@ class TushareDailyBarsRequest:
     end_date: str  # YYYYMMDD
     adjust: str = "qfq"
     token: str | None = None  # 可显式传入 token，默认从环境变量读取
+
+
+@dataclass(frozen=True)
+class TushareDailyBasicRequest:
+    """TuShare daily_basic 请求参数"""
+
+    symbol: str  # ts_code, e.g. 600519.SH
+    start_date: str  # YYYYMMDD
+    end_date: str  # YYYYMMDD
+    token: str | None = None
+
+
+@dataclass(frozen=True)
+class TushareMoneyflowRequest:
+    """TuShare moneyflow 请求参数"""
+
+    symbol: str  # ts_code, e.g. 600519.SH
+    start_date: str  # YYYYMMDD
+    end_date: str  # YYYYMMDD
+    token: str | None = None
+
+
+@dataclass(frozen=True)
+class TushareAdjFactorRequest:
+    """TuShare adj_factor 请求参数"""
+
+    symbol: str  # ts_code, e.g. 600519.SH
+    start_date: str  # YYYYMMDD
+    end_date: str  # YYYYMMDD
+    token: str | None = None
 
 
 def _normalize_tushare_daily(df: pd.DataFrame) -> pd.DataFrame:
@@ -51,31 +114,124 @@ def _normalize_tushare_daily(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def fetch_tushare_daily_bars(req: TushareDailyBarsRequest) -> pd.DataFrame:  # pragma: no cover
-    """直接调用 TuShare 接口获取日线数据（前复权）"""
+def _normalize_tushare_adj_factor(df: pd.DataFrame) -> pd.DataFrame:
+    """规范化 TuShare adj_factor 响应。"""
+    return _normalize_tushare_table(df, SUPPORTED_ADJ_FACTOR_FIELDS)
+
+
+def _normalize_tushare_table(df: pd.DataFrame, fields: Sequence[str]) -> pd.DataFrame:
+    """将 TuShare 表接口结果规范化为日期索引 + 数值列。"""
+    if df is None or df.empty:
+        return pd.DataFrame(columns=list(fields))
+
+    if "trade_date" in df.columns:
+        df = df.rename(columns={"trade_date": "date"})
+    if "date" not in df.columns:
+        raise ValueError("tushare table response must contain `trade_date` or `date` column")
+
+    df = df.copy()
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.set_index("date").sort_index()
+
+    for col in fields:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    out = df.reindex(columns=list(fields)).copy()
+    return out
+
+
+def _get_tushare_pro(token: str | None = None):  # pragma: no cover - mostly integration
     import os
     import tushare as ts  # lazy import
 
-    # token 优先级：参数 > 环境变量
-    if req.token:
-        pro = ts.pro_api(req.token)
-    else:
-        token = os.environ.get("TUSHARE_TOKEN")
-        if not token:
-            raise ValueError(
-                "TUSHARE_TOKEN not found. Please set it in environment or pass via token parameter.\n"
-                "Get your token at: https://tushare.pro/register"
-            )
-        pro = ts.pro_api(token)
+    tk = token or os.environ.get("TUSHARE_TOKEN")
+    if not tk:
+        raise ValueError(
+            "TUSHARE_TOKEN not found. Please set it in environment or pass via token parameter.\n"
+            "Get your token at: https://tushare.pro/register"
+        )
+    return ts.pro_api(tk)
+
+
+def fetch_tushare_daily_bars(req: TushareDailyBarsRequest) -> pd.DataFrame:  # pragma: no cover
+    """直接调用 TuShare 接口获取日线数据，并按 req.adjust 复权。"""
+    pro = _get_tushare_pro(req.token)
+    adjust_mode = _normalize_adjust_mode(req.adjust)
 
     raw = pro.daily(
         ts_code=req.symbol,
         start_date=req.start_date,
         end_date=req.end_date,
-        # TuShare 的 daily 不直接支持 adj，通常配合 adj_factor 使用。
-        # 此处保持接口兼容，后续可扩展为价格复权。
     )
-    return _normalize_tushare_daily(raw)
+    daily = _normalize_tushare_daily(raw)
+    if adjust_mode == "raw":
+        return daily
+
+    raw_adj = pro.adj_factor(
+        ts_code=req.symbol,
+        start_date=req.start_date,
+        end_date=req.end_date,
+    )
+    adj = _normalize_tushare_adj_factor(raw_adj)
+    return _apply_price_adjustment(daily, adj, adjust_mode)
+
+
+def fetch_tushare_daily_basic(req: TushareDailyBasicRequest) -> pd.DataFrame:  # pragma: no cover
+    """直接调用 TuShare daily_basic 接口。"""
+    pro = _get_tushare_pro(req.token)
+    raw = pro.daily_basic(ts_code=req.symbol, start_date=req.start_date, end_date=req.end_date)
+    return _normalize_tushare_table(raw, SUPPORTED_DAILY_BASIC_FIELDS)
+
+
+def fetch_tushare_moneyflow(req: TushareMoneyflowRequest) -> pd.DataFrame:  # pragma: no cover
+    """直接调用 TuShare moneyflow 接口。"""
+    pro = _get_tushare_pro(req.token)
+    raw = pro.moneyflow(ts_code=req.symbol, start_date=req.start_date, end_date=req.end_date)
+    return _normalize_tushare_table(raw, SUPPORTED_MONEYFLOW_FIELDS)
+
+
+def fetch_tushare_adj_factor(req: TushareAdjFactorRequest) -> pd.DataFrame:  # pragma: no cover
+    """直接调用 TuShare adj_factor 接口。"""
+    pro = _get_tushare_pro(req.token)
+    raw = pro.adj_factor(ts_code=req.symbol, start_date=req.start_date, end_date=req.end_date)
+    return _normalize_tushare_adj_factor(raw)
+
+
+def _normalize_adjust_mode(adjust: str | None) -> str:
+    mode = str(adjust or "raw").strip().lower()
+    if mode not in ADJUST_MODES:
+        raise ValueError(f"unsupported adjust mode: {adjust!r}, expected one of {tuple(ADJUST_MODES)}")
+    return mode
+
+
+def _apply_price_adjustment(daily: pd.DataFrame, adj_factor: pd.DataFrame, adjust: str) -> pd.DataFrame:
+    """按 adj_factor 对 OHLC 做前/后复权。"""
+    mode = _normalize_adjust_mode(adjust)
+    if mode == "raw" or daily.empty:
+        return daily
+
+    if adj_factor.empty or "adj_factor" not in adj_factor.columns:
+        return daily
+
+    work = daily.join(adj_factor[["adj_factor"]], how="left")
+    work["adj_factor"] = pd.to_numeric(work["adj_factor"], errors="coerce")
+    if work["adj_factor"].notna().sum() == 0:
+        return daily
+    work["adj_factor"] = work["adj_factor"].ffill().bfill()
+    if work["adj_factor"].notna().sum() == 0:
+        return daily
+
+    non_na = work["adj_factor"].dropna()
+    base_factor = float(non_na.iloc[-1]) if mode == "qfq" else float(non_na.iloc[0])
+    if base_factor == 0:
+        return daily
+
+    ratio = work["adj_factor"] / base_factor
+    out = daily.copy()
+    for col in ("open", "high", "low", "close"):
+        if col in out.columns:
+            out[col] = pd.to_numeric(out[col], errors="coerce") * ratio
+    return out
 
 
 def _retry_with_backoff(func, retries: int, base_delay: float = 0.5):
@@ -153,7 +309,9 @@ def load_or_fetch_daily_bars(
     backoff_base: float = 0.5,
 ) -> pd.DataFrame:
     """加载或获取 TuShare 日线数据，带分区缓存与增量去重"""
-    symbol_dir = cache_dir / "tushare" / req.symbol
+    adjust_mode = _normalize_adjust_mode(req.adjust)
+    cache_ns = "tushare" if adjust_mode == "raw" else f"tushare_{adjust_mode}"
+    symbol_dir = cache_dir / cache_ns / req.symbol
     start = pd.to_datetime(req.start_date)
     end = pd.to_datetime(req.end_date)
 
@@ -182,7 +340,8 @@ def load_or_fetch_daily_bars(
 
     combined = existing
     if fetched_frames:
-        combined = pd.concat([existing, *fetched_frames]).sort_index()
+        frames = [df for df in [existing, *fetched_frames] if not df.empty]
+        combined = pd.concat(frames).sort_index() if frames else existing
         combined = combined[~combined.index.duplicated(keep="last")]
         _write_partitioned(combined, symbol_dir)
 
@@ -191,3 +350,95 @@ def load_or_fetch_daily_bars(
     # 返回请求区间内的数据
     result = combined.loc[(combined.index >= start) & (combined.index <= end)].copy()
     return result
+
+
+def load_or_fetch_daily_basic(
+    req: TushareDailyBasicRequest,
+    cache_dir: Path,
+    refresh: bool = False,
+    retries: int = 3,
+    backoff_base: float = 0.5,
+) -> pd.DataFrame:
+    """加载或获取 TuShare daily_basic，带分区缓存与增量去重。"""
+    symbol_dir = cache_dir / "tushare_daily_basic" / req.symbol
+    start = pd.to_datetime(req.start_date)
+    end = pd.to_datetime(req.end_date)
+
+    if refresh:
+        existing = pd.DataFrame(columns=list(SUPPORTED_DAILY_BASIC_FIELDS))
+    else:
+        existing = _read_cached_partitions(symbol_dir)
+
+    ranges = _date_ranges_to_fetch(existing, start, end)
+
+    fetched_frames: list[pd.DataFrame] = []
+    for fetch_start, fetch_end in ranges:
+        fetch_req = TushareDailyBasicRequest(
+            symbol=req.symbol,
+            start_date=fetch_start.strftime("%Y%m%d"),
+            end_date=fetch_end.strftime("%Y%m%d"),
+            token=req.token,
+        )
+        fetched = _retry_with_backoff(
+            lambda: fetch_tushare_daily_basic(fetch_req),
+            retries=retries,
+            base_delay=backoff_base,
+        )
+        fetched_frames.append(fetched)
+
+    combined = existing
+    if fetched_frames:
+        frames = [df for df in [existing, *fetched_frames] if not df.empty]
+        combined = pd.concat(frames).sort_index() if frames else existing
+        combined = combined[~combined.index.duplicated(keep="last")]
+        _write_partitioned(combined, symbol_dir)
+
+    combined.index.name = "date"
+    result = combined.loc[(combined.index >= start) & (combined.index <= end)].copy()
+    return result.reindex(columns=list(SUPPORTED_DAILY_BASIC_FIELDS))
+
+
+def load_or_fetch_moneyflow(
+    req: TushareMoneyflowRequest,
+    cache_dir: Path,
+    refresh: bool = False,
+    retries: int = 3,
+    backoff_base: float = 0.5,
+) -> pd.DataFrame:
+    """加载或获取 TuShare moneyflow，带分区缓存与增量去重。"""
+    symbol_dir = cache_dir / "tushare_moneyflow" / req.symbol
+    start = pd.to_datetime(req.start_date)
+    end = pd.to_datetime(req.end_date)
+
+    if refresh:
+        existing = pd.DataFrame(columns=list(SUPPORTED_MONEYFLOW_FIELDS))
+    else:
+        existing = _read_cached_partitions(symbol_dir)
+
+    ranges = _date_ranges_to_fetch(existing, start, end)
+
+    fetched_frames: list[pd.DataFrame] = []
+    for fetch_start, fetch_end in ranges:
+        fetch_req = TushareMoneyflowRequest(
+            symbol=req.symbol,
+            start_date=fetch_start.strftime("%Y%m%d"),
+            end_date=fetch_end.strftime("%Y%m%d"),
+            token=req.token,
+        )
+        fetched = _retry_with_backoff(
+            lambda: fetch_tushare_moneyflow(fetch_req),
+            retries=retries,
+            base_delay=backoff_base,
+        )
+        fetched_frames.append(fetched)
+
+    combined = existing
+    if fetched_frames:
+        frames = [df for df in [existing, *fetched_frames] if not df.empty]
+        combined = pd.concat(frames).sort_index() if frames else existing
+        combined = combined[~combined.index.duplicated(keep="last")]
+        _write_partitioned(combined, symbol_dir)
+
+    combined.index.name = "date"
+    result = combined.loc[(combined.index >= start) & (combined.index <= end)].copy()
+    return result.reindex(columns=list(SUPPORTED_MONEYFLOW_FIELDS))
