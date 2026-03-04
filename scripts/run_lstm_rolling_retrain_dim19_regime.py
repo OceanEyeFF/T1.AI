@@ -86,9 +86,17 @@ def _extract_xy(df: pd.DataFrame, feature_bases: list[str], seq_len: int) -> tup
 
 
 class MtlLSTM(nn.Module):
-    def __init__(self, *, input_dim: int, hidden_size: int, num_layers: int, dropout: float) -> None:
+    def __init__(
+        self,
+        *,
+        input_dim: int,
+        hidden_size: int,
+        num_layers: int,
+        dropout: float,
+        loss_weights: tuple[float, float, float],
+    ) -> None:
         super().__init__()
-        self.loss_weights = torch.tensor([1.0, 1.0, 1.0], dtype=torch.float32)
+        self.loss_weights = torch.tensor(loss_weights, dtype=torch.float32)
         self.lstm = nn.LSTM(
             input_size=input_dim,
             hidden_size=hidden_size,
@@ -151,6 +159,7 @@ class TrainConfig:
     batch_size: int
     max_epochs: int
     patience: int
+    loss_weights: tuple[float, float, float]
 
 
 def _train_one_model(
@@ -166,6 +175,7 @@ def _train_one_model(
         hidden_size=cfg.hidden_size,
         num_layers=cfg.num_layers,
         dropout=cfg.dropout,
+        loss_weights=cfg.loss_weights,
     ).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=1e-5)
 
@@ -320,13 +330,24 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--max-epochs", type=int, default=40)
     parser.add_argument("--patience", type=int, default=8)
+    parser.add_argument("--w3", type=float, default=1.0)
+    parser.add_argument("--w5", type=float, default=1.0)
+    parser.add_argument("--w10", type=float, default=1.0)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--save-monthly-checkpoints", action="store_true")
+    parser.add_argument(
+        "--save-oos-parquet",
+        default="",
+        help="可选：保存 OOS 逐样本预测（含 raw/cal）到 parquet，用于 daily-CS 统一评估",
+    )
     parser.add_argument(
         "--report",
         default="output/reports/lstm_dim19_rolling18m_horizoncal_20260303.json",
     )
     args = parser.parse_args()
+
+    if args.w3 < 0 or args.w5 < 0 or args.w10 < 0 or (args.w3 + args.w5 + args.w10) <= 0:
+        raise ValueError("loss weights must be non-negative and sum to > 0")
 
     _set_seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -338,6 +359,7 @@ def main() -> None:
         batch_size=args.batch_size,
         max_epochs=args.max_epochs,
         patience=args.patience,
+        loss_weights=(float(args.w3), float(args.w5), float(args.w10)),
     )
 
     ddir = Path(args.dataset_dir)
@@ -493,6 +515,7 @@ def main() -> None:
             "batch_size": int(args.batch_size),
             "max_epochs": int(args.max_epochs),
             "patience": int(args.patience),
+            "loss_weights": {"3d": float(args.w3), "5d": float(args.w5), "10d": float(args.w10)},
             "seed": int(args.seed),
             "device": str(device),
             "months": [str(m) for m in months],
@@ -506,6 +529,13 @@ def main() -> None:
         },
         "monthly_logs": month_logs,
     }
+
+    if args.save_oos_parquet:
+        oos_path = Path(args.save_oos_parquet)
+        oos_path.parent.mkdir(parents=True, exist_ok=True)
+        oos.to_parquet(oos_path, index=False)
+        out["oos_predictions_path"] = str(oos_path)
+        print(f"Saved OOS parquet: {oos_path}")
 
     report = Path(args.report)
     report.parent.mkdir(parents=True, exist_ok=True)

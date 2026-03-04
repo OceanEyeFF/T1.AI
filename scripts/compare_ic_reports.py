@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""统一比较 rolling OOS 报告的全时段与月度 IC 指标。"""
+"""统一比较 rolling OOS 报告的全时段与月度 IC 指标。
+
+优先使用 OOS 逐样本预测（parquet）计算 daily-CS 口径：
+1) 每日横截面计算 IC/RankIC；
+2) 再按时间聚合得到 mean(IC_5_10)/mean(RankIC_5_10)；
+3) 月度稳定性基于 daily-CS 的月均 IC_5_10。
+
+若报告未提供 OOS parquet（或列缺失），可回退到报告内置指标口径。
+"""
 
 from __future__ import annotations
 
@@ -11,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import pandas as pd
 
 
 @dataclass
@@ -30,6 +39,16 @@ class MonthlySummary:
     worst: float
     win_rate: float
     max_consecutive_negative_months: int
+
+
+@dataclass
+class DailyCsSummary:
+    source_path: str
+    day_count: int
+    month_count: int
+    mean_ic_5_10: float
+    mean_rank_ic_5_10: float
+    monthly_ic_5_10: dict[str, float]
 
 
 def _metric_block(report: dict[str, Any], metric_source: str) -> dict[str, Any]:
@@ -52,6 +71,30 @@ def _safe_float(value: Any) -> float | None:
     except (TypeError, ValueError):
         return None
     return None if np.isnan(out) else out
+
+
+def _safe_pearsonr(x: np.ndarray, y: np.ndarray) -> float:
+    if x.size < 2 or y.size < 2:
+        return 0.0
+    x = x.astype(float, copy=False)
+    y = y.astype(float, copy=False)
+    mask = ~(np.isnan(x) | np.isnan(y))
+    if int(mask.sum()) < 2:
+        return 0.0
+    xs = x[mask]
+    ys = y[mask]
+    if np.std(xs) == 0 or np.std(ys) == 0:
+        return 0.0
+    corr = np.corrcoef(xs, ys)[0, 1]
+    return 0.0 if np.isnan(corr) else float(corr)
+
+
+def _safe_spearmanr(x: np.ndarray, y: np.ndarray) -> float:
+    if x.size < 2 or y.size < 2:
+        return 0.0
+    xr = pd.Series(x).rank(method="average").to_numpy(dtype=float, copy=False)
+    yr = pd.Series(y).rank(method="average").to_numpy(dtype=float, copy=False)
+    return _safe_pearsonr(xr, yr)
 
 
 def compute_ic_5_10(metrics: dict[str, Any]) -> float | None:
@@ -162,11 +205,111 @@ def _common_months(loaded: list[tuple[str, dict[str, float]]]) -> list[str]:
     return sorted(common or [])
 
 
+def _resolve_oos_path(report_path: Path, report: dict[str, Any]) -> Path | None:
+    candidates: list[str] = []
+    for key in ("oos_predictions_path", "oos_parquet_path", "oos_parquet"):
+        value = report.get(key)
+        if isinstance(value, str) and value.strip():
+            candidates.append(value.strip())
+
+    cfg = report.get("config")
+    if isinstance(cfg, dict):
+        for key in ("oos_predictions_path", "oos_parquet_path", "oos_parquet"):
+            value = cfg.get(key)
+            if isinstance(value, str) and value.strip():
+                candidates.append(value.strip())
+
+    seen: set[str] = set()
+    for raw in candidates:
+        if raw in seen:
+            continue
+        seen.add(raw)
+        p = Path(raw)
+        if p.is_absolute() and p.exists():
+            return p
+        local = Path.cwd() / p
+        if local.exists():
+            return local.resolve()
+        neighbor = (report_path.parent / p).resolve()
+        if neighbor.exists():
+            return neighbor
+    return None
+
+
+def _daily_cs_from_oos(path: Path, metric_source: str) -> DailyCsSummary | None:
+    df = pd.read_parquet(path)
+    pred_5_col = "pred_5d"
+    pred_10_col = "pred_10d"
+    if metric_source == "calibrated":
+        if "pred_5d_cal" in df.columns and "pred_10d_cal" in df.columns:
+            pred_5_col = "pred_5d_cal"
+            pred_10_col = "pred_10d_cal"
+        else:
+            return None
+
+    required = {"date", "symbol", "label_5d", "label_10d", pred_5_col, pred_10_col}
+    if not required.issubset(set(df.columns)):
+        return None
+
+    work = df[list(required)].copy()
+    work["date"] = pd.to_datetime(work["date"], errors="coerce")
+    work = work.dropna(subset=["date"]).sort_values(["date", "symbol"])
+    if work.empty:
+        return None
+
+    daily_rows: list[dict[str, float | pd.Timestamp]] = []
+    for day, g in work.groupby("date", sort=True):
+        p5 = g[pred_5_col].to_numpy(dtype=float, copy=False)
+        p10 = g[pred_10_col].to_numpy(dtype=float, copy=False)
+        y5 = g["label_5d"].to_numpy(dtype=float, copy=False)
+        y10 = g["label_10d"].to_numpy(dtype=float, copy=False)
+
+        ic5 = _safe_pearsonr(p5, y5)
+        ic10 = _safe_pearsonr(p10, y10)
+        r5 = _safe_spearmanr(p5, y5)
+        r10 = _safe_spearmanr(p10, y10)
+
+        daily_rows.append(
+            {
+                "date": day,
+                "avg_ic_5_10": float((ic5 + ic10) / 2.0),
+                "avg_rank_ic_5_10": float((r5 + r10) / 2.0),
+            }
+        )
+
+    if not daily_rows:
+        return None
+
+    daily_df = pd.DataFrame(daily_rows)
+    daily_df["month"] = daily_df["date"].dt.to_period("M").astype(str)
+    monthly = (
+        daily_df.groupby("month", sort=True)["avg_ic_5_10"]
+        .mean()
+        .astype(float)
+        .to_dict()
+    )
+
+    return DailyCsSummary(
+        source_path=str(path),
+        day_count=int(len(daily_df)),
+        month_count=int(len(monthly)),
+        mean_ic_5_10=float(daily_df["avg_ic_5_10"].mean()),
+        mean_rank_ic_5_10=float(daily_df["avg_rank_ic_5_10"].mean()),
+        monthly_ic_5_10=monthly,
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="统一评估多个实验报告的全时段 + 月度 IC 口径")
     p.add_argument("--reports", nargs="+", required=True, help="报告 JSON 路径列表")
     p.add_argument("--metric-source", choices=["raw", "calibrated"], default="raw")
     p.add_argument("--monthly-source", choices=["raw", "calibrated"], default="raw")
+    p.add_argument(
+        "--daily-cs-mode",
+        choices=["auto", "off", "required"],
+        default="required",
+        help="auto: 优先使用 OOS parquet 计算 daily-CS；off: 禁用；required: 无 daily-CS 则报错",
+    )
     p.add_argument("--output-dir", default="output/reports")
     p.add_argument("--tag", default=datetime.now().strftime("%Y%m%d"))
     p.add_argument("--allow-empty-common-months", action="store_true", help="允许公共 OOS 月份为空（默认报错）")
@@ -188,7 +331,18 @@ def main(argv: list[str] | None = None) -> int:
         worst_month=args.gate_worst_month,
         max_consecutive_negative_months=args.gate_max_consecutive_negative_months,
     )
-    loaded: list[tuple[str, dict[str, Any], dict[str, float], float | None, float | None]] = []
+    loaded: list[
+        tuple[
+            str,
+            dict[str, Any],
+            dict[str, float],
+            float | None,
+            float | None,
+            str,
+            DailyCsSummary | None,
+        ]
+    ] = []
+    daily_cs_reports = 0
 
     for report_path in args.reports:
         path = Path(report_path)
@@ -197,23 +351,51 @@ def main(argv: list[str] | None = None) -> int:
         ic_5_10 = compute_ic_5_10(metrics)
         rank_ic_5_10 = compute_rank_ic_5_10(metrics)
         monthly = extract_monthly_series(data, args.monthly_source)
-        loaded.append((path.name, metrics, monthly, ic_5_10, rank_ic_5_10))
+        source_mode = "report_metrics"
+        daily_summary: DailyCsSummary | None = None
 
-    common_months = _common_months([(name, monthly) for name, _, monthly, _, _ in loaded])
+        if args.daily_cs_mode != "off":
+            oos_path = _resolve_oos_path(path, data)
+            if oos_path is not None:
+                daily_summary = _daily_cs_from_oos(oos_path, args.metric_source)
+                if daily_summary is not None:
+                    ic_5_10 = daily_summary.mean_ic_5_10
+                    rank_ic_5_10 = daily_summary.mean_rank_ic_5_10
+                    monthly = daily_summary.monthly_ic_5_10
+                    source_mode = "daily_cs"
+                    daily_cs_reports += 1
+                elif args.daily_cs_mode == "required":
+                    raise ValueError(f"daily-CS 计算失败（列缺失或空数据）: {path}")
+            elif args.daily_cs_mode == "required":
+                raise ValueError(f"报告缺少可用 oos parquet 路径: {path}")
+
+        loaded.append((path.name, metrics, monthly, ic_5_10, rank_ic_5_10, source_mode, daily_summary))
+
+    common_months = _common_months([(name, monthly) for name, _, monthly, _, _, _, _ in loaded])
     if not common_months and not args.allow_empty_common_months:
         raise ValueError("公共 OOS 月份为空，请检查报告时间区间或使用 --allow-empty-common-months")
 
     rows: list[dict[str, Any]] = []
-    for name, _, monthly, ic_5_10, rank_ic_5_10 in loaded:
+    for name, _, monthly, ic_5_10, rank_ic_5_10, source_mode, daily_summary in loaded:
         aligned = [monthly[m] for m in common_months]
         monthly_summary = summarize_monthly(aligned)
         rows.append(
             {
                 "report": name,
+                "metric_mode": source_mode,
                 "available_months": sorted(monthly.keys()),
                 "missing_common_months": [m for m in common_months if m not in monthly],
                 "mean_ic_5_10": ic_5_10,
                 "mean_rank_ic_5_10": rank_ic_5_10,
+                "daily_cs": (
+                    None
+                    if daily_summary is None
+                    else {
+                        "source_path": daily_summary.source_path,
+                        "day_count": daily_summary.day_count,
+                        "month_count": daily_summary.month_count,
+                    }
+                ),
                 "monthly": asdict(monthly_summary),
                 "pass_gate": passes_gate(ic_5_10, rank_ic_5_10, monthly_summary, gate),
             }
@@ -227,6 +409,8 @@ def main(argv: list[str] | None = None) -> int:
     payload = {
         "metric_source": args.metric_source,
         "monthly_source": args.monthly_source,
+        "daily_cs_mode": args.daily_cs_mode,
+        "daily_cs_reports": daily_cs_reports,
         "common_months": common_months,
         "gate": asdict(gate),
         "results": rows,
@@ -238,18 +422,20 @@ def main(argv: list[str] | None = None) -> int:
         "",
         f"- 指标口径: {args.metric_source}",
         f"- 月度口径: {args.monthly_source}",
+        f"- daily-CS 使用: {daily_cs_reports}/{len(rows)} 份报告",
         f"- 公共 OOS 月份数: {len(common_months)}",
         "",
-        "| 报告 | mean(IC_5_10) | mean(RankIC_5_10) | 月胜率 | 最差月 | 连续负月 | 门禁 |",
-        "|---|---:|---:|---:|---:|---:|---|",
+        "| 报告 | 口径来源 | mean(IC_5_10) | mean(RankIC_5_10) | 月胜率 | 最差月 | 连续负月 | 门禁 |",
+        "|---|---|---:|---:|---:|---:|---:|---|",
     ]
     for row in rows:
         monthly = row["monthly"]
         mean_ic_text = "N/A" if row["mean_ic_5_10"] is None else f"{row['mean_ic_5_10']:.4f}"
         mean_rank_text = "N/A" if row["mean_rank_ic_5_10"] is None else f"{row['mean_rank_ic_5_10']:.4f}"
         lines.append(
-            "| {report} | {ic} | {rank_ic} | {win:.1%} | {worst:.4f} | {neg} | {gate} |".format(
+            "| {report} | {source} | {ic} | {rank_ic} | {win:.1%} | {worst:.4f} | {neg} | {gate} |".format(
                 report=row["report"],
+                source=row["metric_mode"],
                 ic=mean_ic_text,
                 rank_ic=mean_rank_text,
                 win=monthly["win_rate"],

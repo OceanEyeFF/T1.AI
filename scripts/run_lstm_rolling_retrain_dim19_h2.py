@@ -262,6 +262,11 @@ def main() -> None:
     parser.add_argument("--w10", type=float, default=1.0)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--report", required=True)
+    parser.add_argument(
+        "--save-oos-parquet",
+        default="",
+        help="可选：保存 OOS 逐样本预测（date/symbol/label/pred）到 parquet，用于 daily-CS 统一评估",
+    )
     args = parser.parse_args()
 
     _set_seed(args.seed)
@@ -378,6 +383,13 @@ def main() -> None:
         "monthly_logs": month_logs,
         "total_train_seconds": float(total_train_sec),
     }
+
+    if args.save_oos_parquet:
+        oos_path = Path(args.save_oos_parquet)
+        oos_path.parent.mkdir(parents=True, exist_ok=True)
+        oos.to_parquet(oos_path, index=False)
+        out["oos_predictions_path"] = str(oos_path)
+        print(f"Saved OOS parquet: {oos_path}")
 
     report = Path(args.report)
     report.parent.mkdir(parents=True, exist_ok=True)

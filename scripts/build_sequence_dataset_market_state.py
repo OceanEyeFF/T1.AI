@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Build sequence dataset with market state features from local tushare cache only.
+"""Build sequence dataset with market state features.
 
 Market state features are calculated cross-sectionally from the selected universe:
   - market_mom_5d: 5-day momentum of equal-weight market return series
@@ -11,11 +11,14 @@ All market features are shifted by 1 day to avoid look-ahead leakage.
 from __future__ import annotations
 
 import argparse
+import time
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+from ashare_lab.data.akshare_source import AkshareDailyBarsRequest, load_or_fetch_daily_bars
+from ashare_lab.data.tushare_source import TushareDailyBarsRequest, load_or_fetch_daily_bars as load_tushare_daily_bars
 from ashare_lab.dataset.sequence_builder import SequenceDatasetBuilder
 from ashare_lab.features.momentum import Return1D, Return5D, Return10D, Return20D, Return60D
 from ashare_lab.features.price_slope import PriceSlope
@@ -87,6 +90,39 @@ def _load_tushare_cache_only(ts_code: str, start: str, end: str, cache_dir: Path
     return out.loc[(out.index >= start_ts) & (out.index <= end_ts)].copy()
 
 
+def _load_akshare(symbol: str, start: str, end: str, cache_dir: Path, retries: int = 3) -> pd.DataFrame:
+    req = AkshareDailyBarsRequest(symbol=symbol, start_date=start, end_date=end, adjust="qfq")
+    last_err: Exception | None = None
+    for i in range(retries):
+        try:
+            return load_or_fetch_daily_bars(req, cache_dir / "akshare")
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+            wait_s = 1.0 + float(i)
+            print(f"[warn] {symbol} akshare attempt={i + 1}/{retries} failed: {type(e).__name__}: {e}; sleep={wait_s}s")
+            time.sleep(wait_s)
+    if last_err is not None:
+        print(f"[warn] {symbol} akshare all retries failed: {type(last_err).__name__}: {last_err}")
+    return pd.DataFrame(columns=["open", "high", "low", "close", "volume", "amount"])
+
+
+def _load_tushare_live(symbol: str, start: str, end: str, cache_dir: Path) -> pd.DataFrame:
+    ts_code = _to_ts_code(symbol)
+    req = TushareDailyBarsRequest(symbol=ts_code, start_date=start, end_date=end, adjust="qfq")
+    return load_tushare_daily_bars(req, cache_dir, refresh=False, retries=5, backoff_base=1.0)
+
+
+def _load_bars(source: str, symbol: str, start: str, end: str, cache_dir: Path) -> pd.DataFrame:
+    if source == "tushare_cache":
+        ts_code = _to_ts_code(symbol)
+        return _load_tushare_cache_only(ts_code, start, end, cache_dir)
+    if source == "tushare_live":
+        return _load_tushare_live(symbol, start, end, cache_dir)
+    if source == "akshare":
+        return _load_akshare(symbol, start, end, cache_dir)
+    raise ValueError(f"unsupported source: {source}")
+
+
 def _compute_symbol_features(bars: pd.DataFrame) -> pd.DataFrame:
     feat: dict[str, pd.Series] = {}
     for f in SYMBOL_FEATURES_16:
@@ -149,6 +185,18 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Build sequence parquet dataset with market state features.")
     parser.add_argument("--symbols-csv", default="data/symbols_lstm_sectors_70.csv")
     parser.add_argument("--cache-dir", default="data/cache")
+    parser.add_argument(
+        "--source",
+        default="tushare_live",
+        choices=["akshare", "tushare_cache", "tushare_live"],
+        help="行情来源：akshare 在线拉取、tushare 本地缓存或 tushare 在线拉取",
+    )
+    parser.add_argument(
+        "--request-interval-seconds",
+        type=float,
+        default=0.8,
+        help="每只股票请求后睡眠秒数（用于限流，默认 0.8）",
+    )
     parser.add_argument("--start", default="20210101")
     parser.add_argument("--end", default="20260120")
     parser.add_argument("--seq-len", type=int, default=20)
@@ -164,13 +212,20 @@ def main() -> None:
     cache_dir = Path(args.cache_dir)
 
     all_bars: dict[str, pd.DataFrame] = {}
-    for s in symbols:
-        ts_code = _to_ts_code(s)
-        bars = _load_tushare_cache_only(ts_code, args.start, args.end, cache_dir)
+    for idx, s in enumerate(symbols):
+        try:
+            bars = _load_bars(args.source, s, args.start, args.end, cache_dir)
+        except Exception as e:  # noqa: BLE001
+            print(f"[warn] {s} source={args.source} fetch error: {type(e).__name__}: {e}")
+            continue
         if bars.empty:
-            print(f"[warn] {s} ({ts_code}) no cache data")
+            print(f"[warn] {s} no data from source={args.source}")
             continue
         all_bars[s] = bars
+
+        # TuShare 存在分钟级限流，按 symbol 级别节流。
+        if args.source.startswith("tushare") and idx < len(symbols) - 1 and args.request_interval_seconds > 0:
+            time.sleep(float(args.request_interval_seconds))
 
     if not all_bars:
         raise RuntimeError("no symbol bars available from cache")

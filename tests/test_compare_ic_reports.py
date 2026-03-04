@@ -5,6 +5,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 import json
 import pytest
+import pandas as pd
 
 from scripts.compare_ic_reports import (
     GateThresholds,
@@ -16,6 +17,12 @@ from scripts.compare_ic_reports import (
     passes_gate,
     summarize_monthly,
 )
+
+
+def _write_oos_parquet(path: Path, rows: list[dict[str, object]]) -> Path:
+    df = pd.DataFrame(rows)
+    df.to_parquet(path, index=False)
+    return path
 
 
 def test_metric_5_10_helpers() -> None:
@@ -88,8 +95,28 @@ def test_common_months_helper() -> None:
 
 
 def test_cli_outputs_files(tmp_path) -> None:
+    oos1 = _write_oos_parquet(
+        tmp_path / "r1_oos.parquet",
+        [
+            {"date": "2025-01-02", "symbol": "A", "label_5d": 0.1, "label_10d": 0.2, "pred_5d": 0.12, "pred_10d": 0.18},
+            {"date": "2025-01-02", "symbol": "B", "label_5d": -0.1, "label_10d": -0.2, "pred_5d": -0.11, "pred_10d": -0.19},
+            {"date": "2025-02-03", "symbol": "A", "label_5d": 0.2, "label_10d": 0.1, "pred_5d": 0.19, "pred_10d": 0.09},
+            {"date": "2025-02-03", "symbol": "B", "label_5d": -0.2, "label_10d": -0.1, "pred_5d": -0.21, "pred_10d": -0.12},
+        ],
+    )
+    oos2 = _write_oos_parquet(
+        tmp_path / "r2_oos.parquet",
+        [
+            {"date": "2025-01-02", "symbol": "A", "label_5d": 0.1, "label_10d": 0.1, "pred_5d": 0.08, "pred_10d": 0.07},
+            {"date": "2025-01-02", "symbol": "B", "label_5d": -0.1, "label_10d": -0.1, "pred_5d": -0.06, "pred_10d": -0.07},
+            {"date": "2025-03-03", "symbol": "A", "label_5d": 0.2, "label_10d": 0.1, "pred_5d": 0.21, "pred_10d": 0.11},
+            {"date": "2025-03-03", "symbol": "B", "label_5d": -0.2, "label_10d": -0.1, "pred_5d": -0.18, "pred_10d": -0.09},
+        ],
+    )
+
     report1 = {
         "raw_oos_metrics": {"ic_5d": 0.06, "ic_10d": 0.08, "rank_ic_5d": 0.09, "rank_ic_10d": 0.10},
+        "oos_predictions_path": str(oos1),
         "monthly_logs": [
             {"month": "2025-01", "month_avg_ic_5_10": 0.01},
             {"month": "2025-02", "month_avg_ic_5_10": 0.02},
@@ -97,6 +124,7 @@ def test_cli_outputs_files(tmp_path) -> None:
     }
     report2 = {
         "raw_oos_metrics": {"ic_5d": 0.03, "ic_10d": 0.05, "rank_ic_5d": 0.02, "rank_ic_10d": 0.04},
+        "oos_predictions_path": str(oos2),
         "monthly_logs": [
             {"month": "2025-01", "month_avg_ic_5_10": -0.01},
             {"month": "2025-03", "month_avg_ic_5_10": 0.03},
@@ -120,6 +148,9 @@ def test_cli_outputs_files(tmp_path) -> None:
     payload = json.loads(json_path.read_text(encoding="utf-8"))
     assert payload["common_months"] == ["2025-01"]
     assert len(payload["results"]) == 2
+    assert payload["daily_cs_mode"] == "required"
+    assert payload["daily_cs_reports"] == 2
+    assert payload["results"][0]["metric_mode"] == "daily_cs"
 
 
 def test_cli_raises_when_common_months_empty(tmp_path) -> None:
@@ -137,13 +168,25 @@ def test_cli_raises_when_common_months_empty(tmp_path) -> None:
     p2.write_text(json.dumps(r2), encoding="utf-8")
 
     with pytest.raises(ValueError):
-        main(["--reports", str(p1), str(p2), "--output-dir", str(tmp_path / "out")])
+        main(
+            [
+                "--reports",
+                str(p1),
+                str(p2),
+                "--daily-cs-mode",
+                "off",
+                "--output-dir",
+                str(tmp_path / "out"),
+            ]
+        )
 
     code = main(
         [
             "--reports",
             str(p1),
             str(p2),
+            "--daily-cs-mode",
+            "off",
             "--allow-empty-common-months",
             "--output-dir",
             str(tmp_path / "out2"),
@@ -152,3 +195,15 @@ def test_cli_raises_when_common_months_empty(tmp_path) -> None:
         ]
     )
     assert code == 0
+
+
+def test_cli_required_mode_raises_without_oos_path(tmp_path) -> None:
+    report = {
+        "raw_oos_metrics": {"ic_5d": 0.06, "ic_10d": 0.08, "rank_ic_5d": 0.09, "rank_ic_10d": 0.10},
+        "monthly_logs": [{"month": "2025-01", "month_avg_ic_5_10": 0.01}],
+    }
+    p = tmp_path / "r.json"
+    p.write_text(json.dumps(report), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="oos parquet"):
+        main(["--reports", str(p), "--output-dir", str(tmp_path / "out"), "--tag", "required-missing"])
