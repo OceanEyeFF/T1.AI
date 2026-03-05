@@ -38,6 +38,7 @@ dependencies:
       # A股数据源
       - akshare>=1.13
       - tushare>=1.2
+      - xgboost>=3.2
 
       # 其他工具
       - python-dotenv  # 环境变量管理

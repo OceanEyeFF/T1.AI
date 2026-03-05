@@ -49,6 +49,11 @@ LABEL_COLS = ["label_3d", "label_5d", "label_10d"]
 PRED_COLS = ["pred_3d", "pred_5d", "pred_10d"]
 LOSS_TYPES = ("l1", "ic_aware", "rank_aware", "ic_rank_aware")
 FEATURE_MODES = ("dim19", "auto")
+BACKBONES = ("lstm", "transformer")
+LR_SCHEDULERS = ("none", "cosine", "cosine_warm_restart", "plateau")
+OPTIMIZERS = ("adamw", "adam")
+NORM_TYPES = ("layernorm", "rmsnorm")
+GRAD_CLIP_MODES = ("none", "norm", "value")
 
 
 def _set_seed(seed: int) -> None:
@@ -169,6 +174,25 @@ def _compute_head_loss(
     return total, {"l1": l1, "ic_loss": ic_loss, "rank_loss": rank_loss}
 
 
+class RMSNorm(nn.Module):
+    def __init__(self, dim: int, eps: float = 1e-8) -> None:
+        super().__init__()
+        self.eps = float(eps)
+        self.weight = nn.Parameter(torch.ones(dim))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        rms = torch.rsqrt(x.pow(2).mean(dim=-1, keepdim=True) + self.eps)
+        return x * rms * self.weight
+
+
+def _build_norm(dim: int, norm_type: str, norm_eps: float) -> nn.Module:
+    if norm_type == "layernorm":
+        return nn.LayerNorm(dim, eps=norm_eps)
+    if norm_type == "rmsnorm":
+        return RMSNorm(dim, eps=norm_eps)
+    raise ValueError(f"unsupported norm_type: {norm_type}")
+
+
 class MtlLSTM(nn.Module):
     def __init__(
         self,
@@ -181,6 +205,8 @@ class MtlLSTM(nn.Module):
         loss_type: str,
         loss_alpha: float,
         ic_rank_beta: float,
+        norm_type: str,
+        norm_eps: float,
     ) -> None:
         super().__init__()
         self.loss_weights = torch.tensor(loss_weights, dtype=torch.float32)
@@ -194,7 +220,7 @@ class MtlLSTM(nn.Module):
             dropout=dropout if num_layers > 1 else 0.0,
             batch_first=True,
         )
-        self.norm = nn.LayerNorm(hidden_size)
+        self.norm = _build_norm(hidden_size, norm_type, norm_eps)
 
         def _head() -> nn.Module:
             return nn.Sequential(
@@ -210,6 +236,95 @@ class MtlLSTM(nn.Module):
     def forward(self, x: torch.Tensor, labels: torch.Tensor | None = None):
         out, _ = self.lstm(x)
         h = self.norm(out[:, -1, :])
+        preds = {
+            "pred_3d": self.head_3d(h).squeeze(-1),
+            "pred_5d": self.head_5d(h).squeeze(-1),
+            "pred_10d": self.head_10d(h).squeeze(-1),
+        }
+        if labels is None:
+            return preds
+        weights = self.loss_weights.to(device=labels.device, dtype=labels.dtype)
+        per_head: list[torch.Tensor] = []
+        details: dict[str, torch.Tensor] = {}
+
+        for idx, pred_key in enumerate(PRED_COLS):
+            head_total, head_parts = _compute_head_loss(
+                preds[pred_key],
+                labels[:, idx],
+                loss_type=self.loss_type,
+                loss_alpha=self.loss_alpha,
+                ic_rank_beta=self.ic_rank_beta,
+            )
+            per_head.append(head_total)
+            horizon = pred_key.replace("pred_", "")
+            details[f"obj_{horizon}"] = head_total
+            details[f"l1_{horizon}"] = head_parts["l1"]
+            details[f"ic_loss_{horizon}"] = head_parts["ic_loss"]
+            details[f"rank_loss_{horizon}"] = head_parts["rank_loss"]
+
+        total = torch.stack(per_head).mul(weights).sum()
+        return preds, {"total": total, **details}
+
+
+class MtlTransformer(nn.Module):
+    def __init__(
+        self,
+        *,
+        input_dim: int,
+        seq_len: int,
+        d_model: int,
+        num_layers: int,
+        n_heads: int,
+        d_ff: int,
+        dropout: float,
+        loss_weights: tuple[float, float, float],
+        loss_type: str,
+        loss_alpha: float,
+        ic_rank_beta: float,
+        norm_type: str,
+        norm_eps: float,
+    ) -> None:
+        super().__init__()
+        self.loss_weights = torch.tensor(loss_weights, dtype=torch.float32)
+        self.loss_type = loss_type
+        self.loss_alpha = float(loss_alpha)
+        self.ic_rank_beta = float(ic_rank_beta)
+
+        if d_model % n_heads != 0:
+            raise ValueError("d_model must be divisible by n_heads")
+
+        self.input_proj = nn.Linear(input_dim, d_model)
+        self.pos_embed = nn.Parameter(torch.zeros(1, seq_len, d_model))
+        nn.init.normal_(self.pos_embed, mean=0.0, std=0.02)
+
+        enc_layer = nn.TransformerEncoderLayer(
+            d_model=d_model,
+            nhead=n_heads,
+            dim_feedforward=d_ff,
+            dropout=dropout,
+            activation="gelu",
+            batch_first=True,
+            norm_first=True,
+        )
+        self.encoder = nn.TransformerEncoder(enc_layer, num_layers=num_layers)
+        self.norm = _build_norm(d_model, norm_type, norm_eps)
+
+        def _head() -> nn.Module:
+            return nn.Sequential(
+                nn.Linear(d_model, d_model // 2),
+                nn.GELU(),
+                nn.Linear(d_model // 2, 1),
+            )
+
+        self.head_3d = _head()
+        self.head_5d = _head()
+        self.head_10d = _head()
+
+    def forward(self, x: torch.Tensor, labels: torch.Tensor | None = None):
+        h = self.input_proj(x)
+        h = h + self.pos_embed[:, : h.shape[1], :]
+        h = self.encoder(h)
+        h = self.norm(h[:, -1, :])
         preds = {
             "pred_3d": self.head_3d(h).squeeze(-1),
             "pred_5d": self.head_5d(h).squeeze(-1),
@@ -261,10 +376,28 @@ def _eval(model: nn.Module, x: np.ndarray, y: np.ndarray, batch_size: int, devic
 
 @dataclass(frozen=True)
 class TrainConfig:
+    backbone: str
     hidden_size: int
     num_layers: int
+    d_model: int
+    n_heads: int
+    d_ff: int
+    seq_len: int
     dropout: float
     lr: float
+    optimizer: str
+    weight_decay: float
+    lr_scheduler: str
+    lr_min: float
+    cosine_t_max: int
+    warm_restart_t0: int
+    warm_restart_t_mult: int
+    plateau_factor: float
+    plateau_patience: int
+    grad_clip_mode: str
+    grad_clip_threshold: float
+    norm_type: str
+    norm_eps: float
     batch_size: int
     max_epochs: int
     patience: int
@@ -282,17 +415,78 @@ def _train_one_model(
     cfg: TrainConfig,
     device: torch.device,
 ) -> tuple[nn.Module, dict[str, float], int, float]:
-    model = MtlLSTM(
-        input_dim=x_train.shape[2],
-        hidden_size=cfg.hidden_size,
-        num_layers=cfg.num_layers,
-        dropout=cfg.dropout,
-        loss_weights=cfg.loss_weights,
-        loss_type=cfg.loss_type,
-        loss_alpha=cfg.loss_alpha,
-        ic_rank_beta=cfg.ic_rank_beta,
-    ).to(device)
-    opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=1e-5)
+    if cfg.backbone == "lstm":
+        model = MtlLSTM(
+            input_dim=x_train.shape[2],
+            hidden_size=cfg.hidden_size,
+            num_layers=cfg.num_layers,
+            dropout=cfg.dropout,
+            loss_weights=cfg.loss_weights,
+            loss_type=cfg.loss_type,
+            loss_alpha=cfg.loss_alpha,
+            ic_rank_beta=cfg.ic_rank_beta,
+            norm_type=cfg.norm_type,
+            norm_eps=cfg.norm_eps,
+        ).to(device)
+    elif cfg.backbone == "transformer":
+        model = MtlTransformer(
+            input_dim=x_train.shape[2],
+            seq_len=cfg.seq_len,
+            d_model=cfg.d_model,
+            num_layers=cfg.num_layers,
+            n_heads=cfg.n_heads,
+            d_ff=cfg.d_ff,
+            dropout=cfg.dropout,
+            loss_weights=cfg.loss_weights,
+            loss_type=cfg.loss_type,
+            loss_alpha=cfg.loss_alpha,
+            ic_rank_beta=cfg.ic_rank_beta,
+            norm_type=cfg.norm_type,
+            norm_eps=cfg.norm_eps,
+        ).to(device)
+    else:
+        raise ValueError(f"unsupported backbone: {cfg.backbone}")
+
+    if cfg.optimizer == "adamw":
+        opt: torch.optim.Optimizer = torch.optim.AdamW(
+            model.parameters(),
+            lr=cfg.lr,
+            weight_decay=cfg.weight_decay,
+        )
+    elif cfg.optimizer == "adam":
+        opt = torch.optim.Adam(
+            model.parameters(),
+            lr=cfg.lr,
+            weight_decay=cfg.weight_decay,
+        )
+    else:
+        raise ValueError(f"unsupported optimizer: {cfg.optimizer}")
+
+    scheduler: torch.optim.lr_scheduler.LRScheduler | torch.optim.lr_scheduler.ReduceLROnPlateau | None = None
+    if cfg.lr_scheduler == "cosine":
+        t_max = int(cfg.cosine_t_max)
+        if t_max <= 0:
+            t_max = max(1, cfg.max_epochs if cfg.max_epochs > 0 else 40)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            opt,
+            T_max=t_max,
+            eta_min=float(cfg.lr_min),
+        )
+    elif cfg.lr_scheduler == "cosine_warm_restart":
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            opt,
+            T_0=max(1, int(cfg.warm_restart_t0)),
+            T_mult=max(1, int(cfg.warm_restart_t_mult)),
+            eta_min=float(cfg.lr_min),
+        )
+    elif cfg.lr_scheduler == "plateau":
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            opt,
+            mode="max",
+            factor=float(cfg.plateau_factor),
+            patience=int(cfg.plateau_patience),
+            min_lr=float(cfg.lr_min),
+        )
 
     train_loader = DataLoader(
         TensorDataset(torch.from_numpy(x_train), torch.from_numpy(y_train)),
@@ -313,7 +507,9 @@ def _train_one_model(
     epochs = 0
     t0 = time.perf_counter()
 
-    for ep in range(1, cfg.max_epochs + 1):
+    ep = 0
+    while True:
+        ep += 1
         epochs = ep
         model.train()
         total_loss = 0.0
@@ -323,7 +519,10 @@ def _train_one_model(
             opt.zero_grad(set_to_none=True)
             _, losses = model(xb, yb)
             losses["total"].backward()
-            nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            if cfg.grad_clip_mode == "norm" and cfg.grad_clip_threshold > 0:
+                nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip_threshold)
+            elif cfg.grad_clip_mode == "value" and cfg.grad_clip_threshold > 0:
+                nn.utils.clip_grad_value_(model.parameters(), cfg.grad_clip_threshold)
             opt.step()
             total_loss += float(losses["total"].item())
 
@@ -342,9 +541,17 @@ def _train_one_model(
         pred = np.stack([np.concatenate(vp[i]) for i in range(3)], axis=1)
         yv = np.stack([np.concatenate(vy[i]) for i in range(3)], axis=1)
         met = _metrics(pred, yv)
+        if scheduler is not None:
+            if cfg.lr_scheduler == "plateau":
+                # plateau scheduler reacts to validation metric.
+                scheduler.step(float(met["avg_ic"]))
+            else:
+                scheduler.step()
+
+        curr_lr = float(opt.param_groups[0]["lr"])
         print(
             f"epoch={ep:02d} train_loss={total_loss/max(1,len(train_loader)):.5f} "
-            f"val_ic={met['avg_ic']:.4f} val_rank_ic={met['avg_rank_ic']:.4f}"
+            f"val_ic={met['avg_ic']:.4f} val_rank_ic={met['avg_rank_ic']:.4f} lr={curr_lr:.2e}"
         )
 
         if met["avg_ic"] > best_ic:
@@ -355,6 +562,8 @@ def _train_one_model(
             stale += 1
 
         if stale >= cfg.patience:
+            break
+        if cfg.max_epochs > 0 and ep >= cfg.max_epochs:
             break
 
     if best_state is not None:
@@ -433,6 +642,7 @@ def _select_train_valid_for_month(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Rolling retrain + horizon sign calibration.")
     parser.add_argument("--dataset-dir", default="data/datasets/lstm_sector70_19d_mkt_20210101_20260120")
+    parser.add_argument("--backbone", choices=list(BACKBONES), default="lstm")
     parser.add_argument("--seq-len", type=int, default=20)
     parser.add_argument("--train-window-months", type=int, default=18)
     parser.add_argument("--valid-window-months", type=int, default=2)
@@ -440,10 +650,26 @@ def main() -> None:
     parser.add_argument("--sign-threshold", type=float, default=0.02)
     parser.add_argument("--hidden-size", type=int, default=64)
     parser.add_argument("--num-layers", type=int, default=2)
+    parser.add_argument("--d-model", type=int, default=64, help="transformer 隐层维度")
+    parser.add_argument("--n-heads", type=int, default=4, help="transformer 注意力头数")
+    parser.add_argument("--d-ff", type=int, default=128, help="transformer 前馈层维度")
     parser.add_argument("--dropout", type=float, default=0.3)
     parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument("--optimizer", choices=list(OPTIMIZERS), default="adamw")
+    parser.add_argument("--weight-decay", type=float, default=1e-5)
+    parser.add_argument("--lr-scheduler", choices=list(LR_SCHEDULERS), default="none")
+    parser.add_argument("--lr-min", type=float, default=1e-6, help="调度器最低学习率")
+    parser.add_argument("--cosine-t-max", type=int, default=20, help="cosine 半周期长度（epoch）")
+    parser.add_argument("--warm-restart-t0", type=int, default=8, help="cosine warm restart 初始周期长度")
+    parser.add_argument("--warm-restart-t-mult", type=int, default=2, help="cosine warm restart 周期倍增系数")
+    parser.add_argument("--plateau-factor", type=float, default=0.5, help="plateau 学习率衰减系数")
+    parser.add_argument("--plateau-patience", type=int, default=3, help="plateau 指标无提升容忍轮数")
+    parser.add_argument("--grad-clip-mode", choices=list(GRAD_CLIP_MODES), default="norm")
+    parser.add_argument("--grad-clip-threshold", type=float, default=1.0)
+    parser.add_argument("--norm-type", choices=list(NORM_TYPES), default="layernorm")
+    parser.add_argument("--norm-eps", type=float, default=1e-8)
     parser.add_argument("--batch-size", type=int, default=32)
-    parser.add_argument("--max-epochs", type=int, default=40)
+    parser.add_argument("--max-epochs", type=int, default=40, help="最大训练轮数；<=0 表示不设上限，仅靠早停")
     parser.add_argument("--patience", type=int, default=8)
     parser.add_argument("--w3", type=float, default=1.0)
     parser.add_argument("--w5", type=float, default=1.0)
@@ -481,14 +707,52 @@ def main() -> None:
         raise ValueError("loss_alpha must be within [0,1]")
     if not (0.0 <= args.ic_rank_beta <= 1.0):
         raise ValueError("ic_rank_beta must be within [0,1]")
+    if args.backbone == "transformer" and args.d_model % args.n_heads != 0:
+        raise ValueError("for transformer: d_model must be divisible by n_heads")
+    if args.weight_decay < 0:
+        raise ValueError("weight_decay must be >= 0")
+    if args.lr_min < 0:
+        raise ValueError("lr_min must be >= 0")
+    if args.cosine_t_max == 0:
+        raise ValueError("cosine_t_max must be != 0")
+    if args.warm_restart_t0 <= 0:
+        raise ValueError("warm_restart_t0 must be > 0")
+    if args.warm_restart_t_mult < 1:
+        raise ValueError("warm_restart_t_mult must be >= 1")
+    if not (0.0 < args.plateau_factor < 1.0):
+        raise ValueError("plateau_factor must be in (0,1)")
+    if args.plateau_patience < 0:
+        raise ValueError("plateau_patience must be >= 0")
+    if args.grad_clip_threshold < 0:
+        raise ValueError("grad_clip_threshold must be >= 0")
+    if args.norm_eps <= 0:
+        raise ValueError("norm_eps must be > 0")
 
     _set_seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     cfg = TrainConfig(
+        backbone=str(args.backbone),
         hidden_size=args.hidden_size,
         num_layers=args.num_layers,
+        d_model=args.d_model,
+        n_heads=args.n_heads,
+        d_ff=args.d_ff,
+        seq_len=args.seq_len,
         dropout=args.dropout,
         lr=args.lr,
+        optimizer=str(args.optimizer),
+        weight_decay=float(args.weight_decay),
+        lr_scheduler=str(args.lr_scheduler),
+        lr_min=float(args.lr_min),
+        cosine_t_max=int(args.cosine_t_max),
+        warm_restart_t0=int(args.warm_restart_t0),
+        warm_restart_t_mult=int(args.warm_restart_t_mult),
+        plateau_factor=float(args.plateau_factor),
+        plateau_patience=int(args.plateau_patience),
+        grad_clip_mode=str(args.grad_clip_mode),
+        grad_clip_threshold=float(args.grad_clip_threshold),
+        norm_type=str(args.norm_type),
+        norm_eps=float(args.norm_eps),
         batch_size=args.batch_size,
         max_epochs=args.max_epochs,
         patience=args.patience,
@@ -649,6 +913,7 @@ def main() -> None:
     out = {
         "config": {
             "dataset_dir": str(ddir),
+            "backbone": str(args.backbone),
             "feature_mode": str(args.feature_mode),
             "features": feature_bases,
             "seq_len": int(args.seq_len),
@@ -658,8 +923,24 @@ def main() -> None:
             "sign_threshold": float(args.sign_threshold),
             "hidden_size": int(args.hidden_size),
             "num_layers": int(args.num_layers),
+            "d_model": int(args.d_model),
+            "n_heads": int(args.n_heads),
+            "d_ff": int(args.d_ff),
             "dropout": float(args.dropout),
             "lr": float(args.lr),
+            "optimizer": str(args.optimizer),
+            "weight_decay": float(args.weight_decay),
+            "lr_scheduler": str(args.lr_scheduler),
+            "lr_min": float(args.lr_min),
+            "cosine_t_max": int(args.cosine_t_max),
+            "warm_restart_t0": int(args.warm_restart_t0),
+            "warm_restart_t_mult": int(args.warm_restart_t_mult),
+            "plateau_factor": float(args.plateau_factor),
+            "plateau_patience": int(args.plateau_patience),
+            "grad_clip_mode": str(args.grad_clip_mode),
+            "grad_clip_threshold": float(args.grad_clip_threshold),
+            "norm_type": str(args.norm_type),
+            "norm_eps": float(args.norm_eps),
             "batch_size": int(args.batch_size),
             "max_epochs": int(args.max_epochs),
             "patience": int(args.patience),
