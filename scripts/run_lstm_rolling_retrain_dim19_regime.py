@@ -18,9 +18,12 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
 
 from ashare_lab.evaluation.metrics import (
+    aggregate_daily_to_monthly,
+    calculate_daily_cs_ic,
     information_coefficient,
     mean_absolute_error,
     rank_information_coefficient,
+    summarize_daily_cs,
 )
 
 FEATURES_DIM19 = [
@@ -689,6 +692,12 @@ def main() -> None:
         help="仅在 ic_rank_aware 下生效：非L1部分中 IC loss 占比，范围 [0,1]",
     )
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--label-mode",
+        default="close_to_close",
+        choices=["close_to_close", "next_open_to_open"],
+        help="标签口径，写入 evaluation_protocol（默认 close_to_close）",
+    )
     parser.add_argument("--save-monthly-checkpoints", action="store_true")
     parser.add_argument(
         "--save-oos-parquet",
@@ -910,6 +919,39 @@ def main() -> None:
     raw_metrics = _metrics(raw, y)
     cal_metrics = _metrics(cal, y)
 
+    # --- evaluation_protocol ---
+    evaluation_protocol = {
+        "signal_time_mode": "close",
+        "execution_time_mode": "next_open",
+        "label_mode": str(args.label_mode),
+        "return_mode": str(args.label_mode),
+        "cost_model": "none",
+        "daily_cs_mode": "required",
+    }
+
+    # --- daily_cs ---
+    oos["date"] = pd.to_datetime(oos["date"])
+    cs_idx = pd.MultiIndex.from_frame(oos[["date", "symbol"]])
+    daily_cs: dict[str, dict] = {}
+    for hkey, h in [("h3", 3), ("h5", 5), ("h10", 10)]:
+        pred_s = pd.Series(oos[f"pred_{h}d"].to_numpy(dtype=float), index=cs_idx)
+        label_s = pd.Series(oos[f"label_{h}d"].to_numpy(dtype=float), index=cs_idx)
+        ic_daily = calculate_daily_cs_ic(pred_s, label_s, method="pearson")
+        ric_daily = calculate_daily_cs_ic(pred_s, label_s, method="spearman")
+        # Ensure JSON-safe types for monthly records (numpy -> Python native)
+        monthly_records = aggregate_daily_to_monthly(ic_daily).to_dict(orient="records")
+        for rec in monthly_records:
+            for k, v in rec.items():
+                if isinstance(v, (np.integer,)):
+                    rec[k] = int(v)
+                elif isinstance(v, (np.floating,)):
+                    rec[k] = float(v)
+        daily_cs[hkey] = {
+            "ic": summarize_daily_cs(ic_daily),
+            "rank_ic": summarize_daily_cs(ric_daily),
+            "monthly": monthly_records,
+        }
+
     out = {
         "config": {
             "dataset_dir": str(ddir),
@@ -949,6 +991,7 @@ def main() -> None:
             "loss_alpha": float(args.loss_alpha),
             "ic_rank_beta": float(args.ic_rank_beta),
             "seed": int(args.seed),
+            "label_mode": str(args.label_mode),
             "device": str(device),
             "months": [str(m) for m in months],
         },
@@ -960,6 +1003,8 @@ def main() -> None:
             "avg_mae": float(cal_metrics["avg_mae"] - raw_metrics["avg_mae"]),
         },
         "monthly_logs": month_logs,
+        "evaluation_protocol": evaluation_protocol,
+        "daily_cs": daily_cs,
     }
 
     if args.save_oos_parquet:

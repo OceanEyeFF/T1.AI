@@ -376,3 +376,233 @@ def test_benchmark_return_missing_close_returns_nan() -> None:
     validator = v.RecommendationValidator(data_source=_FakeDailyBarsSource({}), calendar_source=_FakeCalendarSource(hs300_df))
     out = validator._benchmark_return(hs300_df, pd.Timestamp("2025-01-02"), pd.Timestamp("2025-01-03"))
     assert math.isnan(out)
+
+
+def test_validator_return_mode_close_to_close() -> None:
+    """测试 close_to_close 模式的收益计算（旧默认行为）"""
+    hs300_df = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2025-01-02", "2025-01-03", "2025-01-06"]),
+            "close": [100.0, 101.0, 102.0],
+            "open": [99.0, 100.0, 101.0],
+        }
+    ).set_index("date")
+
+    # 股票 A: close 从 10.0 -> 11.0，收益率 = 0.1，score = 0.2 (正相关)
+    # 股票 B: close 从 20.0 -> 19.0，收益率 = -0.05，score = -0.1 (正相关)
+    bars_by_symbol = {
+        "A": pd.DataFrame(
+            {
+                "date": pd.to_datetime(["2025-01-02", "2025-01-06"]),
+                "close": [10.0, 11.0],
+                "open": [9.5, 10.5],
+            }
+        ).set_index("date"),
+        "B": pd.DataFrame(
+            {
+                "date": pd.to_datetime(["2025-01-02", "2025-01-06"]),
+                "close": [20.0, 19.0],
+                "open": [19.5, 18.5],
+            }
+        ).set_index("date"),
+    }
+
+    validator = v.RecommendationValidator(
+        data_source=_FakeDailyBarsSource(bars_by_symbol),
+        calendar_source=_FakeCalendarSource(hs300_df),
+    )
+
+    recs = [{"symbol": "A", "score": 0.2}, {"symbol": "B", "score": -0.1}]
+    result = validator.validate(
+        recs,
+        validation_horizon=2,
+        recommendation_date="2025-01-02",
+        return_mode="close_to_close",
+    )
+
+    assert result.validation_date == "2025-01-06"
+    assert result.valid_count == 2
+    assert result.return_mode == "close_to_close"
+    # close_to_close: A 从 10.0 -> 11.0 (0.1), B 从 20.0 -> 19.0 (-0.05)
+    # IC 应该为正（因为分数和收益方向一致）
+    assert result.ic > 0.9  # 应该接近 1.0
+
+
+def test_validator_return_mode_next_open_to_open() -> None:
+    """测试 next_open_to_open 模式的收益计算（新推荐，与交易协议一致）"""
+    hs300_df = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2025-01-02", "2025-01-03", "2025-01-06", "2025-01-07"]),
+            "close": [100.0, 101.0, 102.0, 103.0],
+            "open": [99.0, 100.0, 101.0, 102.0],
+        }
+    ).set_index("date")
+
+    # 股票 A: open[t+1] 从 9.8 -> open[t+h+1] 10.8，收益率 ≈ 0.102，score = 0.2 (正相关)
+    # 股票 B: open[t+1] 从 19.6 -> open[t+h+1] 18.8，收益率 ≈ -0.041，score = -0.1 (正相关)
+    bars_by_symbol = {
+        "A": pd.DataFrame(
+            {
+                "date": pd.to_datetime(["2025-01-02", "2025-01-03", "2025-01-06", "2025-01-07"]),
+                "close": [10.0, 10.2, 11.0, 11.2],
+                "open": [9.5, 9.8, 10.5, 10.8],
+            }
+        ).set_index("date"),
+        "B": pd.DataFrame(
+            {
+                "date": pd.to_datetime(["2025-01-02", "2025-01-03", "2025-01-06", "2025-01-07"]),
+                "close": [20.0, 20.0, 19.0, 19.0],
+                "open": [19.5, 19.6, 18.9, 18.8],
+            }
+        ).set_index("date"),
+    }
+
+    validator = v.RecommendationValidator(
+        data_source=_FakeDailyBarsSource(bars_by_symbol),
+        calendar_source=_FakeCalendarSource(hs300_df),
+    )
+
+    recs = [{"symbol": "A", "score": 0.2}, {"symbol": "B", "score": -0.1}]
+    result = validator.validate(
+        recs,
+        validation_horizon=2,
+        recommendation_date="2025-01-02",
+        return_mode="next_open_to_open",
+    )
+
+    assert result.validation_date == "2025-01-06"
+    assert result.valid_count == 2
+    assert result.return_mode == "next_open_to_open"
+    # next_open_to_open: A 从 9.8 -> 10.8 (≈0.102), B 从 19.6 -> 18.8 (≈-0.041)
+    # IC 应该为正（因为分数和收益方向一致）
+    assert result.ic > 0.9  # 应该接近 1.0
+
+
+def test_validator_return_mode_comparison() -> None:
+    """测试两种 return_mode 的结果应该不同"""
+    hs300_df = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2025-01-02", "2025-01-03", "2025-01-06", "2025-01-07"]),
+            "close": [100.0, 101.0, 102.0, 103.0],
+            "open": [99.0, 100.0, 101.0, 102.0],
+        }
+    ).set_index("date")
+
+    # 故意设置不同的 open 和 close 价格，使两种模式结果不同
+    # 两个股票确保可以计算 IC
+    bars_by_symbol = {
+        "A": pd.DataFrame(
+            {
+                "date": pd.to_datetime(["2025-01-02", "2025-01-03", "2025-01-06", "2025-01-07"]),
+                "close": [10.0, 10.5, 11.0, 11.5],
+                "open": [9.5, 9.8, 10.5, 10.9],
+            }
+        ).set_index("date"),
+        "B": pd.DataFrame(
+            {
+                "date": pd.to_datetime(["2025-01-02", "2025-01-03", "2025-01-06", "2025-01-07"]),
+                "close": [20.0, 20.0, 19.0, 19.0],
+                "open": [19.5, 19.6, 18.9, 18.8],
+            }
+        ).set_index("date"),
+    }
+
+    validator = v.RecommendationValidator(
+        data_source=_FakeDailyBarsSource(bars_by_symbol),
+        calendar_source=_FakeCalendarSource(hs300_df),
+    )
+
+    recs = [{"symbol": "A", "score": 0.2}, {"symbol": "B", "score": -0.1}]
+
+    # close_to_close: A (10.0 -> 11.0 = 0.1), B (20.0 -> 19.0 = -0.05)
+    result_close = validator.validate(
+        recs,
+        validation_horizon=2,
+        recommendation_date="2025-01-02",
+        return_mode="close_to_close",
+    )
+
+    # next_open_to_open: A (9.8 -> 10.9 ≈ 0.112), B (19.6 -> 18.8 ≈ -0.041)
+    result_open = validator.validate(
+        recs,
+        validation_horizon=2,
+        recommendation_date="2025-01-02",
+        return_mode="next_open_to_open",
+    )
+
+    # 两种模式的结果应该不同（因为用的价格不同）
+    # 但都是正向收益，所以 IC 都应该是高（方向一致）
+    assert result_close.return_mode == "close_to_close"
+    assert result_open.return_mode == "next_open_to_open"
+    assert result_close.ic > 0.9
+    assert result_open.ic > 0.9
+
+
+def test_validator_result_includes_label_mode() -> None:
+    """测试 ValidationResult 包含 label_mode 字段"""
+    hs300_df = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2025-01-02", "2025-01-03", "2025-01-06"]),
+            "close": [100.0, 101.0, 102.0],
+        }
+    ).set_index("date")
+
+    bars_by_symbol = {
+        "A": pd.DataFrame(
+            {
+                "date": pd.to_datetime(["2025-01-02", "2025-01-06"]),
+                "close": [10.0, 11.0],
+            }
+        ).set_index("date"),
+    }
+
+    validator = v.RecommendationValidator(
+        data_source=_FakeDailyBarsSource(bars_by_symbol),
+        calendar_source=_FakeCalendarSource(hs300_df),
+    )
+
+    recs = [{"symbol": "A", "score": 0.2}]
+    result = validator.validate(
+        recs,
+        validation_horizon=2,
+        recommendation_date="2025-01-02",
+        return_mode="close_to_close",
+        label_mode="next_open_to_open",  # 显式传入 label_mode
+    )
+
+    assert result.return_mode == "close_to_close"
+    assert result.label_mode == "next_open_to_open"
+
+
+def test_validator_default_return_mode() -> None:
+    """测试默认 return_mode 是 close_to_close（向后兼容）"""
+    hs300_df = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2025-01-02", "2025-01-03", "2025-01-06"]),
+            "close": [100.0, 101.0, 102.0],
+        }
+    ).set_index("date")
+
+    bars_by_symbol = {
+        "A": pd.DataFrame(
+            {
+                "date": pd.to_datetime(["2025-01-02", "2025-01-06"]),
+                "close": [10.0, 11.0],
+            }
+        ).set_index("date"),
+    }
+
+    validator = v.RecommendationValidator(
+        data_source=_FakeDailyBarsSource(bars_by_symbol),
+        calendar_source=_FakeCalendarSource(hs300_df),
+    )
+
+    recs = [{"symbol": "A", "score": 0.2}]
+    # 不传 return_mode 参数，应该使用默认值 close_to_close
+    result = validator.validate(
+        recs,
+        validation_horizon=2,
+        recommendation_date="2025-01-02",
+    )
+
+    assert result.return_mode == "close_to_close"

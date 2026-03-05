@@ -8,8 +8,11 @@ import pytest
 import pandas as pd
 
 from scripts.compare_ic_reports import (
+    DailyCsSummary,
     GateThresholds,
     _common_months,
+    check_icir_threshold,
+    check_protocol_consistency,
     compute_ic_5_10,
     compute_rank_ic_5_10,
     extract_monthly_series,
@@ -207,3 +210,121 @@ def test_cli_required_mode_raises_without_oos_path(tmp_path) -> None:
 
     with pytest.raises(ValueError, match="oos parquet"):
         main(["--reports", str(p), "--output-dir", str(tmp_path / "out"), "--tag", "required-missing"])
+
+
+def test_check_protocol_consistency_all_match() -> None:
+    """协议一致的报告应该通过"""
+    proto = {
+        "signal_time_mode": "close",
+        "execution_time_mode": "next_open",
+        "label_mode": "next_open_to_open",
+        "return_mode": "next_open_to_open",
+    }
+    reports = [
+        {"evaluation_protocol": proto, "_report_name": "r1"},
+        {"evaluation_protocol": proto, "_report_name": "r2"},
+    ]
+    ok, msg = check_protocol_consistency(reports)
+    assert ok is True
+
+
+def test_check_protocol_consistency_mismatch() -> None:
+    """协议不一致应该失败"""
+    reports = [
+        {
+            "evaluation_protocol": {"label_mode": "close_to_close", "return_mode": "close_to_close"},
+            "_report_name": "r1",
+        },
+        {
+            "evaluation_protocol": {"label_mode": "next_open_to_open", "return_mode": "next_open_to_open"},
+            "_report_name": "r2",
+        },
+    ]
+    ok, msg = check_protocol_consistency(reports)
+    assert ok is False
+    assert "label_mode" in msg
+
+
+def test_check_protocol_consistency_missing_protocol() -> None:
+    """缺少 evaluation_protocol 的报告被跳过"""
+    reports = [
+        {"evaluation_protocol": {"label_mode": "close_to_close"}, "_report_name": "r1"},
+        {"_report_name": "r2"},  # 无 evaluation_protocol
+    ]
+    ok, msg = check_protocol_consistency(reports)
+    assert ok is True  # 只有 1 份有协议，跳过检查
+
+
+def test_check_icir_threshold() -> None:
+    """ICIR 门禁测试"""
+    summary_high = DailyCsSummary(
+        source_path="test", day_count=100, month_count=5,
+        mean_ic_5_10=0.08, mean_rank_ic_5_10=0.10, icir_5_10=0.8,
+        monthly_ic_5_10={},
+    )
+    summary_low = DailyCsSummary(
+        source_path="test", day_count=100, month_count=5,
+        mean_ic_5_10=0.03, mean_rank_ic_5_10=0.04, icir_5_10=0.3,
+        monthly_ic_5_10={},
+    )
+
+    assert check_icir_threshold(summary_high, threshold=0.5) is True
+    assert check_icir_threshold(summary_low, threshold=0.5) is False
+    assert check_icir_threshold(None, threshold=0.5) is False
+    assert check_icir_threshold(summary_low, threshold=0.0) is True  # 0 = 不检查
+
+
+def test_passes_gate_with_icir() -> None:
+    """passes_gate 应该同时检查 ICIR"""
+    monthly = summarize_monthly([0.06, 0.08, 0.05, 0.07])
+    summary = DailyCsSummary(
+        source_path="test", day_count=100, month_count=4,
+        mean_ic_5_10=0.08, mean_rank_ic_5_10=0.10, icir_5_10=0.8,
+        monthly_ic_5_10={},
+    )
+
+    # 无 ICIR 门禁（默认）-> 通过
+    gate_no_icir = GateThresholds(mean_ic_5_10=0.05, mean_rank_ic_5_10=0.08)
+    assert passes_gate(0.08, 0.10, monthly, gate_no_icir) is True
+
+    # 有 ICIR 门禁 + 高 ICIR -> 通过
+    gate_with_icir = GateThresholds(mean_ic_5_10=0.05, mean_rank_ic_5_10=0.08, icir_5_10=0.5)
+    assert passes_gate(0.08, 0.10, monthly, gate_with_icir, daily_summary=summary) is True
+
+    # 有 ICIR 门禁 + 无 daily_summary -> 失败
+    assert passes_gate(0.08, 0.10, monthly, gate_with_icir, daily_summary=None) is False
+
+    # 有 ICIR 门禁 + 低 ICIR -> 失败
+    summary_low = DailyCsSummary(
+        source_path="test", day_count=100, month_count=4,
+        mean_ic_5_10=0.08, mean_rank_ic_5_10=0.10, icir_5_10=0.3,
+        monthly_ic_5_10={},
+    )
+    assert passes_gate(0.08, 0.10, monthly, gate_with_icir, daily_summary=summary_low) is False
+
+
+def test_cli_protocol_check_raises_on_mismatch(tmp_path) -> None:
+    """--check-protocol 应在协议不一致时报错"""
+    r1 = {
+        "raw_oos_metrics": {"ic_5d": 0.06, "ic_10d": 0.08, "rank_ic_5d": 0.09, "rank_ic_10d": 0.10},
+        "evaluation_protocol": {"label_mode": "close_to_close", "return_mode": "close_to_close"},
+        "monthly_logs": [{"month": "2025-01", "month_avg_ic_5_10": 0.05}],
+    }
+    r2 = {
+        "raw_oos_metrics": {"ic_5d": 0.06, "ic_10d": 0.08, "rank_ic_5d": 0.09, "rank_ic_10d": 0.10},
+        "evaluation_protocol": {"label_mode": "next_open_to_open", "return_mode": "next_open_to_open"},
+        "monthly_logs": [{"month": "2025-01", "month_avg_ic_5_10": 0.03}],
+    }
+    p1 = tmp_path / "r1.json"
+    p2 = tmp_path / "r2.json"
+    p1.write_text(json.dumps(r1), encoding="utf-8")
+    p2.write_text(json.dumps(r2), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="协议一致性检查失败"):
+        main([
+            "--reports", str(p1), str(p2),
+            "--daily-cs-mode", "off",
+            "--check-protocol",
+            "--output-dir", str(tmp_path / "out"),
+            "--tag", "proto-test",
+        ])

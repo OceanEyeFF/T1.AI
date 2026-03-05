@@ -14,6 +14,7 @@ Outputs (default):
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 from pathlib import Path
 from typing import Iterable
@@ -97,8 +98,12 @@ def _compute_features(data: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(feat_dict, index=data.index)
 
 
-def _compute_labels(data: pd.DataFrame, horizons: Iterable[int]) -> pd.DataFrame:
-    return MultiHorizonLabel(horizons=horizons).compute(data)
+def _compute_labels(
+    data: pd.DataFrame,
+    horizons: Iterable[int],
+    label_mode: str = "close_to_close",
+) -> pd.DataFrame:
+    return MultiHorizonLabel(horizons=horizons, label_mode=label_mode).compute(data)
 
 
 def _load_bars(source: str, symbol: str, start: str, end: str, cache_dir: Path) -> pd.DataFrame:
@@ -148,6 +153,12 @@ def main() -> None:
         default="3,5,10",
         help="Label horizons in days (default: 3,5,10)",
     )
+    parser.add_argument(
+        "--label-mode",
+        default="close_to_close",
+        choices=["close_to_close", "next_open_to_open"],
+        help="Label calculation mode (default: close_to_close for backward compatibility)",
+    )
     args = parser.parse_args()
 
     symbols = _parse_symbols(args.symbols, args.symbols_csv)
@@ -162,6 +173,7 @@ def main() -> None:
     logger.info(f"Symbols: {len(symbols)}")
     logger.info(f"Date range: {args.start} ~ {args.end}")
     logger.info(f"seq_len={args.seq_len}, stride={args.stride}, horizons={horizons}")
+    logger.info(f"label_mode={args.label_mode}")
 
     feature_frames: list[pd.DataFrame] = []
     label_frames: list[pd.DataFrame] = []
@@ -173,7 +185,7 @@ def main() -> None:
             continue
 
         feats = _compute_features(bars)
-        labs = _compute_labels(bars, horizons=horizons)
+        labs = _compute_labels(bars, horizons=horizons, label_mode=args.label_mode)
 
         feats = feats.assign(symbol=str(symbol)).reset_index().set_index(["date", "symbol"]).sort_index()
         labs = labs.assign(symbol=str(symbol)).reset_index().set_index(["date", "symbol"]).sort_index()
@@ -243,6 +255,49 @@ def main() -> None:
         mean = float(y_df[col].mean(skipna=True))
         std = float(y_df[col].std(skipna=True))
         logger.info(f"{col}: valid={valid_ratio:.2%}, mean={mean:.6f}, std={std:.6f}")
+
+    # 保存元数据
+    metadata = {
+        "dataset_config": {
+            "source": args.source,
+            "symbols": symbols,
+            "num_symbols": len(symbols),
+            "start_date": args.start,
+            "end_date": args.end,
+            "cache_dir": str(cache_dir),
+        },
+        "label_config": {
+            "horizons": list(horizons),
+            "label_mode": args.label_mode,
+        },
+        "feature_config": {
+            "seq_len": args.seq_len,
+            "stride": args.stride,
+            "num_features": X.shape[2],
+            "feature_names": builder.feature_columns_ or list(features_all.columns),
+        },
+        "split_config": {
+            "train_ratio": args.train_ratio,
+            "valid_ratio": args.valid_ratio,
+            "test_ratio": 1.0 - args.train_ratio - args.valid_ratio,
+            "train_samples": int(m_train.sum()),
+            "valid_samples": int(m_valid.sum()),
+            "test_samples": int(m_test.sum()),
+        },
+        "label_statistics": {
+            col: {
+                "valid_ratio": float(y_df[col].notna().mean()),
+                "mean": float(y_df[col].mean(skipna=True)),
+                "std": float(y_df[col].std(skipna=True)),
+            }
+            for col in y_cols
+        },
+    }
+
+    metadata_path = output_dir / "metadata.json"
+    with open(metadata_path, "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=2, ensure_ascii=False)
+    logger.info(f"Metadata saved: {metadata_path}")
 
 
 if __name__ == "__main__":

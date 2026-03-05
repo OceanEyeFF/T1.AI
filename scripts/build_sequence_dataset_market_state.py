@@ -11,6 +11,7 @@ All market features are shifted by 1 day to avoid look-ahead leakage.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import time
 from pathlib import Path
@@ -671,6 +672,12 @@ def main() -> None:
     parser.add_argument("--train-ratio", type=float, default=0.7)
     parser.add_argument("--valid-ratio", type=float, default=0.15)
     parser.add_argument("--horizons", default="3,5,10")
+    parser.add_argument(
+        "--label-mode",
+        default="close_to_close",
+        choices=["close_to_close", "next_open_to_open"],
+        help="Label calculation mode (default: close_to_close for backward compatibility)",
+    )
     parser.add_argument("--output-dir", default="data/datasets/lstm_sector70_19d_mkt_20210101_20260120")
     parser.add_argument(
         "--feature-profile",
@@ -766,7 +773,7 @@ def main() -> None:
             etf_features=etf_features_by_symbol.get(symbol),
         )
         feats = feats.join(market_state, how="left")
-        labs = MultiHorizonLabel(horizons=horizons).compute(bars)
+        labs = MultiHorizonLabel(horizons=horizons, label_mode=args.label_mode).compute(bars)
 
         feats = feats.assign(symbol=symbol).reset_index().set_index(["date", "symbol"]).sort_index()
         labs = labs.assign(symbol=symbol).reset_index().set_index(["date", "symbol"]).sort_index()
@@ -814,6 +821,39 @@ def main() -> None:
         p = out_dir / f"{name}.parquet"
         full_df.loc[mask].reset_index(drop=True).to_parquet(p, index=False)
         print(f"{name}: {int(mask.sum())} -> {p}")
+
+    # --- metadata.json ---
+    metadata = {
+        "dataset_config": {
+            "source": args.source,
+            "symbols_csv": str(args.symbols_csv),
+            "num_symbols": len(all_bars),
+            "start_date": args.start,
+            "end_date": args.end,
+        },
+        "label_config": {
+            "horizons": list(horizons),
+            "label_mode": args.label_mode,
+        },
+        "feature_config": {
+            "num_features": len(feature_names),
+            "feature_names": feature_names,
+            "feature_profile": args.feature_profile,
+            "seq_len": args.seq_len,
+            "stride": args.stride,
+        },
+        "split_config": {
+            "train_ratio": args.train_ratio,
+            "valid_ratio": args.valid_ratio,
+            "train_samples": int(m_train.sum()),
+            "valid_samples": int(m_valid.sum()),
+            "test_samples": int(m_test.sum()),
+        },
+    }
+    metadata_path = out_dir / "metadata.json"
+    with open(metadata_path, "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=2, ensure_ascii=False)
+    print(f"Metadata saved: {metadata_path}")
 
     print(f"symbols_loaded: {len(all_bars)}")
     print(f"feature_count: {len(feature_names)}")

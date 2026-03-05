@@ -1,10 +1,14 @@
 """推荐结果验证器（Phase 2）
 
 本模块目标：
-- 通过“数据源适配器 + 交易日历注入”实现与外部数据源解耦；
+- 通过"数据源适配器 + 交易日历注入"实现与外部数据源解耦；
 - 使用沪深300（HS300）指数日线的日期作为交易日历；
 - 对停牌/缺价等情况用 NaN 掩码处理，并复用 evaluation.metrics 的 IC/RankIC 计算；
 - 输出命中率、IC、RankIC、超额收益等核心指标。
+
+支持两种收益计算口径：
+- close_to_close: 从推荐日 close 到验证日 close（旧默认，兼容现有流程）
+- next_open_to_open: 从推荐日次日 open 到验证日次日 open（与交易协议一致）
 """
 
 from __future__ import annotations
@@ -12,13 +16,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
-from typing import Any, Mapping, Protocol, Sequence, TYPE_CHECKING
+from typing import Any, Literal, Mapping, Protocol, Sequence, TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - 仅用于类型提示
     import pandas as pd
 
 
 _REQUIRED_DAILY_COLS: tuple[str, ...] = ("open", "high", "low", "close", "volume", "amount")
+
+# 收益模式类型定义
+ReturnMode = Literal["close_to_close", "next_open_to_open"]
 
 
 class DailyBarsSource(Protocol):
@@ -216,7 +223,18 @@ class HS300IndexCalendarSource:
 
 @dataclass(frozen=True, slots=True)
 class ValidationResult:
-    """推荐验证结果（单一 horizon）。"""
+    """推荐验证结果（单一 horizon）。
+
+    Args:
+        hit_rate: 方向命中率
+        ic: 信息系数（Pearson）
+        rank_ic: 秩信息系数（Spearman）
+        excess_return: 超额收益（相对基准）
+        valid_count: 有效样本数
+        validation_date: 验证日期（YYYY-MM-DD）
+        return_mode: 实际收益计算模式
+        label_mode: 对应的标签模式（从元数据读取，可选）
+    """
 
     hit_rate: float
     ic: float
@@ -224,6 +242,8 @@ class ValidationResult:
     excess_return: float
     valid_count: int
     validation_date: str  # YYYY-MM-DD
+    return_mode: ReturnMode = "close_to_close"  # 新增：协议记录
+    label_mode: str | None = None  # 新增：从元数据读取（可选）
 
 
 def _extract_symbol_and_score(item: Any) -> tuple[str, float]:
@@ -311,6 +331,23 @@ def _get_close_on(df: pd.DataFrame, date: pd.Timestamp) -> float | None:
     return float(value)
 
 
+def _get_open_on(df: pd.DataFrame, date: pd.Timestamp) -> float | None:
+    """从日线中取某日开盘价（缺失返回 None）。"""
+    import pandas as pd
+
+    if df is None or df.empty:
+        return None
+    if "open" not in df.columns:
+        return None
+    try:
+        value = df.loc[date, "open"]
+    except KeyError:
+        return None
+    if pd.isna(value):
+        return None
+    return float(value)
+
+
 class RecommendationValidator:
     """推荐验证器（单一 horizon 版本）。"""
 
@@ -325,6 +362,8 @@ class RecommendationValidator:
         recommendations: Any,
         validation_horizon: int = 5,
         recommendation_date: str | None = None,
+        return_mode: ReturnMode = "close_to_close",
+        label_mode: str | None = None,
     ) -> ValidationResult:
         """验证推荐准确性。
 
@@ -332,6 +371,10 @@ class RecommendationValidator:
             recommendations: 推荐列表（Recommendation 或 dict），也支持包含 date 字段的 payload。
             validation_horizon: 验证持有期（交易日数量），默认 5。
             recommendation_date: 推荐日期（YYYY-MM-DD 或 YYYYMMDD），可选。
+            return_mode: 实际收益计算模式
+                - "close_to_close": 从推荐日 close 到验证日 close（旧默认）
+                - "next_open_to_open": 从推荐日次日 open 到验证日次日 open（推荐）
+            label_mode: 对应的标签模式（可选，用于元数据记录）
 
         Returns:
             ValidationResult
@@ -367,24 +410,68 @@ class RecommendationValidator:
                 excess_return=0.0,
                 valid_count=0,
                 validation_date=validation_ts.strftime("%Y-%m-%d"),
+                return_mode=return_mode,
+                label_mode=label_mode,
             )
+
+        # 根据 return_mode 确定需要获取的日期范围
+        # next_open_to_open 模式需要获取推荐日次日和验证日次日的数据
+        if return_mode == "next_open_to_open":
+            # 需要额外获取次日数据，扩展查询范围
+            fetch_end = (validation_ts + timedelta(days=10)).strftime("%Y-%m-%d")
+        else:
+            fetch_end = validation_ts.strftime("%Y-%m-%d")
 
         bars_by_symbol = self.data_source.fetch_daily_bars(
             symbols=symbols,
             start_date=rec_ts.strftime("%Y-%m-%d"),
-            end_date=validation_ts.strftime("%Y-%m-%d"),
+            end_date=fetch_end,
         )
 
         realized_returns: list[float] = []
         scores: list[float] = []
+
+        # 计算实际收益（根据 return_mode）
         for symbol in symbols:
             df = _ensure_daily_schema(bars_by_symbol.get(symbol, pd.DataFrame()))
-            start_close = _get_close_on(df, rec_ts)
-            end_close = _get_close_on(df, validation_ts)
-            if start_close is None or end_close is None or start_close == 0:
+
+            if return_mode == "close_to_close":
+                # 旧模式：从推荐日 close 到验证日 close
+                start_price = _get_close_on(df, rec_ts)
+                end_price = _get_close_on(df, validation_ts)
+            else:  # next_open_to_open
+                # 新模式：从推荐日次日 open 到验证日次日 open
+                # 需要找到推荐日和验证日的下一个交易日
+                trade_dates = pd.DatetimeIndex(df.index).normalize().sort_values()
+
+                # 找推荐日次日
+                if rec_ts in trade_dates:
+                    rec_idx = int(trade_dates.get_loc(rec_ts))
+                    if rec_idx + 1 < len(trade_dates):
+                        start_date = trade_dates[rec_idx + 1]
+                        start_price = _get_open_on(df, start_date)
+                    else:
+                        start_price = None
+                else:
+                    start_price = None
+
+                # 找验证日次日
+                if validation_ts in trade_dates:
+                    val_idx = int(trade_dates.get_loc(validation_ts))
+                    if val_idx + 1 < len(trade_dates):
+                        end_date = trade_dates[val_idx + 1]
+                        end_price = _get_open_on(df, end_date)
+                    else:
+                        end_price = None
+                else:
+                    end_price = None
+
+            # 计算收益率
+            if start_price is None or end_price is None or start_price == 0:
                 realized_returns.append(np.nan)
             else:
-                realized_returns.append(end_close / start_close - 1.0)
+                realized_returns.append(end_price / start_price - 1.0)
+
             scores.append(float(symbol_to_score[symbol]))
 
         realized_np = np.asarray(realized_returns, dtype=float)
@@ -417,6 +504,8 @@ class RecommendationValidator:
             excess_return=excess_return,
             valid_count=valid_count,
             validation_date=validation_ts.strftime("%Y-%m-%d"),
+            return_mode=return_mode,
+            label_mode=label_mode,
         )
 
     def _resolve_validation_date(

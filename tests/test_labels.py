@@ -330,3 +330,79 @@ class TestMultiHorizonLabel:
         # 后续有对齐数据的日期应该有有效值
         # 需要验证 reindex 后是否正确对齐
         assert len(result) == len(sample_stock_data)
+
+    def test_label_mode_close_to_close(self, sample_stock_data: pd.DataFrame) -> None:
+        """测试 close_to_close 模式（旧默认行为）"""
+        label = MultiHorizonLabel(horizons=(1,), label_mode="close_to_close")
+        result = label.compute(sample_stock_data)
+
+        # label[0] = close[1] / close[0] - 1 = 102/100 - 1 = 0.02
+        expected = (sample_stock_data["close"].iloc[1] / sample_stock_data["close"].iloc[0]) - 1.0
+        assert np.isclose(result.iloc[0]["label_1d"], expected, rtol=1e-9)
+
+        # label[4] = close[5] / close[4] - 1 = 108/103 - 1
+        expected_4 = (sample_stock_data["close"].iloc[5] / sample_stock_data["close"].iloc[4]) - 1.0
+        assert np.isclose(result.iloc[4]["label_1d"], expected_4, rtol=1e-9)
+
+    def test_label_mode_next_open_to_open(self, sample_stock_data: pd.DataFrame) -> None:
+        """测试 next_open_to_open 模式（新推荐，与交易协议一致）"""
+        label = MultiHorizonLabel(horizons=(1,), label_mode="next_open_to_open")
+        result = label.compute(sample_stock_data)
+
+        # label[0] = open[2] / open[1] - 1
+        # open[1] = 101.5, open[2] = 100.5
+        # 这里 sample_stock_data 的 open = close - 0.5
+        open_prices = sample_stock_data["close"] - 0.5
+        expected = (open_prices.iloc[2] / open_prices.iloc[1]) - 1.0
+        assert np.isclose(result.iloc[0]["label_1d"], expected, rtol=1e-9)
+
+        # label[4] = open[6] / open[5] - 1
+        # open[5] = 107.5, open[6] = 106.5
+        expected_4 = (open_prices.iloc[6] / open_prices.iloc[5]) - 1.0
+        assert np.isclose(result.iloc[4]["label_1d"], expected_4, rtol=1e-9)
+
+    def test_label_mode_comparison(self, sample_stock_data: pd.DataFrame) -> None:
+        """测试两种模式的结果应该不同（验证模式切换生效）"""
+        label_close = MultiHorizonLabel(horizons=(5,), label_mode="close_to_close")
+        label_open = MultiHorizonLabel(horizons=(5,), label_mode="next_open_to_open")
+
+        result_close = label_close.compute(sample_stock_data)
+        result_open = label_open.compute(sample_stock_data)
+
+        # 验证 close_to_close 的第一个值
+        # label[0] = close[5] / close[0] - 1 = 108/100 - 1 = 0.08
+        expected_close = (sample_stock_data["close"].iloc[5] / sample_stock_data["close"].iloc[0]) - 1.0
+        assert np.isclose(result_close.iloc[0]["label_5d"], expected_close, rtol=1e-9)
+
+        # 验证 next_open_to_open 的第一个值
+        # label[0] = open[6] / open[1] - 1
+        open_prices = sample_stock_data["close"] - 0.5
+        expected_open = (open_prices.iloc[6] / open_prices.iloc[1]) - 1.0
+        assert np.isclose(result_open.iloc[0]["label_5d"], expected_open, rtol=1e-9)
+
+        # 两种模式的第一个值应该不同（因为用的价格列不同）
+        assert not np.isclose(
+            result_close.iloc[0]["label_5d"],
+            result_open.iloc[0]["label_5d"],
+            rtol=1e-6,
+        )
+
+    def test_label_mode_requires_open_column(self) -> None:
+        """测试 next_open_to_open 模式需要 open 列"""
+        df_without_open = pd.DataFrame(
+            {"close": [100, 102, 101], "volume": [1000, 1000, 1000]},
+            index=pd.date_range("2024-01-01", periods=3, freq="D"),
+        )
+
+        label = MultiHorizonLabel(horizons=(1,), label_mode="next_open_to_open")
+
+        # 应该抛出 KeyError，因为缺少 open 列
+        with pytest.raises(KeyError, match="next_open_to_open mode requires 'open' column"):
+            label.compute(df_without_open)
+
+    def test_label_mode_invalid_value(self, sample_stock_data: pd.DataFrame) -> None:
+        """测试无效的 label_mode 值"""
+        label = MultiHorizonLabel(horizons=(1,), label_mode="invalid_mode")
+
+        with pytest.raises(ValueError, match="不支持的 label_mode"):
+            label.compute(sample_stock_data)

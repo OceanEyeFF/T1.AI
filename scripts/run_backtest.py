@@ -82,9 +82,13 @@ def main() -> None:
             pd.Series(excess_stats).to_csv(out_dir / "excess_stats.csv")
 
     print("Backtest summary")
-    for k in ["final_equity", "cagr", "mdd", "turnover_ratio", "total_cost", "trade_count"]:
+    for k in [
+        "final_equity", "net_cagr", "gross_cagr", "net_mdd", "gross_mdd",
+        "ann_vol", "sharpe", "sortino", "calmar",
+        "win_rate_daily", "turnover_ratio", "total_cost", "cost_drag_pct", "trade_count",
+    ]:
         if k in result.stats:
-            print(f"- {k}: {result.stats[k]}")
+            print(f"- {k}: {result.stats[k]:.6f}")
     if not bench.empty:
         ex = summarize_excess(align_equity_and_benchmark(result.equity_curve, bench["close"]))
         for k in ["excess_ann", "excess_vol", "excess_sharpe"]:

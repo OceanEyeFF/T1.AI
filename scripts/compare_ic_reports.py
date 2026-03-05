@@ -29,6 +29,7 @@ class GateThresholds:
     monthly_win_rate: float = 0.60
     worst_month: float = -0.10
     max_consecutive_negative_months: int = 2
+    icir_5_10: float = 0.0  # ICIR 门禁阈值（0 表示不检查）
 
 
 @dataclass
@@ -48,6 +49,7 @@ class DailyCsSummary:
     month_count: int
     mean_ic_5_10: float
     mean_rank_ic_5_10: float
+    icir_5_10: float
     monthly_ic_5_10: dict[str, float]
 
 
@@ -185,16 +187,83 @@ def summarize_monthly(values: list[float]) -> MonthlySummary:
     )
 
 
-def passes_gate(mean_ic_5_10: float | None, mean_rank_ic_5_10: float | None, monthly: MonthlySummary, gate: GateThresholds) -> bool:
+def check_protocol_consistency(reports: list[dict[str, Any]]) -> tuple[bool, str]:
+    """检查多份报告的评估协议是否一致。
+
+    比对 evaluation_protocol 字段中的关键键值：
+    signal_time_mode, execution_time_mode, label_mode, return_mode。
+    缺少 evaluation_protocol 的报告会被跳过（不视为不一致）。
+
+    Returns:
+        (is_consistent, message)
+    """
+    protocol_keys = ("signal_time_mode", "execution_time_mode", "label_mode", "return_mode")
+    seen_protocols: list[tuple[str, dict[str, str]]] = []
+
+    for report in reports:
+        proto = report.get("evaluation_protocol")
+        if not isinstance(proto, dict):
+            continue
+        extracted = {k: str(proto.get(k, "")) for k in protocol_keys}
+        name = report.get("_report_name", "unknown")
+        seen_protocols.append((name, extracted))
+
+    if len(seen_protocols) < 2:
+        return True, "协议一致性检查跳过（少于 2 份报告包含 evaluation_protocol）"
+
+    reference_name, reference = seen_protocols[0]
+    for name, proto in seen_protocols[1:]:
+        diffs = {k: (reference[k], proto[k]) for k in protocol_keys if reference[k] != proto[k]}
+        if diffs:
+            diff_str = "; ".join(f"{k}: {a!r} vs {b!r}" for k, (a, b) in diffs.items())
+            return False, f"协议不一致: {reference_name} vs {name}: {diff_str}"
+
+    return True, "协议一致"
+
+
+def check_icir_threshold(
+    daily_summary: DailyCsSummary | None,
+    threshold: float = 0.5,
+) -> bool:
+    """检查 ICIR 是否达到门禁阈值。
+
+    Args:
+        daily_summary: Daily-CS 汇总数据（包含 icir_5_10）
+        threshold: ICIR 阈值，默认 0.5
+
+    Returns:
+        True 如果通过门禁（或无需检查）
+    """
+    if threshold <= 0:
+        return True  # 阈值 <= 0 表示不检查
+    if daily_summary is None:
+        return False  # 无数据则未通过
+    return daily_summary.icir_5_10 >= threshold
+
+
+def passes_gate(
+    mean_ic_5_10: float | None,
+    mean_rank_ic_5_10: float | None,
+    monthly: MonthlySummary,
+    gate: GateThresholds,
+    daily_summary: DailyCsSummary | None = None,
+) -> bool:
     if mean_ic_5_10 is None or mean_rank_ic_5_10 is None or monthly.month_count == 0:
         return False
-    return (
+    base_pass = (
         mean_ic_5_10 >= gate.mean_ic_5_10
         and mean_rank_ic_5_10 >= gate.mean_rank_ic_5_10
         and monthly.win_rate >= gate.monthly_win_rate
         and monthly.worst >= gate.worst_month
         and monthly.max_consecutive_negative_months <= gate.max_consecutive_negative_months
     )
+    if not base_pass:
+        return False
+    # ICIR 门禁（仅当阈值 > 0 时启用）
+    if gate.icir_5_10 > 0:
+        if not check_icir_threshold(daily_summary, gate.icir_5_10):
+            return False
+    return True
 
 
 def _common_months(loaded: list[tuple[str, dict[str, float]]]) -> list[str]:
@@ -289,12 +358,18 @@ def _daily_cs_from_oos(path: Path, metric_source: str) -> DailyCsSummary | None:
         .to_dict()
     )
 
+    # ICIR = mean(daily_ic) / std(daily_ic)
+    mean_ic = float(daily_df["avg_ic_5_10"].mean())
+    std_ic = float(daily_df["avg_ic_5_10"].std(ddof=1)) if len(daily_df) > 1 else 0.0
+    icir = mean_ic / std_ic if std_ic > 0 else 0.0
+
     return DailyCsSummary(
         source_path=str(path),
         day_count=int(len(daily_df)),
         month_count=int(len(monthly)),
-        mean_ic_5_10=float(daily_df["avg_ic_5_10"].mean()),
+        mean_ic_5_10=mean_ic,
         mean_rank_ic_5_10=float(daily_df["avg_rank_ic_5_10"].mean()),
+        icir_5_10=float(icir),
         monthly_ic_5_10=monthly,
     )
 
@@ -318,6 +393,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--gate-monthly-win-rate", type=float, default=0.60)
     p.add_argument("--gate-worst-month", type=float, default=-0.10)
     p.add_argument("--gate-max-consecutive-negative-months", type=int, default=2)
+    p.add_argument("--gate-icir", type=float, default=0.0,
+                   help="ICIR 门禁阈值（默认 0 表示不检查，推荐 0.5）")
+    p.add_argument("--check-protocol", action="store_true",
+                   help="检查报告间的 evaluation_protocol 一致性")
     return p
 
 
@@ -330,6 +409,7 @@ def main(argv: list[str] | None = None) -> int:
         monthly_win_rate=args.gate_monthly_win_rate,
         worst_month=args.gate_worst_month,
         max_consecutive_negative_months=args.gate_max_consecutive_negative_months,
+        icir_5_10=args.gate_icir,
     )
     loaded: list[
         tuple[
@@ -369,14 +449,26 @@ def main(argv: list[str] | None = None) -> int:
             elif args.daily_cs_mode == "required":
                 raise ValueError(f"报告缺少可用 oos parquet 路径: {path}")
 
-        loaded.append((path.name, metrics, monthly, ic_5_10, rank_ic_5_10, source_mode, daily_summary))
+        loaded.append((path.name, data, metrics, monthly, ic_5_10, rank_ic_5_10, source_mode, daily_summary))
 
-    common_months = _common_months([(name, monthly) for name, _, monthly, _, _, _, _ in loaded])
+    # 协议一致性检查
+    if args.check_protocol:
+        report_dicts = []
+        for name, data, *_ in loaded:
+            report_dict = dict(data)
+            report_dict["_report_name"] = name
+            report_dicts.append(report_dict)
+        consistent, msg = check_protocol_consistency(report_dicts)
+        if not consistent:
+            raise ValueError(f"协议一致性检查失败: {msg}")
+        print(f"[协议检查] {msg}")
+
+    common_months = _common_months([(name, monthly) for name, _, _, monthly, _, _, _, _ in loaded])
     if not common_months and not args.allow_empty_common_months:
         raise ValueError("公共 OOS 月份为空，请检查报告时间区间或使用 --allow-empty-common-months")
 
     rows: list[dict[str, Any]] = []
-    for name, _, monthly, ic_5_10, rank_ic_5_10, source_mode, daily_summary in loaded:
+    for name, _, _, monthly, ic_5_10, rank_ic_5_10, source_mode, daily_summary in loaded:
         aligned = [monthly[m] for m in common_months]
         monthly_summary = summarize_monthly(aligned)
         rows.append(
@@ -394,10 +486,14 @@ def main(argv: list[str] | None = None) -> int:
                         "source_path": daily_summary.source_path,
                         "day_count": daily_summary.day_count,
                         "month_count": daily_summary.month_count,
+                        "icir_5_10": daily_summary.icir_5_10,
                     }
                 ),
                 "monthly": asdict(monthly_summary),
-                "pass_gate": passes_gate(ic_5_10, rank_ic_5_10, monthly_summary, gate),
+                "pass_gate": passes_gate(
+                    ic_5_10, rank_ic_5_10, monthly_summary, gate,
+                    daily_summary=daily_summary,
+                ),
             }
         )
 
@@ -425,19 +521,21 @@ def main(argv: list[str] | None = None) -> int:
         f"- daily-CS 使用: {daily_cs_reports}/{len(rows)} 份报告",
         f"- 公共 OOS 月份数: {len(common_months)}",
         "",
-        "| 报告 | 口径来源 | mean(IC_5_10) | mean(RankIC_5_10) | 月胜率 | 最差月 | 连续负月 | 门禁 |",
-        "|---|---|---:|---:|---:|---:|---:|---|",
+        "| 报告 | 口径来源 | mean(IC_5_10) | mean(RankIC_5_10) | ICIR | 月胜率 | 最差月 | 连续负月 | 门禁 |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---|",
     ]
     for row in rows:
         monthly = row["monthly"]
         mean_ic_text = "N/A" if row["mean_ic_5_10"] is None else f"{row['mean_ic_5_10']:.4f}"
         mean_rank_text = "N/A" if row["mean_rank_ic_5_10"] is None else f"{row['mean_rank_ic_5_10']:.4f}"
+        icir_text = "N/A" if row["daily_cs"] is None else f"{row['daily_cs']['icir_5_10']:.3f}"
         lines.append(
-            "| {report} | {source} | {ic} | {rank_ic} | {win:.1%} | {worst:.4f} | {neg} | {gate} |".format(
+            "| {report} | {source} | {ic} | {rank_ic} | {icir} | {win:.1%} | {worst:.4f} | {neg} | {gate} |".format(
                 report=row["report"],
                 source=row["metric_mode"],
                 ic=mean_ic_text,
                 rank_ic=mean_rank_text,
+                icir=icir_text,
                 win=monthly["win_rate"],
                 worst=monthly["worst"],
                 neg=monthly["max_consecutive_negative_months"],

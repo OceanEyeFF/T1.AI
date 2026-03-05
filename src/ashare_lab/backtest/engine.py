@@ -315,6 +315,22 @@ def _slice_history(
     return out
 
 
+def _reconstruct_gross_equity(
+    net_equity: pd.Series, fills_df: pd.DataFrame
+) -> pd.Series:
+    """从净权益曲线重建毛权益曲线（加回累计成本）
+
+    毛权益 = 净权益 + 累计已扣除成本，反映不考虑交易成本时的组合表现。
+    """
+    if fills_df.empty or "cost" not in fills_df.columns:
+        return net_equity.copy()
+    daily_costs = fills_df.groupby("date")["cost"].sum()
+    daily_costs.index = pd.to_datetime(daily_costs.index)
+    daily_costs = daily_costs.reindex(net_equity.index, fill_value=0.0)
+    cumulative_costs = daily_costs.cumsum()
+    return net_equity + cumulative_costs
+
+
 def _calc_stats(equity_curve: pd.DataFrame, fills_df: pd.DataFrame) -> dict[str, float]:
     if equity_curve.empty:
         return {}
@@ -323,23 +339,75 @@ def _calc_stats(equity_curve: pd.DataFrame, fills_df: pd.DataFrame) -> dict[str,
     rets = equity.pct_change().dropna()
 
     days = float(len(rets))
-    cagr = float((equity.iloc[-1] / equity.iloc[0]) ** (252.0 / max(days, 1.0)) - 1.0)
+    if days < 1:
+        return {"final_equity": float(equity.iloc[-1])}
 
+    # --- 净收益指标（成本后，即实际表现） ---
+    net_cagr = float((equity.iloc[-1] / equity.iloc[0]) ** (252.0 / max(days, 1.0)) - 1.0)
     peak = equity.cummax()
     dd = equity / peak - 1.0
-    mdd = float(dd.min())
+    net_mdd = float(dd.min())
 
+    # --- 成本统计 ---
     total_cost = float(fills_df["cost"].sum()) if not fills_df.empty else 0.0
     total_turnover = float(fills_df["turnover"].sum()) if not fills_df.empty else 0.0
     avg_equity = float(equity.mean())
     turnover_ratio = float(total_turnover / max(avg_equity, 1e-9))
 
+    # --- 毛收益指标（成本前） ---
+    gross_equity = _reconstruct_gross_equity(equity, fills_df)
+    gross_cagr = float(
+        (gross_equity.iloc[-1] / gross_equity.iloc[0]) ** (252.0 / max(days, 1.0)) - 1.0
+    )
+    gross_peak = gross_equity.cummax()
+    gross_dd = gross_equity / gross_peak - 1.0
+    gross_mdd = float(gross_dd.min())
+
+    # --- 年化波动率 ---
+    daily_std = float(rets.std(ddof=1)) if days > 1 else 0.0
+    ann_vol = float(daily_std * np.sqrt(252))
+
+    # --- Sharpe 比率 (risk-free = 0) ---
+    sharpe = float(rets.mean() / daily_std * np.sqrt(252)) if daily_std > 0 else 0.0
+
+    # --- Sortino 比率（下行偏差采用 Lower Partial Moment） ---
+    downside_sq = np.where(rets.values < 0, rets.values ** 2, 0.0)
+    daily_downside_dev = float(np.sqrt(np.mean(downside_sq)))
+    sortino = (
+        float(rets.mean() / daily_downside_dev * np.sqrt(252))
+        if daily_downside_dev > 0
+        else 0.0
+    )
+
+    # --- Calmar 比率 = CAGR / |MaxDD| ---
+    calmar = float(net_cagr / abs(net_mdd)) if abs(net_mdd) > 1e-9 else 0.0
+
+    # --- 日胜率 ---
+    win_rate_daily = float((rets > 0).sum() / max(len(rets), 1))
+
+    # --- 成本拖累比例 ---
+    cost_drag_pct = (
+        float((gross_cagr - net_cagr) / max(abs(gross_cagr), 1e-9))
+        if abs(gross_cagr) > 1e-9
+        else 0.0
+    )
+
     return {
         "final_equity": float(equity.iloc[-1]),
-        "cagr": cagr,
-        "mdd": mdd,
+        "cagr": net_cagr,           # 向后兼容
+        "mdd": net_mdd,             # 向后兼容
+        "net_cagr": net_cagr,
+        "net_mdd": net_mdd,
+        "gross_cagr": gross_cagr,
+        "gross_mdd": gross_mdd,
+        "ann_vol": ann_vol,
+        "sharpe": sharpe,
+        "sortino": sortino,
+        "calmar": calmar,
+        "win_rate_daily": win_rate_daily,
         "turnover_ratio": turnover_ratio,
         "total_turnover": total_turnover,
         "total_cost": total_cost,
+        "cost_drag_pct": cost_drag_pct,
         "trade_count": float(len(fills_df)),
     }
