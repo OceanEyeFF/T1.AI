@@ -392,7 +392,18 @@ class RecommendationValidator:
         )
 
         rec_ts = pd.to_datetime(rec_date_str).normalize()
-        validation_ts, hs300_df = self._resolve_validation_date(rec_ts, validation_horizon)
+        validation_ts, hs300_df, trade_dates = self._resolve_validation_date(rec_ts, validation_horizon)
+
+        start_trade_date: pd.Timestamp | None = None
+        end_trade_date: pd.Timestamp | None = None
+        if return_mode == "next_open_to_open":
+            rec_idx = int(trade_dates.get_loc(rec_ts))
+            if rec_idx + 1 < len(trade_dates):
+                start_trade_date = pd.Timestamp(trade_dates[rec_idx + 1]).normalize()
+
+            val_idx = int(trade_dates.get_loc(validation_ts))
+            if val_idx + 1 < len(trade_dates):
+                end_trade_date = pd.Timestamp(trade_dates[val_idx + 1]).normalize()
 
         # 解析推荐（按 symbol 去重，保留第一条）
         symbol_to_score: dict[str, float] = {}
@@ -415,10 +426,8 @@ class RecommendationValidator:
             )
 
         # 根据 return_mode 确定需要获取的日期范围
-        # next_open_to_open 模式需要获取推荐日次日和验证日次日的数据
-        if return_mode == "next_open_to_open":
-            # 需要额外获取次日数据，扩展查询范围
-            fetch_end = (validation_ts + timedelta(days=10)).strftime("%Y-%m-%d")
+        if return_mode == "next_open_to_open" and end_trade_date is not None:
+            fetch_end = end_trade_date.strftime("%Y-%m-%d")
         else:
             fetch_end = validation_ts.strftime("%Y-%m-%d")
 
@@ -440,31 +449,9 @@ class RecommendationValidator:
                 start_price = _get_close_on(df, rec_ts)
                 end_price = _get_close_on(df, validation_ts)
             else:  # next_open_to_open
-                # 新模式：从推荐日次日 open 到验证日次日 open
-                # 需要找到推荐日和验证日的下一个交易日
-                trade_dates = pd.DatetimeIndex(df.index).normalize().sort_values()
-
-                # 找推荐日次日
-                if rec_ts in trade_dates:
-                    rec_idx = int(trade_dates.get_loc(rec_ts))
-                    if rec_idx + 1 < len(trade_dates):
-                        start_date = trade_dates[rec_idx + 1]
-                        start_price = _get_open_on(df, start_date)
-                    else:
-                        start_price = None
-                else:
-                    start_price = None
-
-                # 找验证日次日
-                if validation_ts in trade_dates:
-                    val_idx = int(trade_dates.get_loc(validation_ts))
-                    if val_idx + 1 < len(trade_dates):
-                        end_date = trade_dates[val_idx + 1]
-                        end_price = _get_open_on(df, end_date)
-                    else:
-                        end_price = None
-                else:
-                    end_price = None
+                # 新模式：严格使用统一交易日历上的“推荐日后1交易日”与“验证日后1交易日”
+                start_price = _get_open_on(df, start_trade_date) if start_trade_date is not None else None
+                end_price = _get_open_on(df, end_trade_date) if end_trade_date is not None else None
 
             # 计算收益率
             if start_price is None or end_price is None or start_price == 0:
@@ -510,8 +497,8 @@ class RecommendationValidator:
 
     def _resolve_validation_date(
         self, rec_ts: pd.Timestamp, validation_horizon: int
-    ) -> tuple[pd.Timestamp, pd.DataFrame]:
-        """基于 HS300 交易日历，获取推荐日后 N 个交易日对应的验证日期。"""
+    ) -> tuple[pd.Timestamp, pd.DataFrame, pd.DatetimeIndex]:
+        """基于 HS300 交易日历，获取推荐日后 N 个交易日对应的验证日期与交易日索引。"""
         import pandas as pd
 
         # 为了跨周末/节假日鲁棒，先给一个足够的缓冲区；不足时再扩大
@@ -531,7 +518,7 @@ class RecommendationValidator:
             start_idx = int(trade_dates.get_loc(rec_ts))
             end_idx = start_idx + int(validation_horizon)
             if end_idx < len(trade_dates):
-                return pd.Timestamp(trade_dates[end_idx]).normalize(), hs300_df
+                return pd.Timestamp(trade_dates[end_idx]).normalize(), hs300_df, trade_dates
 
             buffer_days *= 2
 

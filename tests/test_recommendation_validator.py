@@ -574,6 +574,52 @@ def test_validator_result_includes_label_mode() -> None:
     assert result.label_mode == "next_open_to_open"
 
 
+def test_validator_next_open_to_open_uses_unified_calendar_anchor_dates() -> None:
+    """测试 next_open_to_open 在统一锚定日缺失时不会顺延到个股邻近日。"""
+    hs300_df = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2025-01-02", "2025-01-03", "2025-01-06", "2025-01-07"]),
+            "close": [100.0, 101.0, 102.0, 103.0],
+            "open": [99.0, 100.0, 101.0, 102.0],
+        }
+    ).set_index("date")
+
+    # 统一锚定日期：start=2025-01-03，end=2025-01-07
+    # A 在锚定日期缺 open，但在邻近日(01-06)有 open；应保持 NaN 而不是顺延
+    bars_by_symbol = {
+        "A": pd.DataFrame(
+            {
+                "date": pd.to_datetime(["2025-01-02", "2025-01-06", "2025-01-07"]),
+                "close": [10.0, 10.8, 11.0],
+                "open": [9.5, 10.5, 10.9],
+            }
+        ).set_index("date"),
+        "B": pd.DataFrame(
+            {
+                "date": pd.to_datetime(["2025-01-02", "2025-01-03", "2025-01-06", "2025-01-07"]),
+                "close": [20.0, 20.1, 20.2, 20.3],
+                "open": [19.5, 19.6, 19.7, 19.8],
+            }
+        ).set_index("date"),
+    }
+
+    validator = v.RecommendationValidator(
+        data_source=_FakeDailyBarsSource(bars_by_symbol),
+        calendar_source=_FakeCalendarSource(hs300_df),
+    )
+
+    recs = [{"symbol": "A", "score": 0.2}, {"symbol": "B", "score": -0.1}]
+    result = validator.validate(
+        recs,
+        validation_horizon=2,
+        recommendation_date="2025-01-02",
+        return_mode="next_open_to_open",
+    )
+
+    # A 因缺少统一锚定 start open 被置为 NaN；仅 B 有效
+    assert result.valid_count == 1
+
+
 def test_validator_default_return_mode() -> None:
     """测试默认 return_mode 是 close_to_close（向后兼容）"""
     hs300_df = pd.DataFrame(
