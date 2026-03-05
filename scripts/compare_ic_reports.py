@@ -53,6 +53,18 @@ class DailyCsSummary:
     monthly_ic_5_10: dict[str, float]
 
 
+@dataclass
+class LoadedReport:
+    name: str
+    data: dict[str, Any]
+    metrics: dict[str, Any]
+    monthly_dict: dict[str, float]
+    ic_5_10: float | None
+    rank_ic_5_10: float | None
+    source_mode: str
+    daily_summary: DailyCsSummary | None
+
+
 def _metric_block(report: dict[str, Any], metric_source: str) -> dict[str, Any]:
     mapping = {
         "raw": ["raw_oos_metrics", "raw_test_metrics", "raw_oos_metrics_h2"],
@@ -266,10 +278,10 @@ def passes_gate(
     return True
 
 
-def _common_months(loaded: list[tuple[str, dict[str, float]]]) -> list[str]:
+def _common_months(loaded: list[LoadedReport]) -> list[str]:
     common: set[str] | None = None
-    for _, monthly in loaded:
-        month_set = set(monthly.keys())
+    for report in loaded:
+        month_set = set(report.monthly_dict.keys())
         common = month_set if common is None else common & month_set
     return sorted(common or [])
 
@@ -411,17 +423,7 @@ def main(argv: list[str] | None = None) -> int:
         max_consecutive_negative_months=args.gate_max_consecutive_negative_months,
         icir_5_10=args.gate_icir,
     )
-    loaded: list[
-        tuple[
-            str,
-            dict[str, Any],
-            dict[str, float],
-            float | None,
-            float | None,
-            str,
-            DailyCsSummary | None,
-        ]
-    ] = []
+    loaded: list[LoadedReport] = []
     daily_cs_reports = 0
 
     for report_path in args.reports:
@@ -449,50 +451,64 @@ def main(argv: list[str] | None = None) -> int:
             elif args.daily_cs_mode == "required":
                 raise ValueError(f"报告缺少可用 oos parquet 路径: {path}")
 
-        loaded.append((path.name, data, metrics, monthly, ic_5_10, rank_ic_5_10, source_mode, daily_summary))
+        loaded.append(
+            LoadedReport(
+                name=path.name,
+                data=data,
+                metrics=metrics,
+                monthly_dict=monthly,
+                ic_5_10=ic_5_10,
+                rank_ic_5_10=rank_ic_5_10,
+                source_mode=source_mode,
+                daily_summary=daily_summary,
+            )
+        )
 
     # 协议一致性检查
     if args.check_protocol:
         report_dicts = []
-        for name, data, *_ in loaded:
-            report_dict = dict(data)
-            report_dict["_report_name"] = name
+        for loaded_report in loaded:
+            report_dict = dict(loaded_report.data)
+            report_dict["_report_name"] = loaded_report.name
             report_dicts.append(report_dict)
         consistent, msg = check_protocol_consistency(report_dicts)
         if not consistent:
             raise ValueError(f"协议一致性检查失败: {msg}")
         print(f"[协议检查] {msg}")
 
-    common_months = _common_months([(name, monthly) for name, _, _, monthly, _, _, _, _ in loaded])
+    common_months = _common_months(loaded)
     if not common_months and not args.allow_empty_common_months:
         raise ValueError("公共 OOS 月份为空，请检查报告时间区间或使用 --allow-empty-common-months")
 
     rows: list[dict[str, Any]] = []
-    for name, _, _, monthly, ic_5_10, rank_ic_5_10, source_mode, daily_summary in loaded:
-        aligned = [monthly[m] for m in common_months]
+    for loaded_report in loaded:
+        aligned = [loaded_report.monthly_dict[m] for m in common_months]
         monthly_summary = summarize_monthly(aligned)
         rows.append(
             {
-                "report": name,
-                "metric_mode": source_mode,
-                "available_months": sorted(monthly.keys()),
-                "missing_common_months": [m for m in common_months if m not in monthly],
-                "mean_ic_5_10": ic_5_10,
-                "mean_rank_ic_5_10": rank_ic_5_10,
+                "report": loaded_report.name,
+                "metric_mode": loaded_report.source_mode,
+                "available_months": sorted(loaded_report.monthly_dict.keys()),
+                "missing_common_months": [m for m in common_months if m not in loaded_report.monthly_dict],
+                "mean_ic_5_10": loaded_report.ic_5_10,
+                "mean_rank_ic_5_10": loaded_report.rank_ic_5_10,
                 "daily_cs": (
                     None
-                    if daily_summary is None
+                    if loaded_report.daily_summary is None
                     else {
-                        "source_path": daily_summary.source_path,
-                        "day_count": daily_summary.day_count,
-                        "month_count": daily_summary.month_count,
-                        "icir_5_10": daily_summary.icir_5_10,
+                        "source_path": loaded_report.daily_summary.source_path,
+                        "day_count": loaded_report.daily_summary.day_count,
+                        "month_count": loaded_report.daily_summary.month_count,
+                        "icir_5_10": loaded_report.daily_summary.icir_5_10,
                     }
                 ),
                 "monthly": asdict(monthly_summary),
                 "pass_gate": passes_gate(
-                    ic_5_10, rank_ic_5_10, monthly_summary, gate,
-                    daily_summary=daily_summary,
+                    loaded_report.ic_5_10,
+                    loaded_report.rank_ic_5_10,
+                    monthly_summary,
+                    gate,
+                    daily_summary=loaded_report.daily_summary,
                 ),
             }
         )
