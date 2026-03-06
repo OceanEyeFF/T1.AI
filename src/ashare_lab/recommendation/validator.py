@@ -392,7 +392,9 @@ class RecommendationValidator:
         )
 
         rec_ts = pd.to_datetime(rec_date_str).normalize()
-        validation_ts, hs300_df = self._resolve_validation_date(rec_ts, validation_horizon)
+        extra_trade_days = 1 if return_mode == "next_open_to_open" else 0
+        validation_ts, hs300_df = self._resolve_validation_date(rec_ts, validation_horizon, extra_trade_days)
+        hs300_trade_dates = pd.DatetimeIndex(hs300_df.index).normalize().sort_values()
 
         # 解析推荐（按 symbol 去重，保留第一条）
         symbol_to_score: dict[str, float] = {}
@@ -441,30 +443,11 @@ class RecommendationValidator:
                 end_price = _get_close_on(df, validation_ts)
             else:  # next_open_to_open
                 # 新模式：从推荐日次日 open 到验证日次日 open
-                # 需要找到推荐日和验证日的下一个交易日
-                trade_dates = pd.DatetimeIndex(df.index).normalize().sort_values()
-
-                # 找推荐日次日
-                if rec_ts in trade_dates:
-                    rec_idx = int(trade_dates.get_loc(rec_ts))
-                    if rec_idx + 1 < len(trade_dates):
-                        start_date = trade_dates[rec_idx + 1]
-                        start_price = _get_open_on(df, start_date)
-                    else:
-                        start_price = None
-                else:
-                    start_price = None
-
-                # 找验证日次日
-                if validation_ts in trade_dates:
-                    val_idx = int(trade_dates.get_loc(validation_ts))
-                    if val_idx + 1 < len(trade_dates):
-                        end_date = trade_dates[val_idx + 1]
-                        end_price = _get_open_on(df, end_date)
-                    else:
-                        end_price = None
-                else:
-                    end_price = None
+                # 次交易日统一使用 HS300 日历定位，避免与个股停牌日历偏移。
+                start_date = self._next_trade_day(hs300_trade_dates, rec_ts)
+                end_date = self._next_trade_day(hs300_trade_dates, validation_ts)
+                start_price = _get_open_on(df, start_date) if start_date is not None else None
+                end_price = _get_open_on(df, end_date) if end_date is not None else None
 
             # 计算收益率
             if start_price is None or end_price is None or start_price == 0:
@@ -490,7 +473,7 @@ class RecommendationValidator:
         ic = float(metrics.information_coefficient(scores_np, realized_np))
         rank_ic = float(metrics.rank_information_coefficient(scores_np, realized_np))
 
-        benchmark_return = self._benchmark_return(hs300_df, rec_ts, validation_ts)
+        benchmark_return = self._benchmark_return_by_mode(hs300_df, rec_ts, validation_ts, return_mode)
         if valid_count == 0:
             excess_return = 0.0
         else:
@@ -509,7 +492,7 @@ class RecommendationValidator:
         )
 
     def _resolve_validation_date(
-        self, rec_ts: pd.Timestamp, validation_horizon: int
+        self, rec_ts: pd.Timestamp, validation_horizon: int, extra_trade_days: int = 0
     ) -> tuple[pd.Timestamp, pd.DataFrame]:
         """基于 HS300 交易日历，获取推荐日后 N 个交易日对应的验证日期。"""
         import pandas as pd
@@ -530,20 +513,45 @@ class RecommendationValidator:
 
             start_idx = int(trade_dates.get_loc(rec_ts))
             end_idx = start_idx + int(validation_horizon)
-            if end_idx < len(trade_dates):
+            if end_idx + int(extra_trade_days) < len(trade_dates):
                 return pd.Timestamp(trade_dates[end_idx]).normalize(), hs300_df
 
             buffer_days *= 2
 
         raise ValueError("无法在交易日历中定位验证日期（可能是数据区间不足）")
 
-    def _benchmark_return(self, hs300_df: pd.DataFrame, start: pd.Timestamp, end: pd.Timestamp) -> float:
-        """计算 HS300 在区间内的收益率（缺失返回 NaN）。"""
+    def _next_trade_day(self, trade_dates: pd.DatetimeIndex, current_day: pd.Timestamp) -> pd.Timestamp | None:
+        """基于统一交易日历，定位某交易日的次交易日。"""
+        import pandas as pd
+
+        if current_day not in trade_dates:
+            return None
+        cur_idx = int(trade_dates.get_loc(current_day))
+        if cur_idx + 1 >= len(trade_dates):
+            return None
+        return pd.Timestamp(trade_dates[cur_idx + 1]).normalize()
+
+    def _benchmark_return_by_mode(
+        self,
+        hs300_df: pd.DataFrame,
+        start: pd.Timestamp,
+        end: pd.Timestamp,
+        return_mode: ReturnMode = "close_to_close",
+    ) -> float:
+        """按收益模式计算 HS300 基准收益率（缺失返回 NaN）。"""
         import pandas as pd
 
         hs300_df = _ensure_daily_schema(hs300_df)
-        start_close = _get_close_on(hs300_df, start)
-        end_close = _get_close_on(hs300_df, end)
-        if start_close is None or end_close is None or start_close == 0:
+        if return_mode == "next_open_to_open":
+            trade_dates = pd.DatetimeIndex(hs300_df.index).normalize().sort_values()
+            start_next = self._next_trade_day(trade_dates, start)
+            end_next = self._next_trade_day(trade_dates, end)
+            start_price = _get_open_on(hs300_df, start_next) if start_next is not None else None
+            end_price = _get_open_on(hs300_df, end_next) if end_next is not None else None
+        else:
+            start_price = _get_close_on(hs300_df, start)
+            end_price = _get_close_on(hs300_df, end)
+
+        if start_price is None or end_price is None or start_price == 0:
             return float("nan")
-        return float(end_close / start_close - 1.0)
+        return float(end_price / start_price - 1.0)

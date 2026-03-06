@@ -374,7 +374,12 @@ def test_validator_empty_calendar_raises() -> None:
 def test_benchmark_return_missing_close_returns_nan() -> None:
     hs300_df = pd.DataFrame({"date": pd.to_datetime(["2025-01-02"]), "open": [1.0]}).set_index("date")
     validator = v.RecommendationValidator(data_source=_FakeDailyBarsSource({}), calendar_source=_FakeCalendarSource(hs300_df))
-    out = validator._benchmark_return(hs300_df, pd.Timestamp("2025-01-02"), pd.Timestamp("2025-01-03"))
+    out = validator._benchmark_return_by_mode(
+        hs300_df,
+        pd.Timestamp("2025-01-02"),
+        pd.Timestamp("2025-01-03"),
+        return_mode="close_to_close",
+    )
     assert math.isnan(out)
 
 
@@ -473,7 +478,10 @@ def test_validator_return_mode_next_open_to_open() -> None:
     assert result.validation_date == "2025-01-06"
     assert result.valid_count == 2
     assert result.return_mode == "next_open_to_open"
-    # next_open_to_open: A 从 9.8 -> 10.8 (≈0.102), B 从 19.6 -> 18.8 (≈-0.041)
+    # next_open_to_open: A 从 9.8 -> 10.8, B 从 19.6 -> 18.8
+    # 组合收益 = ((10.8/9.8-1)+(18.8/19.6-1))/2 ≈ 0.030612
+    # 基准收益(HS300, next_open_to_open) = 102/100 - 1 = 0.02
+    assert result.excess_return == pytest.approx(0.010612244897959089)
     # IC 应该为正（因为分数和收益方向一致）
     assert result.ic > 0.9  # 应该接近 1.0
 
