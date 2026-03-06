@@ -477,7 +477,7 @@ class RecommendationValidator:
         ic = float(metrics.information_coefficient(scores_np, realized_np))
         rank_ic = float(metrics.rank_information_coefficient(scores_np, realized_np))
 
-        benchmark_return = self._benchmark_return(hs300_df, rec_ts, validation_ts)
+        benchmark_return = self._benchmark_return_by_mode(hs300_df, rec_ts, validation_ts, return_mode)
         if valid_count == 0:
             excess_return = 0.0
         else:
@@ -524,13 +524,38 @@ class RecommendationValidator:
 
         raise ValueError("无法在交易日历中定位验证日期（可能是数据区间不足）")
 
-    def _benchmark_return(self, hs300_df: pd.DataFrame, start: pd.Timestamp, end: pd.Timestamp) -> float:
-        """计算 HS300 在区间内的收益率（缺失返回 NaN）。"""
+    def _next_trade_day(self, trade_dates: pd.DatetimeIndex, current_day: pd.Timestamp) -> pd.Timestamp | None:
+        """基于统一交易日历，定位某交易日的次交易日。"""
+        import pandas as pd
+
+        if current_day not in trade_dates:
+            return None
+        cur_idx = int(trade_dates.get_loc(current_day))
+        if cur_idx + 1 >= len(trade_dates):
+            return None
+        return pd.Timestamp(trade_dates[cur_idx + 1]).normalize()
+
+    def _benchmark_return_by_mode(
+        self,
+        hs300_df: pd.DataFrame,
+        start: pd.Timestamp,
+        end: pd.Timestamp,
+        return_mode: ReturnMode = "close_to_close",
+    ) -> float:
+        """按收益模式计算 HS300 基准收益率（缺失返回 NaN）。"""
         import pandas as pd
 
         hs300_df = _ensure_daily_schema(hs300_df)
-        start_close = _get_close_on(hs300_df, start)
-        end_close = _get_close_on(hs300_df, end)
-        if start_close is None or end_close is None or start_close == 0:
+        if return_mode == "next_open_to_open":
+            trade_dates = pd.DatetimeIndex(hs300_df.index).normalize().sort_values()
+            start_next = self._next_trade_day(trade_dates, start)
+            end_next = self._next_trade_day(trade_dates, end)
+            start_price = _get_open_on(hs300_df, start_next) if start_next is not None else None
+            end_price = _get_open_on(hs300_df, end_next) if end_next is not None else None
+        else:
+            start_price = _get_close_on(hs300_df, start)
+            end_price = _get_close_on(hs300_df, end)
+
+        if start_price is None or end_price is None or start_price == 0:
             return float("nan")
-        return float(end_close / start_close - 1.0)
+        return float(end_price / start_price - 1.0)
