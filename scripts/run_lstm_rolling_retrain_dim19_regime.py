@@ -1,11 +1,12 @@
 #!/usr/bin/env python
-"""Rolling retrain (18m window) + horizon-wise sign calibration for dim19 market-state LSTM."""
+"""Rolling retrain (week-based window) + horizon-wise sign calibration for dim19 market-state LSTM."""
 
 from __future__ import annotations
 
 import argparse
 import json
 import random
+import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -57,6 +58,29 @@ LR_SCHEDULERS = ("none", "cosine", "cosine_warm_restart", "plateau")
 OPTIMIZERS = ("adamw", "adam")
 NORM_TYPES = ("layernorm", "rmsnorm")
 GRAD_CLIP_MODES = ("none", "norm", "value")
+
+
+def _months_to_weeks(months: int) -> int:
+    # Keep deterministic conversion for backward-compatible CLI options.
+    return max(1, int(round(float(months) * 52.0 / 12.0)))
+
+
+def _resolve_window_weeks(
+    *,
+    weeks: int | None,
+    months: int | None,
+    default_weeks: int,
+    field_name: str,
+) -> int:
+    if weeks is not None:
+        if weeks <= 0:
+            raise ValueError(f"{field_name} must be > 0")
+        return int(weeks)
+    if months is not None:
+        if months <= 0:
+            raise ValueError(f"{field_name} legacy months input must be > 0")
+        return _months_to_weeks(int(months))
+    return int(default_weeks)
 
 
 def _set_seed(seed: int) -> None:
@@ -111,6 +135,41 @@ def _infer_feature_bases(df: pd.DataFrame, seq_len: int) -> list[str]:
     if not bases:
         raise ValueError("no feature columns inferred from dataset (expected pattern '*_t0')")
     return bases
+
+
+def _infer_max_horizon_days(label_cols: list[str]) -> int:
+    horizons: list[int] = []
+    for col in label_cols:
+        m = re.fullmatch(r"label_(\d+)d", str(col))
+        if m is not None:
+            horizons.append(int(m.group(1)))
+    if not horizons:
+        raise ValueError("failed to infer horizon days from LABEL_COLS")
+    return int(max(horizons))
+
+
+def _label_mode_shift_days(label_mode: str) -> int:
+    if label_mode == "next_open_to_open":
+        return 1
+    return 0
+
+
+def _attach_label_maturity_date(
+    df: pd.DataFrame,
+    *,
+    horizon_days: int,
+    shift_days: int,
+    maturity_col: str = "label_maturity_date",
+) -> pd.DataFrame:
+    out = df.copy()
+    out["date"] = pd.to_datetime(out["date"])
+    out["symbol"] = out["symbol"].astype(str)
+    out = out.sort_values(["symbol", "date"]).reset_index(drop=True)
+    steps = int(horizon_days + shift_days)
+    if steps <= 0:
+        raise ValueError("horizon_days + shift_days must be > 0")
+    out[maturity_col] = out.groupby("symbol", sort=False)["date"].shift(-steps)
+    return out.sort_values(["date", "symbol"]).reset_index(drop=True)
 
 
 def _masked_l1_loss(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
@@ -616,15 +675,22 @@ def _select_train_valid_for_month(
     train_pool: pd.DataFrame,
     month_start: pd.Timestamp,
     *,
-    train_window_months: int,
-    valid_window_months: int,
-) -> tuple[pd.DataFrame, pd.DataFrame]:
-    left = month_start - pd.DateOffset(months=train_window_months)
-    pool = train_pool[(train_pool["date"] >= left) & (train_pool["date"] < month_start)].copy()
+    train_window_weeks: int,
+    valid_window_weeks: int,
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, int]]:
+    left = month_start - pd.DateOffset(weeks=train_window_weeks)
+    pool_raw = train_pool[(train_pool["date"] >= left) & (train_pool["date"] < month_start)].copy()
+    pool = pool_raw[
+        pool_raw["label_maturity_date"].notna() & (pool_raw["label_maturity_date"] < month_start)
+    ].copy()
+    split_stats = {
+        "pool_rows_before_maturity": int(len(pool_raw)),
+        "pool_rows_after_maturity": int(len(pool)),
+    }
     if pool.empty:
-        raise RuntimeError(f"empty rolling pool before {month_start.date()}")
+        raise RuntimeError(f"empty rolling pool before {month_start.date()} after maturity filter")
 
-    valid_left = month_start - pd.DateOffset(months=valid_window_months)
+    valid_left = month_start - pd.DateOffset(weeks=valid_window_weeks)
     valid_df = pool[(pool["date"] >= valid_left) & (pool["date"] < month_start)].copy()
     train_df = pool[pool["date"] < valid_left].copy()
 
@@ -639,7 +705,7 @@ def _select_train_valid_for_month(
         if train_df.empty or valid_df.empty:
             raise RuntimeError(f"unable to split train/valid before {month_start.date()}")
 
-    return train_df, valid_df
+    return train_df, valid_df, split_stats
 
 
 def main() -> None:
@@ -647,9 +713,27 @@ def main() -> None:
     parser.add_argument("--dataset-dir", default="data/datasets/lstm_sector70_19d_mkt_20210101_20260120")
     parser.add_argument("--backbone", choices=list(BACKBONES), default="lstm")
     parser.add_argument("--seq-len", type=int, default=20)
-    parser.add_argument("--train-window-months", type=int, default=18)
-    parser.add_argument("--valid-window-months", type=int, default=2)
-    parser.add_argument("--calibration-months", type=int, default=3)
+    parser.add_argument("--train-window-weeks", type=int, default=None, help="训练窗口（周），默认 78")
+    parser.add_argument("--valid-window-weeks", type=int, default=None, help="验证窗口（周），默认 8")
+    parser.add_argument("--calibration-weeks", type=int, default=None, help="校准历史窗口（周），默认 12")
+    parser.add_argument(
+        "--train-window-months",
+        type=int,
+        default=None,
+        help="兼容参数（已弃用）：训练窗口（月）",
+    )
+    parser.add_argument(
+        "--valid-window-months",
+        type=int,
+        default=None,
+        help="兼容参数（已弃用）：验证窗口（月）",
+    )
+    parser.add_argument(
+        "--calibration-months",
+        type=int,
+        default=None,
+        help="兼容参数（已弃用）：校准窗口（月）",
+    )
     parser.add_argument("--sign-threshold", type=float, default=0.02)
     parser.add_argument("--hidden-size", type=int, default=64)
     parser.add_argument("--num-layers", type=int, default=2)
@@ -698,7 +782,12 @@ def main() -> None:
         choices=["close_to_close", "next_open_to_open"],
         help="标签口径，写入 evaluation_protocol（默认 close_to_close）",
     )
-    parser.add_argument("--save-monthly-checkpoints", action="store_true")
+    parser.add_argument("--save-weekly-checkpoints", action="store_true")
+    parser.add_argument(
+        "--save-monthly-checkpoints",
+        action="store_true",
+        help="兼容参数（已弃用）：等价于 --save-weekly-checkpoints",
+    )
     parser.add_argument(
         "--save-oos-parquet",
         default="",
@@ -706,9 +795,28 @@ def main() -> None:
     )
     parser.add_argument(
         "--report",
-        default="output/reports/lstm_dim19_rolling18m_horizoncal_20260303.json",
+        default="output/reports/lstm_dim19_rolling78w_horizoncal_20260303.json",
     )
     args = parser.parse_args()
+
+    train_window_weeks = _resolve_window_weeks(
+        weeks=args.train_window_weeks,
+        months=args.train_window_months,
+        default_weeks=78,
+        field_name="train_window_weeks",
+    )
+    valid_window_weeks = _resolve_window_weeks(
+        weeks=args.valid_window_weeks,
+        months=args.valid_window_months,
+        default_weeks=8,
+        field_name="valid_window_weeks",
+    )
+    calibration_weeks = _resolve_window_weeks(
+        weeks=args.calibration_weeks,
+        months=args.calibration_months,
+        default_weeks=12,
+        field_name="calibration_weeks",
+    )
 
     if args.w3 < 0 or args.w5 < 0 or args.w10 < 0 or (args.w3 + args.w5 + args.w10) <= 0:
         raise ValueError("loss weights must be non-negative and sum to > 0")
@@ -779,6 +887,13 @@ def main() -> None:
     full_df["date"] = pd.to_datetime(full_df["date"])
     full_df["symbol"] = full_df["symbol"].astype(str)
     full_df = full_df.sort_values(["date", "symbol"]).reset_index(drop=True)
+    maturity_horizon_days = _infer_max_horizon_days(LABEL_COLS)
+    maturity_shift_days = _label_mode_shift_days(str(args.label_mode))
+    full_df = _attach_label_maturity_date(
+        full_df,
+        horizon_days=maturity_horizon_days,
+        shift_days=maturity_shift_days,
+    )
 
     if args.feature_mode == "dim19":
         feature_bases = list(FEATURES_DIM19)
@@ -795,34 +910,39 @@ def main() -> None:
     eval_df["date"] = pd.to_datetime(eval_df["date"])
     eval_df["symbol"] = eval_df["symbol"].astype(str)
     eval_df = eval_df.sort_values(["date", "symbol"]).reset_index(drop=True)
-    months = sorted(eval_df["date"].dt.to_period("M").unique())
+    retrain_weeks = sorted(eval_df["date"].dt.to_period("W-FRI").unique())
+    legacy_months = sorted(eval_df["date"].dt.to_period("M").unique())
 
-    # history for walk-forward calibration uses realized OOS predictions from prior months
+    # history for walk-forward calibration uses realized OOS predictions from prior retrain periods
     hist_rows: list[pd.DataFrame] = []
     oos_rows: list[pd.DataFrame] = []
-    month_logs: list[dict[str, object]] = []
+    week_logs: list[dict[str, object]] = []
+    save_weekly_checkpoints = bool(args.save_weekly_checkpoints or args.save_monthly_checkpoints)
 
     ckpt_dir = Path("models/rolling_dim19")
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
-    for i, m in enumerate(months):
-        month = str(m)
-        month_start = pd.Period(month, freq="M").start_time
-        month_mask = eval_df["date"].dt.to_period("M") == m
-        month_df = eval_df.loc[month_mask].copy()
-        if month_df.empty:
+    for i, w in enumerate(retrain_weeks):
+        week = str(w)
+        week_mask = eval_df["date"].dt.to_period("W-FRI") == w
+        week_df = eval_df.loc[week_mask].copy()
+        if week_df.empty:
             continue
+        week_start = week_df["date"].min()
+        week_end = week_df["date"].max()
 
-        print(f"\n=== month {month} ===")
-        tr_df, va_df = _select_train_valid_for_month(
+        print(f"\n=== week {week} ({week_start.date()}..{week_end.date()}) ===")
+        tr_df, va_df, split_stats = _select_train_valid_for_month(
             full_df,
-            month_start=month_start,
-            train_window_months=args.train_window_months,
-            valid_window_months=args.valid_window_months,
+            month_start=week_start,
+            train_window_weeks=train_window_weeks,
+            valid_window_weeks=valid_window_weeks,
         )
         print(
-            f"train_rows={len(tr_df)} valid_rows={len(va_df)} month_rows={len(month_df)} "
-            f"train_range=[{tr_df['date'].min().date()}..{tr_df['date'].max().date()}]"
+            f"train_rows={len(tr_df)} valid_rows={len(va_df)} week_rows={len(week_df)} "
+            f"train_range=[{tr_df['date'].min().date()}..{tr_df['date'].max().date()}] "
+            f"pool_before={split_stats['pool_rows_before_maturity']} "
+            f"pool_after={split_stats['pool_rows_after_maturity']}"
         )
 
         # month-specific seed for reproducibility and mild de-correlation
@@ -830,18 +950,31 @@ def main() -> None:
 
         x_tr, y_tr = _extract_xy(tr_df, feature_bases, args.seq_len)
         x_va, y_va = _extract_xy(va_df, feature_bases, args.seq_len)
-        x_mo, y_mo = _extract_xy(month_df, feature_bases, args.seq_len)
+        x_wk, y_wk = _extract_xy(week_df, feature_bases, args.seq_len)
 
         model, val_metrics, epochs_ran, train_seconds = _train_one_model(x_tr, y_tr, x_va, y_va, cfg, device)
         pred_val = _predict(model, x_va, cfg.batch_size, device)
-        pred_month = _predict(model, x_mo, cfg.batch_size, device)
+        pred_week = _predict(model, x_wk, cfg.batch_size, device)
 
         # build calibration score per horizon from trailing realized history
         hist_df = pd.concat(hist_rows, ignore_index=True) if hist_rows else pd.DataFrame()
+        hist_rows_before_maturity = 0
+        hist_rows_after_maturity = 0
         if not hist_df.empty:
             hist_df["date"] = pd.to_datetime(hist_df["date"])
-            hist_left = month_start - pd.DateOffset(months=args.calibration_months)
-            hist_use = hist_df[(hist_df["date"] >= hist_left) & (hist_df["date"] < month_start)].copy()
+            hist_df["symbol"] = hist_df["symbol"].astype(str)
+            hist_df = _attach_label_maturity_date(
+                hist_df,
+                horizon_days=maturity_horizon_days,
+                shift_days=maturity_shift_days,
+            )
+            hist_left = week_start - pd.DateOffset(weeks=calibration_weeks)
+            hist_window = hist_df[(hist_df["date"] >= hist_left) & (hist_df["date"] < week_start)].copy()
+            hist_rows_before_maturity = int(len(hist_window))
+            hist_use = hist_window[
+                hist_window["label_maturity_date"].notna() & (hist_window["label_maturity_date"] < week_start)
+            ].copy()
+            hist_rows_after_maturity = int(len(hist_use))
         else:
             hist_use = pd.DataFrame()
 
@@ -871,38 +1004,44 @@ def main() -> None:
                 }
             )
 
-        pred_cal = pred_month.copy()
+        pred_cal = pred_week.copy()
         for h in range(3):
             pred_cal[:, h] = signs[h] * pred_cal[:, h]
 
-        month_raw = _metrics(pred_month, y_mo)
-        month_cal = _metrics(pred_cal, y_mo)
+        week_raw = _metrics(pred_week, y_wk)
+        week_cal = _metrics(pred_cal, y_wk)
         print(
-            f"month_raw_avg_ic={month_raw['avg_ic']:.4f} month_cal_avg_ic={month_cal['avg_ic']:.4f} "
+            f"week_raw_avg_ic={week_raw['avg_ic']:.4f} week_cal_avg_ic={week_cal['avg_ic']:.4f} "
             f"signs={signs}"
         )
 
-        month_out = month_df[["date", "symbol"] + LABEL_COLS].copy()
+        week_out = week_df[["date", "symbol"] + LABEL_COLS].copy()
         for h, c in enumerate(PRED_COLS):
-            month_out[c] = pred_month[:, h]
-            month_out[f"{c}_cal"] = pred_cal[:, h]
-        oos_rows.append(month_out)
-        hist_rows.append(month_out[["date"] + LABEL_COLS + PRED_COLS].copy())
+            week_out[c] = pred_week[:, h]
+            week_out[f"{c}_cal"] = pred_cal[:, h]
+        oos_rows.append(week_out)
+        hist_rows.append(week_out[["date", "symbol"] + LABEL_COLS + PRED_COLS].copy())
 
-        if args.save_monthly_checkpoints:
-            ckpt_path = ckpt_dir / f"best_dim19_{month}.pt"
+        if save_weekly_checkpoints:
+            ckpt_path = ckpt_dir / f"best_dim19_week_end_{week_end.strftime('%Y%m%d')}.pt"
             torch.save({"model_state_dict": model.state_dict()}, ckpt_path)
-        month_logs.append(
+        week_logs.append(
             {
-                "month": month,
-                "month_rows": int(len(month_df)),
+                "week": week,
+                "week_start": str(week_start.date()),
+                "week_end": str(week_end.date()),
+                "week_rows": int(len(week_df)),
                 "train_rows": int(len(tr_df)),
                 "valid_rows": int(len(va_df)),
+                "pool_rows_before_maturity": int(split_stats["pool_rows_before_maturity"]),
+                "pool_rows_after_maturity": int(split_stats["pool_rows_after_maturity"]),
+                "hist_rows_before_maturity": int(hist_rows_before_maturity),
+                "hist_rows_after_maturity": int(hist_rows_after_maturity),
                 "epochs_ran": int(epochs_ran),
                 "train_seconds": float(train_seconds),
                 "valid_avg_ic": float(val_metrics["avg_ic"]),
-                "raw_avg_ic": float(month_raw["avg_ic"]),
-                "cal_avg_ic": float(month_cal["avg_ic"]),
+                "raw_avg_ic": float(week_raw["avg_ic"]),
+                "cal_avg_ic": float(week_cal["avg_ic"]),
                 "signs": signs,
                 "decisions": decisions,
             }
@@ -959,9 +1098,19 @@ def main() -> None:
             "feature_mode": str(args.feature_mode),
             "features": feature_bases,
             "seq_len": int(args.seq_len),
-            "train_window_months": int(args.train_window_months),
-            "valid_window_months": int(args.valid_window_months),
-            "calibration_months": int(args.calibration_months),
+            "train_window_weeks": int(train_window_weeks),
+            "valid_window_weeks": int(valid_window_weeks),
+            "calibration_weeks": int(calibration_weeks),
+            "window_unit": "week",
+            "train_window_months_legacy_input": (
+                None if args.train_window_months is None else int(args.train_window_months)
+            ),
+            "valid_window_months_legacy_input": (
+                None if args.valid_window_months is None else int(args.valid_window_months)
+            ),
+            "calibration_months_legacy_input": (
+                None if args.calibration_months is None else int(args.calibration_months)
+            ),
             "sign_threshold": float(args.sign_threshold),
             "hidden_size": int(args.hidden_size),
             "num_layers": int(args.num_layers),
@@ -992,8 +1141,16 @@ def main() -> None:
             "ic_rank_beta": float(args.ic_rank_beta),
             "seed": int(args.seed),
             "label_mode": str(args.label_mode),
+            "maturity_gate_enabled": True,
+            "maturity_gate_horizon_days": int(maturity_horizon_days),
+            "maturity_gate_shift_days": int(maturity_shift_days),
             "device": str(device),
-            "months": [str(m) for m in months],
+            "retrain_weeks": [str(w) for w in retrain_weeks],
+            "retrain_frequency": "weekly",
+            "prediction_frequency": "daily",
+            "retrain_week_freq": "W-FRI",
+            "save_weekly_checkpoints": bool(save_weekly_checkpoints),
+            "months": [str(m) for m in legacy_months],
         },
         "raw_oos_metrics": raw_metrics,
         "calibrated_oos_metrics": cal_metrics,
@@ -1002,7 +1159,8 @@ def main() -> None:
             "avg_rank_ic": float(cal_metrics["avg_rank_ic"] - raw_metrics["avg_rank_ic"]),
             "avg_mae": float(cal_metrics["avg_mae"] - raw_metrics["avg_mae"]),
         },
-        "monthly_logs": month_logs,
+        "weekly_logs": week_logs,
+        "monthly_logs": week_logs,
         "evaluation_protocol": evaluation_protocol,
         "daily_cs": daily_cs,
     }

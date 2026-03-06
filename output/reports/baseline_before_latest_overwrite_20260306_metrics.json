@@ -1,0 +1,26 @@
+{
+  "report_path": "output/reports/lstm_dim53_no_hist_hl_auto_window24_seq20_icaware_a0176_lr5e5_coswrt_pat20_seed042_20260305_latest.json",
+  "raw_avg_ic": 0.1361883227172405,
+  "cal_avg_ic": 0.13219101497666985,
+  "delta_avg_ic": -0.003997307740570638,
+  "weekly_logs_count": 25,
+  "train_rows_mean": 3558.72,
+  "valid_rows_mean": 295.36,
+  "dataset_counts": {
+    "train": {
+      "rows": 4168,
+      "date_min": "2023-02-07",
+      "date_max": "2025-03-31"
+    },
+    "valid": {
+      "rows": 896,
+      "date_min": "2025-04-01",
+      "date_max": "2025-09-10"
+    },
+    "test": {
+      "rows": 896,
+      "date_min": "2025-09-11",
+      "date_max": "2026-03-05"
+    }
+  }
+}

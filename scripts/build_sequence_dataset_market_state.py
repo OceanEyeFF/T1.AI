@@ -649,6 +649,71 @@ def _flatten_sequences(X: np.ndarray, feature_names: list[str], seq_len: int) ->
     return flat, cols
 
 
+def _split_by_ratio(
+    dates: pd.Series,
+    *,
+    train_ratio: float,
+    valid_ratio: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict[str, object]]:
+    if not (0.0 < train_ratio < 1.0):
+        raise ValueError("train_ratio must be in (0, 1)")
+    if not (0.0 <= valid_ratio < 1.0):
+        raise ValueError("valid_ratio must be in [0, 1)")
+    if train_ratio + valid_ratio >= 1.0:
+        raise ValueError("train_ratio + valid_ratio must be < 1")
+
+    unique_dates = np.array(sorted(pd.unique(dates)))
+    n_dates = len(unique_dates)
+    train_cut = max(1, int(n_dates * train_ratio))
+    valid_cut = max(train_cut, int(n_dates * (train_ratio + valid_ratio)))
+    train_dates = set(pd.to_datetime(unique_dates[: min(train_cut, n_dates)]))
+    valid_dates = set(pd.to_datetime(unique_dates[min(train_cut, n_dates) : min(valid_cut, n_dates)]))
+
+    m_train = dates.isin(train_dates).to_numpy()
+    m_valid = dates.isin(valid_dates).to_numpy()
+    m_test = ~(m_train | m_valid)
+
+    split_config: dict[str, object] = {
+        "method": "ratio",
+        "train_ratio": float(train_ratio),
+        "valid_ratio": float(valid_ratio),
+        "test_ratio": float(1.0 - train_ratio - valid_ratio),
+    }
+    return m_train, m_valid, m_test, split_config
+
+
+def _split_by_fixed_weeks(
+    dates: pd.Series,
+    *,
+    valid_weeks: int,
+    test_weeks: int,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict[str, object]]:
+    if valid_weeks <= 0 or test_weeks <= 0:
+        raise ValueError("valid_weeks and test_weeks must be > 0")
+
+    week_periods = dates.dt.to_period("W-FRI")
+    unique_weeks = np.array(sorted(pd.unique(week_periods)))
+    required = int(valid_weeks + test_weeks + 1)
+    if len(unique_weeks) < required:
+        raise ValueError(
+            f"not enough weeks for fixed split: need >= {required}, got {len(unique_weeks)} "
+            f"(valid_weeks={valid_weeks}, test_weeks={test_weeks})"
+        )
+
+    test_set = set(unique_weeks[-test_weeks:])
+    valid_set = set(unique_weeks[-(valid_weeks + test_weeks) : -test_weeks])
+    m_test = week_periods.isin(test_set).to_numpy()
+    m_valid = week_periods.isin(valid_set).to_numpy()
+    m_train = ~(m_valid | m_test)
+
+    split_config: dict[str, object] = {
+        "method": "fixed_weeks",
+        "valid_weeks": int(valid_weeks),
+        "test_weeks": int(test_weeks),
+    }
+    return m_train, m_valid, m_test, split_config
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build sequence parquet dataset with market state features.")
     parser.add_argument("--symbols-csv", default="data/symbols_lstm_sectors_70.csv")
@@ -669,8 +734,10 @@ def main() -> None:
     parser.add_argument("--end", default="20260120")
     parser.add_argument("--seq-len", type=int, default=20)
     parser.add_argument("--stride", type=int, default=1)
-    parser.add_argument("--train-ratio", type=float, default=0.7)
-    parser.add_argument("--valid-ratio", type=float, default=0.15)
+    parser.add_argument("--valid-weeks", type=int, default=26)
+    parser.add_argument("--test-weeks", type=int, default=26)
+    parser.add_argument("--train-ratio", type=float, default=None, help="Deprecated: ratio split mode")
+    parser.add_argument("--valid-ratio", type=float, default=None, help="Deprecated: ratio split mode")
     parser.add_argument("--horizons", default="3,5,10")
     parser.add_argument(
         "--label-mode",
@@ -803,16 +870,25 @@ def main() -> None:
     )
 
     dates = pd.to_datetime(meta["date"])
-    unique_dates = np.array(sorted(pd.unique(dates)))
-    n_dates = len(unique_dates)
-    train_cut = max(1, int(n_dates * args.train_ratio))
-    valid_cut = max(train_cut, int(n_dates * (args.train_ratio + args.valid_ratio)))
-    train_dates = set(pd.to_datetime(unique_dates[: min(train_cut, n_dates)]))
-    valid_dates = set(pd.to_datetime(unique_dates[min(train_cut, n_dates) : min(valid_cut, n_dates)]))
+    use_ratio = args.train_ratio is not None or args.valid_ratio is not None
+    if use_ratio:
+        if args.train_ratio is None or args.valid_ratio is None:
+            raise ValueError("ratio mode requires both --train-ratio and --valid-ratio")
+        print("WARN: ratio split mode is deprecated; please use --valid-weeks/--test-weeks")
+        m_train, m_valid, m_test, split_config = _split_by_ratio(
+            dates,
+            train_ratio=float(args.train_ratio),
+            valid_ratio=float(args.valid_ratio),
+        )
+    else:
+        m_train, m_valid, m_test, split_config = _split_by_fixed_weeks(
+            dates,
+            valid_weeks=int(args.valid_weeks),
+            test_weeks=int(args.test_weeks),
+        )
 
-    m_train = dates.isin(train_dates).to_numpy()
-    m_valid = dates.isin(valid_dates).to_numpy()
-    m_test = ~(m_train | m_valid)
+    if int(m_train.sum()) == 0 or int(m_valid.sum()) == 0 or int(m_test.sum()) == 0:
+        raise RuntimeError("invalid split: one of train/valid/test is empty")
 
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -821,6 +897,22 @@ def main() -> None:
         p = out_dir / f"{name}.parquet"
         full_df.loc[mask].reset_index(drop=True).to_parquet(p, index=False)
         print(f"{name}: {int(mask.sum())} -> {p}")
+
+    train_dates = dates[m_train]
+    valid_dates = dates[m_valid]
+    test_dates = dates[m_test]
+    split_config = {
+        **split_config,
+        "train_samples": int(m_train.sum()),
+        "valid_samples": int(m_valid.sum()),
+        "test_samples": int(m_test.sum()),
+        "train_start_date": str(train_dates.min().date()),
+        "train_end_date": str(train_dates.max().date()),
+        "valid_start_date": str(valid_dates.min().date()),
+        "valid_end_date": str(valid_dates.max().date()),
+        "test_start_date": str(test_dates.min().date()),
+        "test_end_date": str(test_dates.max().date()),
+    }
 
     # --- metadata.json ---
     metadata = {
@@ -842,13 +934,7 @@ def main() -> None:
             "seq_len": args.seq_len,
             "stride": args.stride,
         },
-        "split_config": {
-            "train_ratio": args.train_ratio,
-            "valid_ratio": args.valid_ratio,
-            "train_samples": int(m_train.sum()),
-            "valid_samples": int(m_valid.sum()),
-            "test_samples": int(m_test.sum()),
-        },
+        "split_config": split_config,
     }
     metadata_path = out_dir / "metadata.json"
     with open(metadata_path, "w", encoding="utf-8") as f:

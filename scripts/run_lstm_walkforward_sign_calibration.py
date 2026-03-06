@@ -149,10 +149,14 @@ def _history_ic(history: pd.DataFrame, col_pred: str, col_label: str) -> float:
     return float(information_coefficient(history[col_pred].to_numpy(), history[col_label].to_numpy()))
 
 
+def _months_to_weeks(months: int) -> int:
+    return max(1, int(round(float(months) * 52.0 / 12.0)))
+
+
 def _walkforward_calibrate(
     valid_df: pd.DataFrame,
     test_df: pd.DataFrame,
-    calibration_months: int,
+    calibration_weeks: int,
 ) -> tuple[pd.DataFrame, list[dict[str, object]]]:
     months = sorted(test_df["date"].dt.to_period("M").unique())
     out = test_df.copy()
@@ -171,8 +175,8 @@ def _walkforward_calibrate(
             continue
 
         month_start = month_df["date"].min()
-        if calibration_months > 0:
-            hist_cut = month_start - pd.DateOffset(months=calibration_months)
+        if calibration_weeks > 0:
+            hist_cut = month_start - pd.DateOffset(weeks=calibration_weeks)
             hist_use = hist.loc[(hist["date"] >= hist_cut) & (hist["date"] < month_start)].copy()
         else:
             hist_use = hist.loc[hist["date"] < month_start].copy()
@@ -221,7 +225,13 @@ def main() -> None:
     parser.add_argument("--seq-len", type=int, default=20)
     parser.add_argument("--batch-size", type=int, default=512)
     parser.add_argument("--dropout", type=float, default=0.3)
-    parser.add_argument("--calibration-months", type=int, default=3, help="0 means use all history")
+    parser.add_argument("--calibration-weeks", type=int, default=None, help="校准历史窗口（周），默认 12；0 表示全部历史")
+    parser.add_argument(
+        "--calibration-months",
+        type=int,
+        default=None,
+        help="兼容参数（已弃用）：校准窗口（月）",
+    )
     parser.add_argument(
         "--features",
         default=",".join(DEFAULT_FEATURES_11),
@@ -232,6 +242,17 @@ def main() -> None:
         default="output/reports/lstm_walkforward_sign_calibration_20260303.json",
     )
     args = parser.parse_args()
+
+    if args.calibration_weeks is not None and args.calibration_weeks < 0:
+        raise ValueError("calibration_weeks must be >= 0")
+    if args.calibration_months is not None and args.calibration_months < 0:
+        raise ValueError("calibration_months must be >= 0")
+    if args.calibration_weeks is not None:
+        calibration_weeks = int(args.calibration_weeks)
+    elif args.calibration_months is not None:
+        calibration_weeks = _months_to_weeks(int(args.calibration_months))
+    else:
+        calibration_weeks = 12
 
     feature_bases = [x.strip() for x in str(args.features).split(",") if x.strip()]
     dataset_dir = Path(args.dataset_dir)
@@ -277,7 +298,7 @@ def main() -> None:
     calibrated_df, monthly_decisions = _walkforward_calibrate(
         valid_df=valid_df,
         test_df=test_df,
-        calibration_months=args.calibration_months,
+        calibration_weeks=calibration_weeks,
     )
     cal_metrics = _metrics(
         calibrated_df[["pred_3d_cal", "pred_5d_cal", "pred_10d_cal"]].to_numpy(),
@@ -290,7 +311,11 @@ def main() -> None:
             "checkpoint": str(ckpt_path),
             "seq_len": int(args.seq_len),
             "feature_bases": feature_bases,
-            "calibration_months": int(args.calibration_months),
+            "calibration_weeks": int(calibration_weeks),
+            "window_unit": "week",
+            "calibration_months_legacy_input": (
+                None if args.calibration_months is None else int(args.calibration_months)
+            ),
             "device": str(device),
             "valid_rows": int(len(valid_df)),
             "test_rows": int(len(test_df)),

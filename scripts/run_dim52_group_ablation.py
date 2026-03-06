@@ -120,9 +120,9 @@ GROUP_SET_REQUIRE_FULL_COVERAGE: dict[str, bool] = {
 @dataclass(frozen=True)
 class TrainArgs:
     seq_len: int
-    train_window_months: int
-    valid_window_months: int
-    calibration_months: int
+    train_window_weeks: int
+    valid_window_weeks: int
+    calibration_weeks: int
     sign_threshold: float
     hidden_size: int
     num_layers: int
@@ -138,6 +138,28 @@ class TrainArgs:
     loss_alpha: float
     ic_rank_beta: float
     seed: int
+
+
+def _months_to_weeks(months: int) -> int:
+    return max(1, int(round(float(months) * 52.0 / 12.0)))
+
+
+def _resolve_window_weeks(
+    *,
+    weeks: int | None,
+    months: int | None,
+    default_weeks: int,
+    field_name: str,
+) -> int:
+    if weeks is not None:
+        if weeks <= 0:
+            raise ValueError(f"{field_name} must be > 0")
+        return int(weeks)
+    if months is not None:
+        if months <= 0:
+            raise ValueError(f"{field_name} legacy months input must be > 0")
+        return _months_to_weeks(int(months))
+    return int(default_weeks)
 
 
 def _run(cmd: list[str]) -> None:
@@ -214,12 +236,12 @@ def _run_train_for_group(dataset_dir: Path, report_path: Path, oos_path: Path, c
         "auto",
         "--seq-len",
         str(cfg.seq_len),
-        "--train-window-months",
-        str(cfg.train_window_months),
-        "--valid-window-months",
-        str(cfg.valid_window_months),
-        "--calibration-months",
-        str(cfg.calibration_months),
+        "--train-window-weeks",
+        str(cfg.train_window_weeks),
+        "--valid-window-weeks",
+        str(cfg.valid_window_weeks),
+        "--calibration-weeks",
+        str(cfg.calibration_weeks),
         "--sign-threshold",
         str(cfg.sign_threshold),
         "--hidden-size",
@@ -325,9 +347,27 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--tag", default=datetime.now().strftime("%Y%m%d"))
     parser.add_argument("--groups", nargs="*", default=[])
     parser.add_argument("--seq-len", type=int, default=20)
-    parser.add_argument("--train-window-months", type=int, default=24)
-    parser.add_argument("--valid-window-months", type=int, default=2)
-    parser.add_argument("--calibration-months", type=int, default=3)
+    parser.add_argument("--train-window-weeks", type=int, default=None, help="训练窗口（周），默认 104")
+    parser.add_argument("--valid-window-weeks", type=int, default=None, help="验证窗口（周），默认 8")
+    parser.add_argument("--calibration-weeks", type=int, default=None, help="校准窗口（周），默认 12")
+    parser.add_argument(
+        "--train-window-months",
+        type=int,
+        default=None,
+        help="兼容参数（已弃用）：训练窗口（月）",
+    )
+    parser.add_argument(
+        "--valid-window-months",
+        type=int,
+        default=None,
+        help="兼容参数（已弃用）：验证窗口（月）",
+    )
+    parser.add_argument(
+        "--calibration-months",
+        type=int,
+        default=None,
+        help="兼容参数（已弃用）：校准窗口（月）",
+    )
     parser.add_argument("--sign-threshold", type=float, default=0.02)
     parser.add_argument("--hidden-size", type=int, default=64)
     parser.add_argument("--num-layers", type=int, default=2)
@@ -379,11 +419,30 @@ def main() -> int:
         require_full_coverage=GROUP_SET_REQUIRE_FULL_COVERAGE.get(args.group_set, False),
     )
 
+    train_window_weeks = _resolve_window_weeks(
+        weeks=args.train_window_weeks,
+        months=args.train_window_months,
+        default_weeks=104,
+        field_name="train_window_weeks",
+    )
+    valid_window_weeks = _resolve_window_weeks(
+        weeks=args.valid_window_weeks,
+        months=args.valid_window_months,
+        default_weeks=8,
+        field_name="valid_window_weeks",
+    )
+    calibration_weeks = _resolve_window_weeks(
+        weeks=args.calibration_weeks,
+        months=args.calibration_months,
+        default_weeks=12,
+        field_name="calibration_weeks",
+    )
+
     cfg = TrainArgs(
         seq_len=args.seq_len,
-        train_window_months=args.train_window_months,
-        valid_window_months=args.valid_window_months,
-        calibration_months=args.calibration_months,
+        train_window_weeks=train_window_weeks,
+        valid_window_weeks=valid_window_weeks,
+        calibration_weeks=calibration_weeks,
         sign_threshold=args.sign_threshold,
         hidden_size=args.hidden_size,
         num_layers=args.num_layers,
@@ -411,11 +470,12 @@ def main() -> int:
     for group in groups:
         drop_features = group_map[group]
         out_dataset_dir = workspace / f"drop_{group}"
+        window_tag = f"window{cfg.train_window_weeks}w"
         if args.group_set == "base52":
-            report_stem = f"lstm_dim52_ablation_drop_{group}_auto_window24_{args.loss_type}_{args.tag}"
+            report_stem = f"lstm_dim52_ablation_drop_{group}_auto_{window_tag}_{args.loss_type}_{args.tag}"
         else:
             report_stem = (
-                f"lstm_dim52_ablation_{args.group_set}_drop_{group}_auto_window24_{args.loss_type}_{args.tag}"
+                f"lstm_dim52_ablation_{args.group_set}_drop_{group}_auto_{window_tag}_{args.loss_type}_{args.tag}"
             )
         report_path = output_dir / f"{report_stem}.json"
         oos_path = output_dir / f"{report_stem}_oos.parquet"
