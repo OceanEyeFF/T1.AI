@@ -5,6 +5,9 @@ Market state features are calculated cross-sectionally from the selected univers
   - market_mom_5d: 5-day momentum of equal-weight market return series
   - market_vol_20d: 20-day volatility of equal-weight market return series
   - market_amount_z20: z-score of total market amount over 20-day rolling window
+Optional ODP global commodity features (when enabled):
+  - odp_cmdty_ret_1d_ew / odp_cmdty_mom_5d_ew / odp_cmdty_vol_20d_ew
+  - odp_cmdty_amount_z20_ew / odp_cmdty_cross_disp_20d
 All market features are shifted by 1 day to avoid look-ahead leakage.
 """
 
@@ -20,6 +23,10 @@ import numpy as np
 import pandas as pd
 
 from ashare_lab.data.akshare_source import AkshareDailyBarsRequest, load_or_fetch_daily_bars
+from ashare_lab.data.odp_source import (
+    ODPHistoricalRequest,
+    load_or_fetch_historical_bars as load_or_fetch_odp_historical_bars,
+)
 from ashare_lab.data.tushare_source import (
     SUPPORTED_DAILY_BASIC_FIELDS,
     SUPPORTED_MONEYFLOW_FIELDS,
@@ -57,6 +64,13 @@ SYMBOL_FEATURES_16 = [
 ]
 
 MARKET_FEATURE_NAMES = ["market_mom_5d", "market_vol_20d", "market_amount_z20"]
+ODP_COMMODITY_FEATURE_NAMES = [
+    "odp_cmdty_ret_1d_ew",
+    "odp_cmdty_mom_5d_ew",
+    "odp_cmdty_vol_20d_ew",
+    "odp_cmdty_amount_z20_ew",
+    "odp_cmdty_cross_disp_20d",
+]
 ETF_FEATURE_NAMES = [
     "etf_ret_1d",
     "etf_ret_1d_ma5",
@@ -338,6 +352,11 @@ def _load_akshare(symbol: str, start: str, end: str, cache_dir: Path, retries: i
     if last_err is not None:
         print(f"[warn] {symbol} akshare all retries failed: {type(last_err).__name__}: {last_err}")
     return pd.DataFrame(columns=["open", "high", "low", "close", "volume", "amount"])
+
+
+def _parse_symbol_list(raw: str) -> list[str]:
+    out = [str(x).strip() for x in str(raw).split(",") if str(x).strip()]
+    return sorted(dict.fromkeys(out))
 
 
 def _load_tushare_live(symbol: str, start: str, end: str, cache_dir: Path) -> pd.DataFrame:
@@ -640,6 +659,102 @@ def _compute_market_state_features(all_bars: dict[str, pd.DataFrame]) -> pd.Data
     return out
 
 
+def _load_odp_commodity_bars(
+    symbols: list[str],
+    *,
+    start: str,
+    end: str,
+    cache_dir: Path,
+    provider: str,
+    base_url: str | None,
+    prefer_rest: bool,
+    request_interval_seconds: float,
+) -> dict[str, pd.DataFrame]:
+    out: dict[str, pd.DataFrame] = {}
+    for idx, symbol in enumerate(symbols):
+        req = ODPHistoricalRequest(
+            endpoint="derivatives/futures/historical",
+            symbol=symbol,
+            start_date=start,
+            end_date=end,
+            provider=provider,
+            interval="1d",
+            base_url=base_url,
+            prefer_rest=prefer_rest,
+        )
+        try:
+            bars = load_or_fetch_odp_historical_bars(req, cache_dir=cache_dir, refresh=False)
+        except Exception as e:  # noqa: BLE001
+            print(f"[warn] ODP commodity {symbol} fetch error: {type(e).__name__}: {e}")
+            bars = pd.DataFrame(columns=["open", "high", "low", "close", "volume", "amount"])
+
+        if not bars.empty:
+            out[symbol] = bars
+        else:
+            print(f"[warn] ODP commodity {symbol} has no data")
+
+        if idx < len(symbols) - 1 and request_interval_seconds > 0:
+            time.sleep(float(request_interval_seconds))
+    return out
+
+
+def _compute_odp_commodity_features(commodity_bars: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    rows: list[pd.DataFrame] = []
+    for symbol, bars in commodity_bars.items():
+        if bars is None or bars.empty:
+            continue
+        close = _num_col(bars, "close")
+        volume = _num_col(bars, "volume")
+        amount = _num_col(bars, "amount")
+        amount_proxy = amount.copy()
+        if amount_proxy.notna().sum() == 0:
+            amount_proxy = close * volume
+
+        ret1d = close.pct_change(1, fill_method=None)
+        mom5 = close.pct_change(5, fill_method=None)
+        vol20 = ret1d.rolling(window=20, min_periods=10).std()
+
+        tmp = pd.DataFrame(index=bars.index.copy())
+        tmp["symbol"] = symbol
+        tmp["ret1d"] = ret1d
+        tmp["mom5"] = mom5
+        tmp["vol20"] = vol20
+        tmp["amount_proxy"] = amount_proxy
+        rows.append(tmp.reset_index())
+
+    if not rows:
+        return pd.DataFrame(index=pd.DatetimeIndex([], name="date"), columns=ODP_COMMODITY_FEATURE_NAMES)
+
+    all_df = pd.concat(rows, ignore_index=True)
+    all_df["date"] = pd.to_datetime(all_df["date"])
+    all_df = all_df.sort_values(["date", "symbol"])
+
+    by_date = all_df.groupby("date", sort=True)
+    agg = pd.DataFrame(index=sorted(all_df["date"].unique()))
+    agg.index = pd.to_datetime(agg.index)
+    agg.index.name = "date"
+
+    agg["ret1d_ew"] = by_date["ret1d"].mean()
+    agg["mom5_ew"] = by_date["mom5"].mean()
+    agg["vol20_ew"] = by_date["vol20"].mean()
+    agg["amount_ew"] = by_date["amount_proxy"].mean()
+
+    amount_mean20 = agg["amount_ew"].rolling(window=20, min_periods=10).mean()
+    amount_std20 = agg["amount_ew"].rolling(window=20, min_periods=10).std().replace(0.0, np.nan)
+    amount_z20 = (agg["amount_ew"] - amount_mean20) / amount_std20
+
+    ret_pivot = all_df.pivot_table(index="date", columns="symbol", values="ret1d", aggfunc="first")
+    cross_disp = ret_pivot.std(axis=1, skipna=True)
+
+    out = pd.DataFrame(index=agg.index)
+    out["odp_cmdty_ret_1d_ew"] = agg["ret1d_ew"].shift(1)
+    out["odp_cmdty_mom_5d_ew"] = agg["mom5_ew"].shift(1)
+    out["odp_cmdty_vol_20d_ew"] = agg["vol20_ew"].shift(1)
+    out["odp_cmdty_amount_z20_ew"] = amount_z20.shift(1)
+    out["odp_cmdty_cross_disp_20d"] = cross_disp.rolling(window=20, min_periods=10).mean().shift(1)
+    return out
+
+
 def _flatten_sequences(X: np.ndarray, feature_names: list[str], seq_len: int) -> tuple[np.ndarray, list[str]]:
     flat = X.reshape(X.shape[0], seq_len * len(feature_names))
     cols: list[str] = []
@@ -769,6 +884,33 @@ def main() -> None:
         default=True,
         help="是否加入板块ETF特征（默认开启；需配合 --sector-etf-map-csv）",
     )
+    parser.add_argument(
+        "--include-odp-commodity-features",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="是否加入 ODP 国际大宗商品特征（默认关闭）",
+    )
+    parser.add_argument(
+        "--odp-provider",
+        default="yfinance",
+        help="ODP provider（默认 yfinance）",
+    )
+    parser.add_argument(
+        "--odp-base-url",
+        default="",
+        help="可选：ODP REST 服务地址（例如 http://127.0.0.1:8000）",
+    )
+    parser.add_argument(
+        "--odp-prefer-rest",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="ODP 拉取优先走 REST（默认优先 SDK）",
+    )
+    parser.add_argument(
+        "--odp-commodity-symbols",
+        default="CL=F,GC=F,HG=F,NG=F,SI=F,ZC=F",
+        help="ODP 国际大宗商品代码列表（逗号分隔）",
+    )
     args = parser.parse_args()
 
     symbols = _parse_symbols(Path(args.symbols_csv))
@@ -829,6 +971,24 @@ def main() -> None:
                 etf_features_by_symbol[s] = feat
 
     market_state = _compute_market_state_features(all_bars)
+    odp_symbols = _parse_symbol_list(str(args.odp_commodity_symbols))
+    odp_market_state = pd.DataFrame(index=market_state.index.copy(), columns=ODP_COMMODITY_FEATURE_NAMES)
+    if bool(args.include_odp_commodity_features) and odp_symbols:
+        odp_bars = _load_odp_commodity_bars(
+            odp_symbols,
+            start=args.start,
+            end=args.end,
+            cache_dir=cache_dir,
+            provider=str(args.odp_provider),
+            base_url=str(args.odp_base_url).strip() or None,
+            prefer_rest=bool(args.odp_prefer_rest),
+            request_interval_seconds=float(args.request_interval_seconds),
+        )
+        odp_market_state = _compute_odp_commodity_features(odp_bars)
+        if odp_market_state.empty:
+            print("[warn] ODP commodity features are enabled but no valid ODP data loaded")
+
+    market_state = market_state.join(odp_market_state, how="left")
 
     feat_frames: list[pd.DataFrame] = []
     lab_frames: list[pd.DataFrame] = []
@@ -922,6 +1082,9 @@ def main() -> None:
             "num_symbols": len(all_bars),
             "start_date": args.start,
             "end_date": args.end,
+            "include_odp_commodity_features": bool(args.include_odp_commodity_features),
+            "odp_provider": str(args.odp_provider),
+            "odp_commodity_symbols": odp_symbols,
         },
         "label_config": {
             "horizons": list(horizons),
@@ -945,13 +1108,20 @@ def main() -> None:
     print(f"feature_count: {len(feature_names)}")
     print(f"feature_names: {feature_names}")
     print(f"feature_profile: {args.feature_profile}")
-    print(f"market_features: {MARKET_FEATURE_NAMES}")
+    market_features_present = [n for n in MARKET_FEATURE_NAMES if n in feature_names]
+    odp_features_present = [n for n in ODP_COMMODITY_FEATURE_NAMES if n in feature_names]
+    print(f"market_features: {market_features_present}")
+    if odp_features_present:
+        print(f"odp_commodity_features: {odp_features_present}")
     if args.include_short_term_features:
         symbol_feature_names = [f.name for f in SYMBOL_FEATURES_16]
         short_term_features = [
             n
             for n in feature_names
-            if n not in symbol_feature_names and n not in MARKET_FEATURE_NAMES and n not in ETF_FEATURE_NAMES
+            if n not in symbol_feature_names
+            and n not in MARKET_FEATURE_NAMES
+            and n not in ODP_COMMODITY_FEATURE_NAMES
+            and n not in ETF_FEATURE_NAMES
         ]
         etf_features = [n for n in feature_names if n in ETF_FEATURE_NAMES]
         print(f"short_term_features({len(short_term_features)}): {short_term_features}")

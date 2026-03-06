@@ -37,7 +37,11 @@ from ashare_lab.features import (  # noqa: E402
 )
 from ashare_lab.models.transformer import create_mtl_model  # noqa: E402
 from ashare_lab.pipeline import DailyPipelineOrchestrator  # noqa: E402
-from ashare_lab.recommendation import AkshareSourceAdapter, TushareSourceAdapter  # noqa: E402
+from ashare_lab.recommendation import (  # noqa: E402
+    AkshareSourceAdapter,
+    ODPSourceAdapter,
+    TushareSourceAdapter,
+)
 from ashare_lab.recommendation.validator import HS300IndexCalendarSource  # noqa: E402
 from ashare_lab.universe import is_allowed_a_share_symbol  # noqa: E402
 
@@ -181,6 +185,15 @@ def _build_data_source(data_source_config_path: str | Path) -> tuple[Any, Any]:
         token_env = str(selected.get("token_env") or "TUSHARE_TOKEN")
         token = os.environ.get(token_env) or None
         data_source = TushareSourceAdapter(cache_dir=cache_dir, adjust="qfq", refresh=False, token=token)
+    elif default_source == "odp":
+        data_source = ODPSourceAdapter(
+            cache_dir=cache_dir,
+            provider=str(selected.get("provider") or "yfinance"),
+            interval=str(selected.get("interval") or "1d"),
+            refresh=False,
+            base_url=str(selected.get("base_url") or "").strip() or None,
+            prefer_rest=bool(selected.get("prefer_rest", False)),
+        )
     else:
         data_source = AkshareSourceAdapter(cache_dir=cache_dir, adjust="qfq", refresh=False)
 
@@ -280,4 +293,3 @@ def main(argv: list[str] | None = None) -> None:
 
 if __name__ == "__main__":  # pragma: no cover
     main()
-

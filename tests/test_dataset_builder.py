@@ -473,3 +473,55 @@ def test_builder_with_tushare_source(
 
     assert (output_path / "train.parquet").exists()
     assert calls == [symbol]
+
+
+def test_builder_with_odp_source(
+    sample_benchmark_cache: Path,
+    temp_output_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """验证数据源切换到 ODP"""
+    from ashare_lab import dataset
+
+    symbol = "600519"
+    dates = pd.date_range("2024-01-01", periods=5, freq="D")
+    fake_df = pd.DataFrame(
+        {
+            "open": [1, 1.1, 1.2, 1.3, 1.4],
+            "high": [1.1, 1.2, 1.3, 1.4, 1.5],
+            "low": [0.9, 1.0, 1.1, 1.2, 1.3],
+            "close": [1.05, 1.15, 1.25, 1.35, 1.45],
+            "volume": [100, 110, 120, 130, 140],
+            "amount": [1000, 1100, 1200, 1300, 1400],
+        },
+        index=dates,
+    )
+
+    calls: list[str] = []
+
+    def fake_loader(req, cache_dir):
+        _ = cache_dir
+        calls.append(req.symbol)
+        return fake_df
+
+    monkeypatch.setattr(dataset.builder, "load_or_fetch_odp_bars", fake_loader)
+
+    config = DatasetConfig(
+        name="test_odp_source",
+        symbols=[symbol],
+        start_date="20240101",
+        end_date="20240105",
+        features=[Return1D()],
+        label_type="forward_return",
+        train_end_date="20240103",
+        valid_end_date="20240104",
+        cache_dir=sample_benchmark_cache,
+        output_dir=temp_output_dir,
+        source="odp",
+    )
+
+    builder = DatasetBuilder(config)
+    output_path = builder.build()
+
+    assert (output_path / "train.parquet").exists()
+    assert calls == [symbol]

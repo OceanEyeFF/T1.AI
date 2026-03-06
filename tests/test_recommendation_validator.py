@@ -106,6 +106,27 @@ def test_akshare_source_adapter_schema_fill(tmp_path: Path, monkeypatch: pytest.
     assert list(bars["000001"].columns) == list(v._REQUIRED_DAILY_COLS)
 
 
+def test_odp_source_adapter_converts_symbol_and_fills_schema(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: list[str] = []
+
+    def fake_load(req: Any, cache_dir: Path, refresh: bool = False) -> pd.DataFrame:
+        _ = (cache_dir, refresh)
+        captured.append(req.symbol)
+        return _df_with_close(["2025-01-02"], [10.0])
+
+    import ashare_lab.data.odp_source as odp_src
+
+    monkeypatch.setattr(odp_src, "load_or_fetch_daily_bars", fake_load)
+
+    adapter = v.ODPSourceAdapter(cache_dir=tmp_path, provider="yfinance")
+    bars = adapter.fetch_daily_bars(["600519"], start_date="2025-01-02", end_date="2025-01-02")
+    assert captured == ["600519.SS"]
+    assert list(bars["600519"].columns) == list(v._REQUIRED_DAILY_COLS)
+
+
 def test_hs300_index_calendar_source_uses_index_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     seen: list[Any] = []
 

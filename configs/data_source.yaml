@@ -1,4 +1,4 @@
-default_source: "akshare"  # 可选: akshare, tushare
+default_source: "akshare"  # 可选: akshare, tushare, odp
 fallback: "akshare"
 sources:
   akshare:
@@ -6,4 +6,12 @@ sources:
   tushare:
     description: "TuShare Pro 数据源，需设置环境变量 TUSHARE_TOKEN"
     token_env: "TUSHARE_TOKEN"
+    cache_dir: "data/cache"
+  odp:
+    description: "OpenBB ODP 数据源（默认 yfinance provider）"
+    provider: "yfinance"
+    interval: "1d"
+    # 可选：当本机运行 ODP REST 服务时启用（默认优先 SDK）
+    # base_url: "http://127.0.0.1:8000"
+    # prefer_rest: true
     cache_dir: "data/cache"

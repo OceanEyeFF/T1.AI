@@ -195,6 +195,35 @@ def test_source_switch_is_wired(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     assert seen["source"] == "tushare"
 
 
+def test_source_switch_to_odp_is_wired(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    trade_dates = ["2025-01-02", "2025-01-03", "2025-01-06", "2025-01-07", "2025-01-08", "2025-01-09"]
+    hs300_df = _df_close(trade_dates, [100, 101, 102, 103, 104, 105])
+    _install_fake_calendar(monkeypatch, hs300_df)
+
+    import scripts.validate_recommendations as vr
+
+    seen: dict[str, str] = {}
+
+    def _fake_create(source: str) -> Any:
+        seen["source"] = source
+        return _FakeDailyBarsSource({"000001": _df_close(["2025-01-02", "2025-01-09"], [10.0, 10.8])})
+
+    monkeypatch.setattr(vr, "_create_data_source", _fake_create)
+
+    input_path = tmp_path / "recommendations.json"
+    input_path.write_text(
+        json.dumps(
+            {"date": "2025-01-02", "recommendations": [{"rank": 1, "symbol": "000001", "score": 0.2}]},
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    code = vr.main(["--input", str(input_path), "--source", "odp", "--horizon", "5"])
+    assert code == 0
+    assert seen["source"] == "odp"
+
+
 def test_error_message_for_missing_input(tmp_path: Path, capsys: Any) -> None:
     import scripts.validate_recommendations as vr
 

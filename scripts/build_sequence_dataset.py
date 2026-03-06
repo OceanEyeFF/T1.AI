@@ -23,6 +23,7 @@ import numpy as np
 import pandas as pd
 
 from ashare_lab.data.akshare_source import AkshareDailyBarsRequest, load_or_fetch_daily_bars
+from ashare_lab.data.odp_source import ODPDailyBarsRequest, load_or_fetch_daily_bars as load_odp_daily_bars
 from ashare_lab.data.tushare_source import TushareDailyBarsRequest, load_or_fetch_daily_bars as load_tushare
 from ashare_lab.dataset.sequence_builder import SequenceDatasetBuilder
 from ashare_lab.features.momentum import Return1D, Return20D, Return5D
@@ -117,6 +118,9 @@ def _load_bars(source: str, symbol: str, start: str, end: str, cache_dir: Path) 
             ts_code = f"{ts_code}.SH" if ts_code[:2] in {"60", "68", "90", "93"} else f"{ts_code}.SZ"
         req = TushareDailyBarsRequest(symbol=ts_code, start_date=start, end_date=end, adjust="qfq")
         return load_tushare(req, cache_dir)
+    if source == "odp":
+        req = ODPDailyBarsRequest(symbol=symbol, start_date=start, end_date=end)
+        return load_odp_daily_bars(req, cache_dir)
     raise ValueError(f"unsupported --source: {source}")
 
 
@@ -206,7 +210,12 @@ def main() -> None:
     parser.add_argument("--end", required=True, help="End date YYYYMMDD")
     parser.add_argument("--symbols", help="Comma-separated symbols, e.g. 600519,000333")
     parser.add_argument("--symbols-csv", help="CSV file containing symbols (column: symbol/code/ts_code)")
-    parser.add_argument("--source", default="akshare", choices=["akshare", "tushare"], help="Data source")
+    parser.add_argument(
+        "--source",
+        default="akshare",
+        choices=["akshare", "tushare", "odp"],
+        help="Data source",
+    )
     parser.add_argument("--cache-dir", default="data/cache", help="Cache dir for daily bars")
     parser.add_argument("--output-dir", default="data/datasets", help="Output dir for parquet files")
     parser.add_argument("--seq-len", type=int, default=20, help="Sequence length (default: 20)")

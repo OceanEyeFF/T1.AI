@@ -19,6 +19,7 @@ __all__ = [
     "save_as_markdown",
     "DailyBarsSource",
     "AkshareSourceAdapter",
+    "ODPSourceAdapter",
     "TushareSourceAdapter",
     "ValidationResult",
     "RecommendationValidator",
@@ -31,6 +32,7 @@ if TYPE_CHECKING:  # pragma: no cover - 仅用于类型提示
     from .validator import (
         AkshareSourceAdapter,
         DailyBarsSource,
+        ODPSourceAdapter,
         RecommendationValidator,
         TushareSourceAdapter,
         ValidationResult,
@@ -52,6 +54,7 @@ def __getattr__(name: str) -> Any:  # pragma: no cover - 运行时按需触发
     if name in {
         "DailyBarsSource",
         "AkshareSourceAdapter",
+        "ODPSourceAdapter",
         "TushareSourceAdapter",
         "ValidationResult",
         "RecommendationValidator",
@@ -59,6 +62,7 @@ def __getattr__(name: str) -> Any:  # pragma: no cover - 运行时按需触发
         from .validator import (
             AkshareSourceAdapter,
             DailyBarsSource,
+            ODPSourceAdapter,
             RecommendationValidator,
             TushareSourceAdapter,
             ValidationResult,
@@ -67,6 +71,7 @@ def __getattr__(name: str) -> Any:  # pragma: no cover - 运行时按需触发
         return {
             "DailyBarsSource": DailyBarsSource,
             "AkshareSourceAdapter": AkshareSourceAdapter,
+            "ODPSourceAdapter": ODPSourceAdapter,
             "TushareSourceAdapter": TushareSourceAdapter,
             "ValidationResult": ValidationResult,
             "RecommendationValidator": RecommendationValidator,

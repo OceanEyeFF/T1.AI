@@ -60,6 +60,8 @@ python -c "import torch; print('torch=', torch.__version__); print('cuda_availab
 
 ```bash
 python -m pip install -e ".[dev]"
+# 可选：如需 ODP SDK 直连（非 REST）
+python -m pip install "openbb>=4"
 ```
 
 ---
@@ -84,6 +86,8 @@ MODEL_DIR=models
 
 ```bash
 export TUSHARE_TOKEN="your_token_here"
+# 可选：当使用 ODP REST 模式时指定地址
+export ODP_BASE_URL="http://127.0.0.1:8000"
 ```
 
 ### 方法3：设置到 Conda 环境

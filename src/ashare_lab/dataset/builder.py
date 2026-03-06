@@ -25,6 +25,10 @@ from ashare_lab.data.index_source import (
     AkshareIndexDailyRequest,
     load_or_fetch_index_daily,
 )
+from ashare_lab.data.odp_source import (
+    ODPDailyBarsRequest,
+    load_or_fetch_daily_bars as load_or_fetch_odp_bars,
+)
 from ashare_lab.features.base import BaseFeature
 from ashare_lab.labels.excess_return import ExcessReturnLabel, ForwardReturnLabel
 
@@ -45,7 +49,7 @@ class DatasetConfig:
     split_method: str = "fixed_window"  # 'fixed_window' or 'rolling_window'
     train_end_date: str | None = None  # YYYYMMDD
     valid_end_date: str | None = None  # YYYYMMDD
-    source: str = "akshare"  # 'akshare' or 'tushare'
+    source: str = "akshare"  # 'akshare' or 'tushare' or 'odp'
     cache_dir: Path = field(default_factory=lambda: Path("data/cache"))
     output_dir: Path = field(default_factory=lambda: Path("data/datasets"))
     nan_threshold: float = 0.2  # 缺失数据阈值（超过警告）
@@ -117,6 +121,13 @@ class DatasetBuilder:
                         adjust="qfq",
                     )
                     df = load_or_fetch_tushare_bars(req, self.config.cache_dir)
+                elif self.config.source == "odp":
+                    req = ODPDailyBarsRequest(
+                        symbol=symbol,
+                        start_date=self.config.start_date,
+                        end_date=self.config.end_date,
+                    )
+                    df = load_or_fetch_odp_bars(req, self.config.cache_dir)
                 else:
                     raise ValueError(f"不支持的数据源: {self.config.source}")
 

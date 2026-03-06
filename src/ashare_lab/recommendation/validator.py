@@ -112,6 +112,35 @@ def _symbol_to_ts_code(symbol: str) -> str:
     return f"{s}.{suffix}"
 
 
+def _symbol_to_odp_equity_symbol(symbol: str, provider: str = "yfinance") -> str:
+    """将 A 股代码转换为 ODP equity 接口可识别的 symbol（默认 yfinance 口径）。"""
+    raw = str(symbol).strip().upper()
+    if not raw:
+        raise ValueError("symbol 不能为空")
+
+    if "." in raw:
+        code, suffix = raw.split(".", 1)
+        suffix = suffix.upper()
+        if str(provider).lower() == "yfinance":
+            if suffix == "SH":
+                return f"{code}.SS"
+            if suffix in {"SZ", "SS", "BJ"}:
+                return f"{code}.{suffix}"
+        return raw
+
+    if len(raw) != 6 or not raw.isdigit():
+        raise ValueError(f"不支持的股票代码格式: {symbol}")
+
+    if str(provider).lower() == "yfinance":
+        if raw.startswith(("6", "9")):
+            return f"{raw}.SS"
+        if raw.startswith(("0", "3")):
+            return f"{raw}.SZ"
+        if raw.startswith(("8", "4")):
+            return f"{raw}.BJ"
+    return raw
+
+
 class AkshareSourceAdapter:
     """AkShare 数据源适配器。"""
 
@@ -193,6 +222,57 @@ class TushareSourceAdapter:
         return out
 
 
+class ODPSourceAdapter:
+    """OpenBB ODP 数据源适配器（默认使用 yfinance provider）。"""
+
+    def __init__(
+        self,
+        cache_dir: Path | None = None,
+        provider: str = "yfinance",
+        interval: str = "1d",
+        refresh: bool = False,
+        base_url: str | None = None,
+        prefer_rest: bool = False,
+    ) -> None:
+        self.cache_dir = cache_dir or Path("data/cache")
+        self.provider = provider
+        self.interval = interval
+        self.refresh = refresh
+        self.base_url = base_url
+        self.prefer_rest = prefer_rest
+
+    def fetch_daily_bars(
+        self,
+        symbols: Sequence[str],
+        start_date: str,
+        end_date: str,
+    ) -> dict[str, pd.DataFrame]:
+        from ashare_lab.data.odp_source import ODPDailyBarsRequest
+        from ashare_lab.data.odp_source import (
+            load_or_fetch_daily_bars as load_or_fetch_odp_daily_bars,
+        )
+
+        start = _to_yyyymmdd(start_date)
+        end = _to_yyyymmdd(end_date)
+
+        out: dict[str, pd.DataFrame] = {}
+        for symbol in symbols:
+            sym = str(symbol)
+            odp_symbol = _symbol_to_odp_equity_symbol(sym, provider=self.provider)
+            req = ODPDailyBarsRequest(
+                symbol=odp_symbol,
+                start_date=start,
+                end_date=end,
+                provider=self.provider,
+                interval=self.interval,
+                base_url=self.base_url,
+                prefer_rest=self.prefer_rest,
+            )
+            df = load_or_fetch_odp_daily_bars(req, self.cache_dir, refresh=self.refresh)
+            out[sym] = _ensure_daily_schema(df)
+        return out
+
+
 class HS300IndexCalendarSource:
     """基于 HS300（000300）指数日线的交易日历源。"""
 
@@ -201,7 +281,6 @@ class HS300IndexCalendarSource:
         self.refresh = refresh
 
     def fetch_hs300_daily(self, start_date: str, end_date: str) -> pd.DataFrame:
-        import numpy as np
         import pandas as pd
 
         from ashare_lab.data.index_source import AkshareIndexDailyRequest

@@ -5,7 +5,7 @@
 - 支持从 JSON/CSV 读取推荐列表；
   - JSON：支持 engine.save_as_json 输出结构（date + 3d/5d/10d）
   - CSV：支持 rank/symbol/score(or predicted_return) + 可选 date/rec_date 列
-- 支持 --source 在 akshare/tushare 之间切换（默认 akshare）
+- 支持 --source 在 akshare/tushare/odp 之间切换（默认 akshare）
 - 支持 --horizon 设置验证天数（默认 5）
 - 输出验证报告到控制台，并可通过 --output 保存 JSON 报告
 - 可选通过 --save-to-db 写入 RecommendationHistory（推荐+验证结果）
@@ -33,6 +33,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from ashare_lab.recommendation import (  # noqa: E402
     AkshareSourceAdapter,
+    ODPSourceAdapter,
     RecommendationHistory,
     RecommendationValidator,
     TushareSourceAdapter,
@@ -42,7 +43,12 @@ from ashare_lab.recommendation import (  # noqa: E402
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="验证推荐结果（命中率/IC/RankIC/超额收益）")
     parser.add_argument("--input", required=True, help="输入推荐文件路径（.json 或 .csv）")
-    parser.add_argument("--source", choices=["akshare", "tushare"], default="akshare", help="数据源（默认 akshare）")
+    parser.add_argument(
+        "--source",
+        choices=["akshare", "tushare", "odp"],
+        default="akshare",
+        help="数据源（默认 akshare）",
+    )
     parser.add_argument("--horizon", type=int, default=5, help="验证天数（交易日，默认 5）")
     parser.add_argument("--output", default="", help="保存 JSON 报告的路径（可选）")
     parser.add_argument("--save-to-db", action="store_true", help="是否写入 RecommendationHistory（可选）")
@@ -243,6 +249,8 @@ def _create_data_source(source: str) -> Any:
         return AkshareSourceAdapter()
     if source == "tushare":
         return TushareSourceAdapter()
+    if source == "odp":
+        return ODPSourceAdapter()
     raise ValueError(f"不支持的数据源: {source}")
 
 
@@ -346,6 +354,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"错误: {msg}", file=sys.stderr)
         if source == "tushare":
             print("提示: 使用 TuShare 时请确保 token 可用（可通过环境变量或 TuShare 默认配置提供）", file=sys.stderr)
+        if source == "odp":
+            print("提示: 使用 ODP 时请确保已安装 openbb 或可访问 ODP REST API（ODP_BASE_URL）", file=sys.stderr)
         # 输出调试信息便于定位（保持轻量，不做复杂日志系统）
         print(traceback.format_exc(), file=sys.stderr)
         return 1
