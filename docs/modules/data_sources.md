@@ -56,12 +56,14 @@
 - `calibrated` 主指标（`avg_ic`、`avg_rank_ic`）相对基线明显回落。
 
 并且将国际大宗缩窄到“能源+金属”子集后，结果仍未超过纯 A 股基线模型。
+进一步将商品因子切换到 TuShare 国内期货（`fut_daily`）后，`raw` 指标有改善，但 `calibrated` 主指标仍未超过基线。
 
 因此当前工程结论为：
 
 1. 国内二级市场在本策略与样本范围内，对国际大宗价格因子的敏感性偏弱。
 2. 国际大宗因子暂不作为默认训练输入，仅保留为可选扩展与监控项。
 3. 默认仍以国内行情与资金流因子为主，避免因跨市场噪声拉低校准后稳定性。
+4. 国内期货商品因子保留在候选池，后续仅在“校准策略重构”后再复评是否纳入默认特征。
 
 对应报告：
 
@@ -69,6 +71,8 @@
 - `data/datasets/archives/reports_odp_abtests_20260306.tar.gz`（包含以下报告：
   - `output/reports/abtest_odp_cmdty_dim58_bestparams_20260306.json`
   - `output/reports/abtest_odp_cmdty_energy_metals_dim58_bestparams_20260306.json`
+  - `output/reports/abtest_tushare_fut_cmdty_dim58_bestparams_20260306.json`
   - `output/reports/ic_monthly_comparison_20260306.json`
   - `output/reports/ic_monthly_comparison_tri_compare_cmdty.json`
-  - `output/reports/ic_monthly_comparison_tri_compare_cmdty_raw.json`）
+  - `output/reports/ic_monthly_comparison_tri_compare_cmdty_raw.json`
+  - `output/reports/ic_monthly_comparison_quad_compare_cmdty.json`）

@@ -8,6 +8,8 @@ Market state features are calculated cross-sectionally from the selected univers
 Optional ODP global commodity features (when enabled):
   - odp_cmdty_ret_1d_ew / odp_cmdty_mom_5d_ew / odp_cmdty_vol_20d_ew
   - odp_cmdty_amount_z20_ew / odp_cmdty_cross_disp_20d
+Optional TuShare domestic futures commodity features (when enabled):
+  - uses same 5 aggregate fields above for compatibility
 All market features are shifted by 1 day to avoid look-ahead leakage.
 """
 
@@ -16,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import time
 from pathlib import Path
 
@@ -71,6 +74,7 @@ ODP_COMMODITY_FEATURE_NAMES = [
     "odp_cmdty_amount_z20_ew",
     "odp_cmdty_cross_disp_20d",
 ]
+TUSHARE_FUT_BARS_FIELDS = ("open", "high", "low", "close", "volume", "amount")
 ETF_FEATURE_NAMES = [
     "etf_ret_1d",
     "etf_ret_1d_ma5",
@@ -698,7 +702,197 @@ def _load_odp_commodity_bars(
     return out
 
 
-def _compute_odp_commodity_features(commodity_bars: dict[str, pd.DataFrame]) -> pd.DataFrame:
+def _normalize_tushare_fut_daily(raw: pd.DataFrame | None) -> pd.DataFrame:
+    cols = ["date", "ts_code", "open", "high", "low", "close", "volume", "amount"]
+    if raw is None or raw.empty:
+        return pd.DataFrame(columns=cols)
+
+    work = raw.rename(columns={"trade_date": "date", "vol": "volume"}).copy()
+    if "date" not in work.columns or "ts_code" not in work.columns:
+        return pd.DataFrame(columns=cols)
+
+    work["date"] = pd.to_datetime(work["date"], errors="coerce")
+    work["ts_code"] = work["ts_code"].astype(str).str.upper().str.strip()
+    work = work.dropna(subset=["date"])
+    work = work[work["ts_code"] != ""]
+
+    for c in ("open", "high", "low", "close", "volume", "amount"):
+        if c in work.columns:
+            work[c] = pd.to_numeric(work[c], errors="coerce")
+        else:
+            work[c] = np.nan
+
+    out = work[cols].sort_values(["date", "ts_code"]).reset_index(drop=True)
+    return out
+
+
+def _fetch_tushare_fut_daily_by_exchange(
+    *,
+    exchange: str,
+    start: str,
+    end: str,
+    page_limit: int,
+    max_pages: int,
+    page_sleep_seconds: float,
+    token: str | None = None,
+) -> pd.DataFrame:
+    import tushare as ts  # lazy import
+
+    tk = token or os.environ.get("TUSHARE_TOKEN")
+    if not tk:
+        raise ValueError("TUSHARE_TOKEN not found for tushare_fut commodity fetch")
+
+    pro = ts.pro_api(tk)
+    frames: list[pd.DataFrame] = []
+    offset = 0
+    fields = "ts_code,trade_date,open,high,low,close,vol,amount,oi"
+    for _ in range(max_pages):
+        raw = None
+        last_err: Exception | None = None
+        for attempt in range(3):
+            try:
+                raw = pro.fut_daily(
+                    exchange=exchange,
+                    start_date=start,
+                    end_date=end,
+                    offset=offset,
+                    limit=page_limit,
+                    fields=fields,
+                )
+                last_err = None
+                break
+            except Exception as e:  # noqa: BLE001
+                last_err = e
+                backoff = max(float(page_sleep_seconds), 0.2) * float(attempt + 1)
+                time.sleep(backoff)
+        if raw is None:
+            if frames:
+                print(
+                    f"[warn] TuShare futures {exchange} pagination stopped at offset={offset}: "
+                    f"{type(last_err).__name__}: {last_err}"
+                )
+                break
+            if last_err is not None:
+                raise last_err
+            break
+
+        page = _normalize_tushare_fut_daily(raw)
+        if page.empty:
+            break
+        frames.append(page)
+        if len(page) < page_limit:
+            break
+        offset += page_limit
+        if page_sleep_seconds > 0:
+            time.sleep(float(page_sleep_seconds))
+
+    if not frames:
+        return pd.DataFrame(columns=["date", "ts_code", *TUSHARE_FUT_BARS_FIELDS])
+
+    out = pd.concat(frames, ignore_index=True)
+    out = out.sort_values(["date", "ts_code"]).drop_duplicates(subset=["date", "ts_code"], keep="last").reset_index(drop=True)
+    return out
+
+
+def _ts_code_symbol_part(ts_code: str) -> str:
+    return str(ts_code).split(".", 1)[0].strip().upper()
+
+
+def _is_main_like_tushare_fut_code(ts_code: str) -> bool:
+    return bool(re.fullmatch(r"[A-Z]+", _ts_code_symbol_part(ts_code)))
+
+
+def _build_tushare_fut_bars_map(
+    fut_df: pd.DataFrame,
+    *,
+    symbol_filters: set[str] | None = None,
+    main_only: bool = True,
+) -> dict[str, pd.DataFrame]:
+    if fut_df is None or fut_df.empty:
+        return {}
+
+    work = fut_df.copy()
+    work["ts_code"] = work["ts_code"].astype(str).str.upper().str.strip()
+    work["symbol_part"] = work["ts_code"].map(_ts_code_symbol_part)
+    if main_only:
+        work = work[work["ts_code"].map(_is_main_like_tushare_fut_code)]
+
+    filt = {str(x).strip().upper() for x in (symbol_filters or set()) if str(x).strip()}
+    if filt:
+        work = work[(work["ts_code"].isin(filt)) | (work["symbol_part"].isin(filt))]
+
+    out: dict[str, pd.DataFrame] = {}
+    if work.empty:
+        return out
+
+    for ts_code, g in work.groupby("ts_code", sort=True):
+        bars = g[["date", *TUSHARE_FUT_BARS_FIELDS]].copy()
+        bars["date"] = pd.to_datetime(bars["date"], errors="coerce")
+        bars = bars.dropna(subset=["date"]).set_index("date").sort_index()
+        bars = bars[~bars.index.duplicated(keep="last")]
+        bars.index.name = "date"
+        if bars.empty:
+            continue
+        out[ts_code] = bars
+    return out
+
+
+def _load_tushare_commodity_bars(
+    *,
+    start: str,
+    end: str,
+    exchanges: list[str],
+    symbols: list[str],
+    main_only: bool,
+    page_limit: int,
+    max_pages: int,
+    page_sleep_seconds: float,
+    request_interval_seconds: float,
+) -> dict[str, pd.DataFrame]:
+    frames: list[pd.DataFrame] = []
+    for idx, exchange in enumerate(exchanges):
+        try:
+            ex_df = _fetch_tushare_fut_daily_by_exchange(
+                exchange=str(exchange).upper(),
+                start=start,
+                end=end,
+                page_limit=int(page_limit),
+                max_pages=int(max_pages),
+                page_sleep_seconds=float(page_sleep_seconds),
+            )
+        except Exception as e:  # noqa: BLE001
+            print(f"[warn] TuShare futures {exchange} fetch error: {type(e).__name__}: {e}")
+            ex_df = pd.DataFrame(columns=["date", "ts_code", *TUSHARE_FUT_BARS_FIELDS])
+
+        if not ex_df.empty:
+            frames.append(ex_df)
+        else:
+            print(f"[warn] TuShare futures {exchange} has no data")
+
+        if idx < len(exchanges) - 1 and request_interval_seconds > 0:
+            time.sleep(float(request_interval_seconds))
+
+    if not frames:
+        return {}
+
+    all_df = pd.concat(frames, ignore_index=True)
+    all_df = all_df.sort_values(["date", "ts_code"]).drop_duplicates(subset=["date", "ts_code"], keep="last").reset_index(drop=True)
+    out = _build_tushare_fut_bars_map(
+        all_df,
+        symbol_filters=set(symbols),
+        main_only=bool(main_only),
+    )
+    if symbols:
+        requested = {str(x).strip().upper() for x in symbols if str(x).strip()}
+        got_codes = set(out.keys())
+        got_symbols = {_ts_code_symbol_part(code) for code in got_codes}
+        missing = sorted([s for s in requested if s not in got_codes and s not in got_symbols])
+        if missing:
+            print(f"[warn] TuShare futures requested symbols missing: {missing}")
+    return out
+
+
+def _compute_commodity_features(commodity_bars: dict[str, pd.DataFrame]) -> pd.DataFrame:
     rows: list[pd.DataFrame] = []
     for symbol, bars in commodity_bars.items():
         if bars is None or bars.empty:
@@ -891,6 +1085,12 @@ def main() -> None:
         help="是否加入 ODP 国际大宗商品特征（默认关闭）",
     )
     parser.add_argument(
+        "--commodity-source",
+        default="odp",
+        choices=["odp", "tushare_fut"],
+        help="商品数据来源：odp(国际) 或 tushare_fut(国内期货)",
+    )
+    parser.add_argument(
         "--odp-provider",
         default="yfinance",
         help="ODP provider（默认 yfinance）",
@@ -910,6 +1110,40 @@ def main() -> None:
         "--odp-commodity-symbols",
         default="CL=F,GC=F,HG=F,NG=F,SI=F,ZC=F",
         help="ODP 国际大宗商品代码列表（逗号分隔）",
+    )
+    parser.add_argument(
+        "--tushare-fut-exchanges",
+        default="SHFE,DCE,CZCE,INE,GFEX",
+        help="TuShare 期货交易所列表（逗号分隔）",
+    )
+    parser.add_argument(
+        "--tushare-fut-symbols",
+        default="CU.SHF,AL.SHF,ZN.SHF,PB.SHF,NI.SHF,SN.SHF,AU.SHF,AG.SHF,RB.SHF,HC.SHF,SC.INE,FU.SHF,BU.SHF,PG.DCE,ZC.CZCE",
+        help="TuShare 期货符号过滤（逗号分隔，支持 ts_code 或品种简称）",
+    )
+    parser.add_argument(
+        "--tushare-fut-main-only",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="是否仅使用主连/连续类代码（默认开启）",
+    )
+    parser.add_argument(
+        "--tushare-fut-page-limit",
+        type=int,
+        default=2000,
+        help="TuShare fut_daily 单页 limit（默认 2000）",
+    )
+    parser.add_argument(
+        "--tushare-fut-max-pages",
+        type=int,
+        default=120,
+        help="TuShare fut_daily 每个交易所最大翻页数（默认 120）",
+    )
+    parser.add_argument(
+        "--tushare-fut-page-sleep-seconds",
+        type=float,
+        default=0.05,
+        help="TuShare fut_daily 翻页间隔秒数（默认 0.05）",
     )
     args = parser.parse_args()
 
@@ -971,24 +1205,48 @@ def main() -> None:
                 etf_features_by_symbol[s] = feat
 
     market_state = _compute_market_state_features(all_bars)
+    commodity_source = str(args.commodity_source).strip().lower()
     odp_symbols = _parse_symbol_list(str(args.odp_commodity_symbols))
-    odp_market_state = pd.DataFrame(index=market_state.index.copy(), columns=ODP_COMMODITY_FEATURE_NAMES)
-    if bool(args.include_odp_commodity_features) and odp_symbols:
-        odp_bars = _load_odp_commodity_bars(
-            odp_symbols,
-            start=args.start,
-            end=args.end,
-            cache_dir=cache_dir,
-            provider=str(args.odp_provider),
-            base_url=str(args.odp_base_url).strip() or None,
-            prefer_rest=bool(args.odp_prefer_rest),
-            request_interval_seconds=float(args.request_interval_seconds),
-        )
-        odp_market_state = _compute_odp_commodity_features(odp_bars)
-        if odp_market_state.empty:
-            print("[warn] ODP commodity features are enabled but no valid ODP data loaded")
+    tushare_fut_exchanges = _parse_symbol_list(str(args.tushare_fut_exchanges))
+    tushare_fut_symbols = _parse_symbol_list(str(args.tushare_fut_symbols))
+    commodity_market_state = pd.DataFrame(index=market_state.index.copy(), columns=ODP_COMMODITY_FEATURE_NAMES)
+    if bool(args.include_odp_commodity_features):
+        commodity_bars: dict[str, pd.DataFrame] = {}
+        if commodity_source == "odp":
+            if odp_symbols:
+                commodity_bars = _load_odp_commodity_bars(
+                    odp_symbols,
+                    start=args.start,
+                    end=args.end,
+                    cache_dir=cache_dir,
+                    provider=str(args.odp_provider),
+                    base_url=str(args.odp_base_url).strip() or None,
+                    prefer_rest=bool(args.odp_prefer_rest),
+                    request_interval_seconds=float(args.request_interval_seconds),
+                )
+        elif commodity_source == "tushare_fut":
+            if not tushare_fut_exchanges:
+                print("[warn] commodity_source=tushare_fut but no exchanges configured")
+            else:
+                commodity_bars = _load_tushare_commodity_bars(
+                    start=args.start,
+                    end=args.end,
+                    exchanges=tushare_fut_exchanges,
+                    symbols=tushare_fut_symbols,
+                    main_only=bool(args.tushare_fut_main_only),
+                    page_limit=int(args.tushare_fut_page_limit),
+                    max_pages=int(args.tushare_fut_max_pages),
+                    page_sleep_seconds=float(args.tushare_fut_page_sleep_seconds),
+                    request_interval_seconds=float(args.request_interval_seconds),
+                )
+        else:
+            raise ValueError(f"unsupported commodity_source: {commodity_source}")
 
-    market_state = market_state.join(odp_market_state, how="left")
+        commodity_market_state = _compute_commodity_features(commodity_bars)
+        if commodity_market_state.empty:
+            print(f"[warn] commodity features are enabled but no valid data loaded (source={commodity_source})")
+
+    market_state = market_state.join(commodity_market_state, how="left")
 
     feat_frames: list[pd.DataFrame] = []
     lab_frames: list[pd.DataFrame] = []
@@ -1083,8 +1341,12 @@ def main() -> None:
             "start_date": args.start,
             "end_date": args.end,
             "include_odp_commodity_features": bool(args.include_odp_commodity_features),
+            "commodity_source": commodity_source,
             "odp_provider": str(args.odp_provider),
-            "odp_commodity_symbols": odp_symbols,
+            "odp_commodity_symbols": odp_symbols if commodity_source == "odp" else [],
+            "tushare_fut_exchanges": tushare_fut_exchanges if commodity_source == "tushare_fut" else [],
+            "tushare_fut_symbols": tushare_fut_symbols if commodity_source == "tushare_fut" else [],
+            "tushare_fut_main_only": bool(args.tushare_fut_main_only),
         },
         "label_config": {
             "horizons": list(horizons),
@@ -1112,7 +1374,7 @@ def main() -> None:
     odp_features_present = [n for n in ODP_COMMODITY_FEATURE_NAMES if n in feature_names]
     print(f"market_features: {market_features_present}")
     if odp_features_present:
-        print(f"odp_commodity_features: {odp_features_present}")
+        print(f"commodity_features(source={commodity_source}): {odp_features_present}")
     if args.include_short_term_features:
         symbol_feature_names = [f.name for f in SYMBOL_FEATURES_16]
         short_term_features = [
