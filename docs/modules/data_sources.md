@@ -76,3 +76,33 @@
   - `output/reports/ic_monthly_comparison_tri_compare_cmdty.json`
   - `output/reports/ic_monthly_comparison_tri_compare_cmdty_raw.json`
   - `output/reports/ic_monthly_comparison_quad_compare_cmdty.json`）
+
+## 7. 补充结论（截至 2026-03-07）
+
+在同一评估窗口下补充了 XGBoost 滚动重训对照（与 LSTM 保持同一数据切分口径）：
+
+- 基线（53 维）：
+  - LSTM：`calibrated avg_ic=0.080951`，`avg_rank_ic=0.062236`
+  - XGBoost：`calibrated avg_ic=0.100764`，`avg_rank_ic=0.131346`
+- 加入国内期货商品因子（58 维，TuShare `fut_daily`）：
+  - LSTM：`calibrated avg_ic=-0.005610`
+  - XGBoost：`calibrated avg_ic=-0.174614`
+
+阶段性判断：
+
+1. 在当前样本和训练配置下，XGBoost 在纯 A 股基线特征上优于 LSTM。
+2. 国内期货商品因子加入后，两种模型的校准后表现均下降，且 XGBoost 下劣化更明显。
+3. 因此“国内商品因子默认并入”仍不成立，继续作为可选扩展项，不进入默认训练配置。
+
+另外，本日（2026-03-07）对 TuShare 国内期货做了额度刷新后的重新抓取验证，重建数据集与旧版本 `train/valid/test/metadata` 的文件哈希一致，说明当前实验输入未发生变化。
+
+本轮整理后保留的最佳测试结果：
+
+- `output/reports/lstm_dim53_no_hist_hl_auto_window24_seq20_icaware_a0176_lr5e5_coswrt_pat20_seed042_20260305_latest.json`
+- `output/reports/lstm_dim53_no_hist_hl_auto_window24_seq20_icaware_a0176_lr5e5_coswrt_pat20_seed042_20260305_latest_oos.parquet`
+- `output/reports/abtest_xgb_baseline_dim53_20260306.json`
+- `output/reports/abtest_xgb_baseline_dim53_20260306_oos.parquet`
+
+其余测试结果已归档到：
+
+- `output/reports/reports_nonbest_experiments_20260307.tar.gz`
