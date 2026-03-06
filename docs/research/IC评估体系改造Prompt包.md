@@ -10,7 +10,7 @@
 ## Prompt 1：一键执行最小改造（总控）
 
 ```text
-你是本仓库的代码代理。请按 docs/LLM 研究/IC评估体系最小改造清单与计划.md 执行最小改造，严格按 Phase A -> Phase B -> Phase C 顺序推进。
+你是本仓库的代码代理。请按 docs/research/IC评估体系最小改造清单与计划.md 执行最小改造，严格按 Phase A -> Phase B -> Phase C 顺序推进。
 
 硬性要求：
 1) 先读取相关代码与文档，再修改。

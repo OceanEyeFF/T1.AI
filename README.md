@@ -4,10 +4,10 @@
 
 ## 约束与目标
 
-- 约束：见 `docs/constraints.md`
-- 盈利/验收目标：见 `docs/objectives.md`
-- 数据契约（内部统一 schema）：见 `docs/data_contract.md`
-- 交易协议（信号/成交时点、持有周期、做T策略）：见 `docs/protocol.md`
+- 约束：见 `docs/interfaces/constraints.md`
+- 盈利/验收目标：见 `docs/interfaces/objectives.md`
+- 数据契约（内部统一 schema）：见 `docs/interfaces/data_contract.md`
+- 交易协议（信号/成交时点、持有周期、做T策略）：见 `docs/interfaces/protocol.md`
 
 ## Quickstart（V0：先用 akshare 跑通链路）
 
@@ -58,8 +58,16 @@ python scripts/run_backtest.py \
 
 ## 文档入口
 
-- 交易协议：`docs/protocol.md`（信号/成交时点、持有周期、做T策略）
+- 文档总导航：[docs/README.md](docs/README.md)
+- Overview：[docs/overview/README.md](docs/overview/README.md)
+- Modules：[docs/modules/README.md](docs/modules/README.md)
+- Interfaces：[docs/interfaces/README.md](docs/interfaces/README.md)
+- Research：[docs/research/README.md](docs/research/README.md)
+- 主题映射索引：[docs/overview/topic_maps.md](docs/overview/topic_maps.md)
+- 主题缺口索引：[docs/overview/topic_gaps.md](docs/overview/topic_gaps.md)
+- 文档治理规则：[docs/overview/doc_governance.md](docs/overview/doc_governance.md)
+- 交易协议：[docs/interfaces/protocol.md](docs/interfaces/protocol.md)（信号/成交时点、持有周期、做T策略）
 - 协议配置：`configs/protocol.yaml`（可配置参数）
-- 数据来源：`docs/data_sources.md`
-- 新闻/公告数据建议：`docs/news_sources.md`
-- 开发路线图：`NEXT_STEPS.md`
+- 数据来源：[docs/modules/data_sources.md](docs/modules/data_sources.md)
+- 新闻/公告数据建议：[docs/modules/news_sources.md](docs/modules/news_sources.md)
+- 开发路线图：[NEXT_STEPS.md](NEXT_STEPS.md)

@@ -1,5 +1,10 @@
 # 下一步工作安排（Next Steps）
 
+**文档颗粒度：** `overview`  
+**时间属性：** `current` / `short_term`  
+**作用：** 当前阶段执行入口；任务完成后应归档或把稳定结论并入更高层级文档。  
+**配套导航：** `docs/overview/README.md`
+
 **当前仓库目标：** 在严格模拟 A 股约束（T+1、涨跌停/一字板、成交失败、总摩擦成本 `max(5元, 成交额*0.001)`、单日亏损阈值 2%）下，做"**日频评估、低换手执行**"的选股与仓位管理研究；模型（LSTM/Transformer）作为第二层增值组件，优先保证回测与风控口径正确。
 
 **📋 项目规划文档：**
@@ -7,10 +12,10 @@
 - **当前任务（V0.5 阶段）：** 本文档 - 详细执行计划与验收标准
 
 **相关基线文档：**
-- 约束：`docs/constraints.md`
-- 目标/验收口径：`docs/objectives.md`
-- 数据契约：`docs/data_contract.md`
-- 数据来源/新闻建议：`docs/data_sources.md`、`docs/news_sources.md`
+- 约束：`docs/interfaces/constraints.md`
+- 目标/验收口径：`docs/interfaces/objectives.md`
+- 数据契约：`docs/interfaces/data_contract.md`
+- 数据来源/新闻建议：`docs/modules/data_sources.md`、`docs/modules/news_sources.md`
 
 ---
 
@@ -28,7 +33,7 @@
 - [x] 做T（V2 分钟线版）：引入分钟线后再实现"盘中卖出→盘中/尾盘买回"的策略规划
 
 交付物：
-- ✅ `docs/protocol.md`（交易协议与可用信息集合）
+- ✅ `docs/interfaces/protocol.md`（交易协议与可用信息集合）
 - ✅ `configs/protocol.yaml`（可配置）
 - ✅ README.md 已更新（添加协议文档引用）
 
@@ -457,7 +462,7 @@ data/datasets/<name>/
 ### ✅ 已完成任务
 
 #### 任务 0：交易协议定义（2025-12-29 完成）
-- ✅ 创建 `docs/protocol.md` 和 `configs/protocol.yaml`
+- ✅ 创建 `docs/interfaces/protocol.md` 和 `configs/protocol.yaml`
 - ✅ 明确信号/成交时点、持有周期、做T策略等核心协议
 - ✅ 定义信号时点：收盘后计算（t 日 close 可用）
 - ✅ 定义成交时点：次日开盘成交（t+1 open）

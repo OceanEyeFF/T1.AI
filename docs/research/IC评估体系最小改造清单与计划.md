@@ -16,7 +16,7 @@
 
 ## 2. 当前关键错配（必须先修）
 
-1. 交易协议是 `t` 收盘后出信号、`t+1 open` 成交（`docs/protocol.md`）。
+1. 交易协议是 `t` 收盘后出信号、`t+1 open` 成交（`docs/interfaces/protocol.md`）。
 2. 多周期标签当前是 `close[t+h]/close[t]-1`（`src/ashare_lab/labels/multi_horizon.py`）。
 3. 推荐验证当前也是 `close -> close`（`src/ashare_lab/recommendation/validator.py`）。
 4. 训练评估默认把全样本拼接后算 IC，未强制 Daily-CS（`src/ashare_lab/training/mtl_finetune/__init__.py`）。

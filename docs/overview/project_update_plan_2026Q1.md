@@ -1,6 +1,6 @@
 # T1.AI 项目更新计划（基于 AI+金融外部对标，2026Q1）
 
-> 来源：`docs/ai_finance_external_benchmark_2026.md` 的落地化执行版本。  
+> 来源：`docs/overview/ai_finance_external_benchmark_2026.md` 的落地化执行版本。  
 > 目标：把研究结论转化为“可上线、可验收、可复盘”的项目计划。
 
 ---
@@ -189,9 +189,9 @@
 
 ## 10. 关联文档
 
-- 外部对标分析：`docs/ai_finance_external_benchmark_2026.md`
+- 外部对标分析：`docs/overview/ai_finance_external_benchmark_2026.md`
 - 建议后续补充：
   - `docs/strategy_weekly_template.md`
   - `docs/model_switch_sop.md`
   - `docs/regime_dashboard_spec.md`
-  - `docs/system_io_and_architecture_spec.md`
+  - `docs/modules/system_io_and_architecture_spec.md`

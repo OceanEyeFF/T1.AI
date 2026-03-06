@@ -152,8 +152,8 @@
 
 ## 8. 与现有文档的关系
 
-- 架构原则继承：`docs/architecture_upgrade.md`
-- 对标依据：`docs/ai_finance_external_benchmark_2026.md`
-- 项目排期：`docs/project_update_plan_2026Q1.md`
+- 架构原则继承：`docs/overview/future_state_blueprint.md`
+- 对标依据：`docs/overview/ai_finance_external_benchmark_2026.md`
+- 项目排期：`docs/overview/project_update_plan_2026Q1.md`
 
 本规范是三者之间的“执行接口层文档”。

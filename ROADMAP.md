@@ -1,5 +1,10 @@
 # 项目长远规划（ROADMAP）
 
+**文档颗粒度：** `overview`  
+**时间属性：** `future` / `long_term`  
+**作用：** 长期路线入口，回答“项目未来要变成什么样”。  
+**配套导航：** `docs/overview/README.md`
+
 **A-share Low-Frequency Lab - 从原型到生产级平台的演进路线**
 
 ---
@@ -41,7 +46,7 @@
 ### 已完成任务 ✅
 
 - **任务 0：交易协议定义**（2025-12-29 完成）
-  - 创建 `docs/protocol.md` 和 `configs/protocol.yaml`
+  - 创建 `docs/interfaces/protocol.md` 和 `configs/protocol.yaml`
   - 明确信号/成交时点、持有周期、做T策略等核心协议
 
 - **任务 1：股票池与可交易性**（2025-12-29 完成）
@@ -696,10 +701,10 @@ V3.0: 云原生（多云部署）+ 容器编排（Kubernetes）
 ## 📚 参考文档
 
 - [NEXT_STEPS.md](NEXT_STEPS.md) - 详细任务规划
-- [docs/constraints.md](docs/constraints.md) - 策略约束硬规则
-- [docs/protocol.md](docs/protocol.md) - 交易协议定义
-- [docs/data_contract.md](docs/data_contract.md) - 数据契约规范
-- [docs/objectives.md](docs/objectives.md) - 盈利与验收目标
+- [docs/interfaces/constraints.md](docs/interfaces/constraints.md) - 策略约束硬规则
+- [docs/interfaces/protocol.md](docs/interfaces/protocol.md) - 交易协议定义
+- [docs/interfaces/data_contract.md](docs/interfaces/data_contract.md) - 数据契约规范
+- [docs/interfaces/objectives.md](docs/interfaces/objectives.md) - 盈利与验收目标
 - [README.md](README.md) - 项目总览与快速开始
 
 ---

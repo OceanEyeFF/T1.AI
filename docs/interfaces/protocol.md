@@ -274,8 +274,8 @@ commission_rate: 0.001             # 手续费费率（千分之一）
 
 ## 10. 相关文档
 
-- **约束规则：** `docs/constraints.md`
-- **数据契约：** `docs/data_contract.md`
-- **目标验收：** `docs/objectives.md`
+- **约束规则：** `docs/interfaces/constraints.md`
+- **数据契约：** `docs/interfaces/data_contract.md`
+- **目标验收：** `docs/interfaces/objectives.md`
 - **回测引擎：** `src/ashare_lab/backtest/engine.py`
 - **配置示例：** `configs/protocol.yaml`
