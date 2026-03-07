@@ -445,6 +445,7 @@ def _rolling_zscore(series: pd.Series, window: int, min_periods: int) -> pd.Seri
 def _compute_short_term_features(data: pd.DataFrame) -> pd.DataFrame:
     out = pd.DataFrame(index=data.index)
 
+    close = _num_col(data, "close")
     high = _num_col(data, "high")
     low = _num_col(data, "low")
     volume = _num_col(data, "volume")
@@ -460,10 +461,15 @@ def _compute_short_term_features(data: pd.DataFrame) -> pd.DataFrame:
     circ_mv = _num_col(data, "circ_mv")
     float_share_ratio = _safe_div(circ_mv, total_mv)
 
-    out["hist_high_5d"] = high.rolling(window=5, min_periods=5).max().shift(1)
-    out["hist_low_5d"] = low.rolling(window=5, min_periods=5).min().shift(1)
-    out["hist_high_10d"] = high.rolling(window=10, min_periods=10).max().shift(1)
-    out["hist_low_10d"] = low.rolling(window=10, min_periods=10).min().shift(1)
+    # 历史高低价做归一化：相对同日收盘价的偏离，再整体 shift(1) 避免前视。
+    hist_high_5d = high.rolling(window=5, min_periods=5).max()
+    hist_low_5d = low.rolling(window=5, min_periods=5).min()
+    hist_high_10d = high.rolling(window=10, min_periods=10).max()
+    hist_low_10d = low.rolling(window=10, min_periods=10).min()
+    out["hist_high_5d"] = _safe_div(hist_high_5d - close, close).shift(1)
+    out["hist_low_5d"] = _safe_div(hist_low_5d - close, close).shift(1)
+    out["hist_high_10d"] = _safe_div(hist_high_10d - close, close).shift(1)
+    out["hist_low_10d"] = _safe_div(hist_low_10d - close, close).shift(1)
     out["turnover_rate"] = turnover_rate.shift(1)
     out["turnover_rate_f"] = turnover_rate_f.shift(1)
     out["turnover_spread"] = turnover_spread.shift(1)
@@ -1209,7 +1215,7 @@ def main() -> None:
     odp_symbols = _parse_symbol_list(str(args.odp_commodity_symbols))
     tushare_fut_exchanges = _parse_symbol_list(str(args.tushare_fut_exchanges))
     tushare_fut_symbols = _parse_symbol_list(str(args.tushare_fut_symbols))
-    commodity_market_state = pd.DataFrame(index=market_state.index.copy(), columns=ODP_COMMODITY_FEATURE_NAMES)
+    commodity_market_state = pd.DataFrame(index=market_state.index.copy())
     if bool(args.include_odp_commodity_features):
         commodity_bars: dict[str, pd.DataFrame] = {}
         if commodity_source == "odp":
@@ -1243,6 +1249,7 @@ def main() -> None:
             raise ValueError(f"unsupported commodity_source: {commodity_source}")
 
         commodity_market_state = _compute_commodity_features(commodity_bars)
+        commodity_market_state = commodity_market_state.reindex(market_state.index)
         if commodity_market_state.empty:
             print(f"[warn] commodity features are enabled but no valid data loaded (source={commodity_source})")
 

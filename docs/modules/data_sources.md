@@ -106,3 +106,23 @@
 其余测试结果已归档到：
 
 - `output/reports/reports_nonbest_experiments_20260307.tar.gz`
+
+### 7.1 归一化历史高低价实验（2026-03-07）
+
+在 `compact44` 档位下，将 `hist_high_5d/hist_low_5d/hist_high_10d/hist_low_10d` 改为相对收盘价归一化偏离后，新增实验：
+
+- LSTM：`output/reports/abtest_lstm_compact44_normhl_dim57_20260307.json`
+- XGBoost：`output/reports/abtest_xgb_compact44_normhl_dim57_20260307.json`
+
+结果（OOS）：
+
+- LSTM
+  - `raw avg_ic=-0.005925`
+  - `calibrated avg_ic=-0.024407`
+  - `calibrated avg_rank_ic=-0.010326`
+- XGBoost
+  - `raw avg_ic=-0.097442`
+  - `calibrated avg_ic=0.014154`
+  - `calibrated avg_rank_ic=0.005505`
+
+与此前无历史高低（`no_hist_hl`）最佳基线相比，两个模型的 `calibrated avg_ic` 均明显回落，说明该版本归一化高低价特征在当前样本与训练设置下暂未带来增益，先不纳入默认特征。
