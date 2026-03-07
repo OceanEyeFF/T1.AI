@@ -48,6 +48,27 @@
   - 安装 `openbb` Python SDK；
   - 或本机/内网可访问 ODP REST API（通过 `ODP_BASE_URL` 指向服务地址）。
 
+### 5.1 ODP 与 A 股覆盖边界（2026-03-07）
+
+- ODP 在本仓库已接入 `equity/price/historical` 端点，代码层支持 A 股 symbol 规范化（例如 `600519.SH -> 600519.SS`、`000001.SZ -> 000001.SZ`，provider=`yfinance`）。
+- 但当前策略主链路中，A 股股票主行情仍以 TuShare/AkShare 为准，ODP 主要用于跨市场扩展因子（国际商品/外汇/指数等）验证。
+- 因此工程口径上：ODP 可用于补充/对照，不作为当前默认 A 股主数据源。
+
+### 5.2 TuShare 股票接口“已用/未用”字段（截至 2026-03-07）
+
+已接入接口与字段（用于当前训练特征）：
+
+- `daily`：`open/high/low/close/vol/amount`（内部映射为 `volume`）。
+- `daily_basic`：`turnover_rate/turnover_rate_f/volume_ratio/pe_ttm/pb/ps_ttm/dv_ttm/total_mv/circ_mv`。
+- `moneyflow`：`buy_*/sell_*` 各档位量额、`net_mf_vol/net_mf_amount`（用于资金流结构与动量特征）。
+- `adj_factor`：用于 TuShare 日线 `qfq/hfq` 复权。
+
+当前未纳入训练链路的项（本策略阶段）：
+
+- 逐笔/分钟级高频成交结构（包含“当日前十成交价位”类信息）未接入。
+- 龙虎榜、席位级、公告明细、财报三表等事件型接口未进入本轮日频特征。
+- 期货侧目前仅使用 `fut_daily` 的 `open/high/low/close/vol/amount`，未使用持仓结构等更细字段。
+
 ## 6. 阶段性结论（截至 2026-03-06）
 
 在当前实验范围内（A 股 `quick8` 股票池，滚动周频重训，`2023-01-01` 到 `2026-03-05`），引入 ODP 国际大宗商品特征后：
@@ -81,6 +102,8 @@
 
 在同一评估窗口下补充了 XGBoost 滚动重训对照（与 LSTM 保持同一数据切分口径）：
 
+注：本节新增实验统一在 `conda` 环境 `ashare-lab` 下运行。
+
 - 基线（53 维）：
   - LSTM：`calibrated avg_ic=0.080951`，`avg_rank_ic=0.062236`
   - XGBoost：`calibrated avg_ic=0.100764`，`avg_rank_ic=0.131346`
@@ -109,10 +132,14 @@
 
 ### 7.1 归一化历史高低价实验（2026-03-07）
 
-在 `compact44` 档位下，将 `hist_high_5d/hist_low_5d/hist_high_10d/hist_low_10d` 改为相对收盘价归一化偏离后，新增实验：
+在 `compact44` 档位下，将 `hist_high_5d/hist_low_5d/hist_high_10d/hist_low_10d` 改为相对收盘价归一化偏离后，新增实验。
 
-- LSTM：`output/reports/abtest_lstm_compact44_normhl_dim57_20260307.json`
-- XGBoost：`output/reports/abtest_xgb_compact44_normhl_dim57_20260307.json`
+说明：该组实验散文件已归档进 `output/reports/reports_nonbest_experiments_20260307.tar.gz`，包含：
+
+- `output/reports/abtest_lstm_compact44_normhl_dim57_20260307.json`
+- `output/reports/abtest_lstm_compact44_normhl_dim57_20260307_oos.parquet`
+- `output/reports/abtest_xgb_compact44_normhl_dim57_20260307.json`
+- `output/reports/abtest_xgb_compact44_normhl_dim57_20260307_oos.parquet`
 
 结果（OOS）：
 

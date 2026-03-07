@@ -5,15 +5,20 @@
 - 次目标：在稳定性达标前提下提升全时段 IC。
 - 约束：评估必须同时覆盖“全时段均值 + 月度分布”，禁止只看单一平均值。
 
-## 2. 当前基线（以已跑结果为准）
-- 推荐主基线：`dim19 + rolling18m + seq_len=20 + 三头训练`
+## 2. 当前基线（以已跑结果为准，2026-03-07 更新）
+- 推荐 LSTM 基线：`dim53(no_hist_hl) + weekly rolling retrain + seq_len=20 + 三头训练`
+- 推荐树模型对照：`XGBoost(dim53, 同口径滚动切分)`
 - 参考报告：
-  - `output/reports/lstm_dim19_rolling18m_horizoncal_consensus_seq20_20260303.json`
-  - `output/reports/lstm_dim19_h2_rolling18m_seq20_20260303.json`
+  - `output/reports/lstm_dim53_no_hist_hl_auto_window24_seq20_icaware_a0176_lr5e5_coswrt_pat20_seed042_20260305_latest.json`
+  - `output/reports/lstm_dim53_no_hist_hl_auto_window24_seq20_icaware_a0176_lr5e5_coswrt_pat20_seed042_20260305_latest_oos.parquet`
+  - `output/reports/abtest_xgb_baseline_dim53_20260306.json`
+  - `output/reports/abtest_xgb_baseline_dim53_20260306_oos.parquet`
+  - 非最佳实验归档：`output/reports/reports_nonbest_experiments_20260307.tar.gz`
 - 关键事实：
-  - rolling 重训可把 raw OOS avg_ic 拉到正值（约 `0.0471`）。
-  - 校准策略在 rolling 框架下经常伤害总 IC，不应默认开启。
-  - 直接移除 3d 头未优于三头（可能损失多任务正则收益）。
+  - 在当前样本下，纯 A 股基线中 XGBoost 的 `calibrated` 指标优于 LSTM。
+  - 加入商品因子（国际 ODP 或国内期货）后，两类模型的 `calibrated` 指标都未超过基线。
+  - 归一化历史高低价（`hist_high/low_*`）版本在 LSTM/XGBoost 下均未观察到增益。
+  - 数据构建层可配置 `horizons`，但当前训练脚本仍是 `3d/5d/10d` 固定三头，`d1` 尚未进入实现态基线。
 
 ## 3. 统一评估口径（必须执行）
 - 主口径：`Daily-CS IC` 与 `Daily-CS RankIC`（按日横截面计算，再做时间聚合）。
