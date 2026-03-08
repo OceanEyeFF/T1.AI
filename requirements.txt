@@ -1,0 +1,12 @@
+# Core runtime dependencies (pip workflow).
+# For CUDA-specific PyTorch wheels, follow README GPU install instructions first.
+pandas>=2.1
+numpy>=1.26
+akshare>=1.13
+tushare>=1.2
+pyyaml>=6.0
+pyarrow>=14.0
+torch>=2.0
+scikit-learn>=1.3
+xgboost>=3.2
+optuna>=3.6

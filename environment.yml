@@ -39,6 +39,7 @@ dependencies:
       - akshare>=1.13
       - tushare>=1.2
       - xgboost>=3.2
+      - optuna>=3.6
 
       # 其他工具
       - python-dotenv  # 环境变量管理
