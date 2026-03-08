@@ -1,0 +1,68 @@
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+import pandas as pd
+
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
+import numpy as np
+
+from scripts.run_lstm_rolling_retrain_dim19_regime import (
+    _compute_hlc_1d_consistency,
+    _infer_label_cols,
+    _resolve_loss_weights,
+)
+
+
+def test_infer_label_cols_keeps_legacy_heads_first() -> None:
+    df = pd.DataFrame(
+        {
+            "label_1d_high": [0.0],
+            "label_3d": [0.0],
+            "label_10d": [0.0],
+            "label_5d": [0.0],
+            "label_1d_close": [0.0],
+        }
+    )
+    cols = _infer_label_cols(df)
+    assert cols[:3] == ["label_3d", "label_5d", "label_10d"]
+    assert "label_1d_high" in cols and "label_1d_close" in cols
+
+
+def test_resolve_loss_weights_supports_overrides() -> None:
+    label_cols = ["label_3d", "label_5d", "label_10d", "label_1d_high", "label_1d_low", "label_1d_close"]
+    weights = _resolve_loss_weights(
+        label_cols=label_cols,
+        w3=1.0,
+        w5=2.0,
+        w10=3.0,
+        extra_head_weight=0.5,
+        head_loss_weights="label_1d_close:1.2",
+    )
+    assert weights == (1.0, 2.0, 3.0, 0.5, 0.5, 1.2)
+
+
+def test_compute_hlc_1d_consistency_metrics() -> None:
+    label_cols = ["label_3d", "label_1d_high", "label_1d_low", "label_1d_close"]
+    pred = np.array(
+        [
+            [0.0, 0.04, -0.02, 0.01],  # order valid, inside true
+            [0.0, 0.01, -0.01, 0.05],  # order violation (close > high), inside false
+        ],
+        dtype=float,
+    )
+    y = np.array(
+        [
+            [0.0, 0.05, -0.03, 0.02],
+            [0.0, 0.04, -0.02, 0.01],
+        ],
+        dtype=float,
+    )
+    m = _compute_hlc_1d_consistency(pred, y, label_cols)
+    assert m["hlc_1d_valid_count"] == 2.0
+    assert np.isclose(m["order_violation_rate_1d_hlc"], 0.5)
+    # sample1: |0.06-0.08|=0.02, sample2: |0.02-0.06|=0.04 => mean=0.03
+    assert np.isclose(m["range_mae_1d_hlc"], 0.03)
+    assert np.isclose(m["inside_rate_1d_hlc"], 0.5)

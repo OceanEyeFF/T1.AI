@@ -45,7 +45,12 @@ from ashare_lab.features.momentum import Return1D, Return5D, Return10D, Return20
 from ashare_lab.features.price_slope import PriceSlope
 from ashare_lab.features.technical import BollingerDeviation, MACDHist, MACDLine, MACDSignal, RSI
 from ashare_lab.features.volume import AmountChange, RelativeVolume, VolumeChange, VolumeRatio
-from ashare_lab.labels.multi_horizon import MultiHorizonLabel
+from ashare_lab.labels.multi_horizon import MultiHorizonLabel, OneDayHLCLabel
+
+try:
+    from scripts.config_io import dump_json, extract_arg_overrides
+except ModuleNotFoundError:  # pragma: no cover - direct script execution fallback
+    from config_io import dump_json, extract_arg_overrides
 
 SYMBOL_FEATURES_16 = [
     Return1D(),
@@ -165,6 +170,7 @@ PROFILE_DROP_FEATURES: dict[str, set[str]] = {
     "no_hist_hl": NO_HIST_HL_DROP_FEATURES,
 }
 FEATURE_PROFILES = tuple(PROFILE_DROP_FEATURES.keys())
+CONFIG_SECTION_NAME = "build_sequence_dataset_market_state"
 
 
 def _parse_symbols(path: Path) -> list[str]:
@@ -1029,8 +1035,18 @@ def _split_by_fixed_weeks(
     return m_train, m_valid, m_test, split_config
 
 
+def _argparse_allowed_keys(parser: argparse.ArgumentParser) -> set[str]:
+    return {a.dest for a in parser._actions if a.dest != "help"}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build sequence parquet dataset with market state features.")
+    parser.add_argument("--config-file", default="", help="JSON/TOML config file path (args mapping)")
+    parser.add_argument(
+        "--effective-config-out",
+        default="",
+        help="optional: save effective merged config (after CLI overrides) to JSON",
+    )
     parser.add_argument("--symbols-csv", default="data/symbols_lstm_sectors_70.csv")
     parser.add_argument("--cache-dir", default="data/cache")
     parser.add_argument(
@@ -1059,6 +1075,12 @@ def main() -> None:
         default="close_to_close",
         choices=["close_to_close", "next_open_to_open"],
         help="Label calculation mode (default: close_to_close for backward compatibility)",
+    )
+    parser.add_argument(
+        "--include-1d-hlc-labels",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="是否追加 1 日 high/low/close 标签（label_1d_high/low/close）",
     )
     parser.add_argument("--output-dir", default="data/datasets/lstm_sector70_19d_mkt_20210101_20260120")
     parser.add_argument(
@@ -1151,7 +1173,42 @@ def main() -> None:
         default=0.05,
         help="TuShare fut_daily 翻页间隔秒数（默认 0.05）",
     )
+    pre_args, _ = parser.parse_known_args()
+    config_section_used: str | None = None
+    if pre_args.config_file:
+        allowed_keys = _argparse_allowed_keys(parser) - {"config_file", "effective_config_out"}
+        overrides, config_section_used = extract_arg_overrides(
+            config_path=pre_args.config_file,
+            allowed_keys=allowed_keys,
+            section_candidates=(CONFIG_SECTION_NAME, "build_sequence_dataset", "dataset"),
+        )
+        parser.set_defaults(**overrides)
     args = parser.parse_args()
+    config_file_resolved = (
+        str(Path(args.config_file).resolve()) if str(args.config_file).strip() else ""
+    )
+    effective_config_path = ""
+    effective_config_out = str(args.effective_config_out).strip()
+    if effective_config_out:
+        effective_config_path = effective_config_out
+    elif config_file_resolved:
+        effective_config_path = str(
+            Path(args.output_dir) / "build_sequence_dataset_market_state_effective_config.json"
+        )
+
+    if effective_config_path:
+        allowed_effective = _argparse_allowed_keys(parser) - {"config_file", "effective_config_out"}
+        effective_args = {k: getattr(args, k) for k in sorted(allowed_effective)}
+        saved = dump_json(
+            effective_config_path,
+            {
+                "script": CONFIG_SECTION_NAME,
+                "config_file": config_file_resolved or None,
+                "config_section": config_section_used,
+                "args": effective_args,
+            },
+        )
+        print(f"Saved effective config: {saved}")
 
     symbols = _parse_symbols(Path(args.symbols_csv))
     horizons = tuple(int(x.strip()) for x in str(args.horizons).split(",") if x.strip())
@@ -1266,6 +1323,8 @@ def main() -> None:
         )
         feats = feats.join(market_state, how="left")
         labs = MultiHorizonLabel(horizons=horizons, label_mode=args.label_mode).compute(bars)
+        if bool(args.include_1d_hlc_labels):
+            labs = pd.concat([labs, OneDayHLCLabel(label_mode=args.label_mode).compute(bars)], axis=1)
 
         feats = feats.assign(symbol=symbol).reset_index().set_index(["date", "symbol"]).sort_index()
         labs = labs.assign(symbol=symbol).reset_index().set_index(["date", "symbol"]).sort_index()
@@ -1354,10 +1413,14 @@ def main() -> None:
             "tushare_fut_exchanges": tushare_fut_exchanges if commodity_source == "tushare_fut" else [],
             "tushare_fut_symbols": tushare_fut_symbols if commodity_source == "tushare_fut" else [],
             "tushare_fut_main_only": bool(args.tushare_fut_main_only),
+            "config_file": config_file_resolved,
+            "config_section": config_section_used,
+            "effective_config_path": effective_config_path,
         },
         "label_config": {
             "horizons": list(horizons),
             "label_mode": args.label_mode,
+            "include_1d_hlc_labels": bool(args.include_1d_hlc_labels),
         },
         "feature_config": {
             "num_features": len(feature_names),

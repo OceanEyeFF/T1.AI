@@ -30,13 +30,19 @@ from ashare_lab.features.momentum import Return1D, Return20D, Return5D
 from ashare_lab.features.volume import AmountChange, VolumeChange, VolumeRatio
 from ashare_lab.features.technical import RSI, MACDHist, BollingerDeviation
 from ashare_lab.features.price_slope import PriceSlope
-from ashare_lab.labels.multi_horizon import MultiHorizonLabel
+from ashare_lab.labels.multi_horizon import MultiHorizonLabel, OneDayHLCLabel
+
+try:
+    from scripts.config_io import dump_json, extract_arg_overrides
+except ModuleNotFoundError:  # pragma: no cover - direct script execution fallback
+    from config_io import dump_json, extract_arg_overrides
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger("build_sequence_dataset")
+CONFIG_SECTION_NAME = "build_sequence_dataset"
 
 
 def _parse_symbols(symbols: str | None, symbols_csv: str | None) -> list[str]:
@@ -103,8 +109,13 @@ def _compute_labels(
     data: pd.DataFrame,
     horizons: Iterable[int],
     label_mode: str = "close_to_close",
+    include_1d_hlc_labels: bool = False,
 ) -> pd.DataFrame:
-    return MultiHorizonLabel(horizons=horizons, label_mode=label_mode).compute(data)
+    labels = MultiHorizonLabel(horizons=horizons, label_mode=label_mode).compute(data)
+    if include_1d_hlc_labels:
+        hlc_labels = OneDayHLCLabel(label_mode=label_mode).compute(data)
+        labels = pd.concat([labels, hlc_labels], axis=1)
+    return labels
 
 
 def _load_bars(source: str, symbol: str, start: str, end: str, cache_dir: Path) -> pd.DataFrame:
@@ -204,8 +215,18 @@ def _split_by_fixed_weeks(
     return m_train, m_valid, m_test, split_config
 
 
+def _argparse_allowed_keys(parser: argparse.ArgumentParser) -> set[str]:
+    return {a.dest for a in parser._actions if a.dest != "help"}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build sequence dataset and save Parquet splits.")
+    parser.add_argument("--config-file", default="", help="JSON/TOML config file path (args mapping)")
+    parser.add_argument(
+        "--effective-config-out",
+        default="",
+        help="optional: save effective merged config (after CLI overrides) to JSON",
+    )
     parser.add_argument("--start", required=True, help="Start date YYYYMMDD")
     parser.add_argument("--end", required=True, help="End date YYYYMMDD")
     parser.add_argument("--symbols", help="Comma-separated symbols, e.g. 600519,000333")
@@ -245,7 +266,45 @@ def main() -> None:
         choices=["close_to_close", "next_open_to_open"],
         help="Label calculation mode (default: close_to_close for backward compatibility)",
     )
+    parser.add_argument(
+        "--include-1d-hlc-labels",
+        action="store_true",
+        help="append 1-day high/low/close labels: label_1d_high,label_1d_low,label_1d_close",
+    )
+    pre_args, _ = parser.parse_known_args()
+    config_section_used: str | None = None
+    if pre_args.config_file:
+        allowed_keys = _argparse_allowed_keys(parser) - {"config_file", "effective_config_out"}
+        overrides, config_section_used = extract_arg_overrides(
+            config_path=pre_args.config_file,
+            allowed_keys=allowed_keys,
+            section_candidates=(CONFIG_SECTION_NAME, "build_dataset", "dataset"),
+        )
+        parser.set_defaults(**overrides)
     args = parser.parse_args()
+    config_file_resolved = (
+        str(Path(args.config_file).resolve()) if str(args.config_file).strip() else ""
+    )
+    effective_config_path = ""
+    effective_config_out = str(args.effective_config_out).strip()
+    if effective_config_out:
+        effective_config_path = effective_config_out
+    elif config_file_resolved:
+        effective_config_path = str(Path(args.output_dir) / "build_sequence_dataset_effective_config.json")
+
+    if effective_config_path:
+        allowed_effective = _argparse_allowed_keys(parser) - {"config_file", "effective_config_out"}
+        effective_args = {k: getattr(args, k) for k in sorted(allowed_effective)}
+        saved = dump_json(
+            effective_config_path,
+            {
+                "script": CONFIG_SECTION_NAME,
+                "config_file": config_file_resolved or None,
+                "config_section": config_section_used,
+                "args": effective_args,
+            },
+        )
+        logger.info(f"Saved effective config: {saved}")
 
     symbols = _parse_symbols(args.symbols, args.symbols_csv)
     cache_dir = Path(args.cache_dir)
@@ -260,6 +319,7 @@ def main() -> None:
     logger.info(f"Date range: {args.start} ~ {args.end}")
     logger.info(f"seq_len={args.seq_len}, stride={args.stride}, horizons={horizons}")
     logger.info(f"label_mode={args.label_mode}")
+    logger.info(f"include_1d_hlc_labels={bool(args.include_1d_hlc_labels)}")
 
     feature_frames: list[pd.DataFrame] = []
     label_frames: list[pd.DataFrame] = []
@@ -271,7 +331,12 @@ def main() -> None:
             continue
 
         feats = _compute_features(bars)
-        labs = _compute_labels(bars, horizons=horizons, label_mode=args.label_mode)
+        labs = _compute_labels(
+            bars,
+            horizons=horizons,
+            label_mode=args.label_mode,
+            include_1d_hlc_labels=bool(args.include_1d_hlc_labels),
+        )
 
         feats = feats.assign(symbol=str(symbol)).reset_index().set_index(["date", "symbol"]).sort_index()
         labs = labs.assign(symbol=str(symbol)).reset_index().set_index(["date", "symbol"]).sort_index()
@@ -372,10 +437,14 @@ def main() -> None:
             "start_date": args.start,
             "end_date": args.end,
             "cache_dir": str(cache_dir),
+            "config_file": config_file_resolved,
+            "config_section": config_section_used,
+            "effective_config_path": effective_config_path,
         },
         "label_config": {
             "horizons": list(horizons),
             "label_mode": args.label_mode,
+            "include_1d_hlc_labels": bool(args.include_1d_hlc_labels),
         },
         "feature_config": {
             "seq_len": args.seq_len,

@@ -1,6 +1,6 @@
 """多跨度收益标签
 
-提供 3/5/10 日未来收益率标签的统一计算与落盘工具。
+提供多日未来收益率标签与 1 日 H/L/C 标签的统一计算与落盘工具。
 
 支持两种标签口径：
 - close_to_close: 从 t 日收盘价到 t+h 日收盘价（旧默认，兼容现有流程）
@@ -106,6 +106,76 @@ class MultiHorizonLabel:
             label_df[f"label_{h}d"] = forward_ret.mask(invalid)
 
         return label_df
+
+    def compute_and_save(self, data: pd.DataFrame, path: str | Path) -> Path:
+        """计算并保存为 Parquet。"""
+        result = self.compute(data)
+        out_path = Path(path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        result.to_parquet(out_path)
+        return out_path
+
+
+@dataclass(frozen=True)
+class OneDayHLCLabel:
+    """1 日高/低/收收益率标签（用于日内/隔夜交易控制）。
+
+    输出列：
+        - label_1d_high
+        - label_1d_low
+        - label_1d_close
+
+    口径：
+        - close_to_close:
+            base[t] = close[t]
+            target[t] = {high, low, close}[t+1] / base[t] - 1
+        - next_open_to_open:
+            base[t] = open[t+1]
+            target[t] = {high, low, close}[t+1] / base[t] - 1
+    """
+
+    label_mode: LabelMode = "close_to_close"
+
+    @property
+    def names(self) -> List[str]:
+        return ["label_1d_high", "label_1d_low", "label_1d_close"]
+
+    def compute(self, data: pd.DataFrame) -> pd.DataFrame:
+        required_cols = {"high", "low", "close", "volume"}
+        missing = [c for c in sorted(required_cols) if c not in data]
+        if missing:
+            raise KeyError(f"input data missing required columns for 1d HLC labels: {missing}")
+
+        high_next = data["high"].shift(-1)
+        low_next = data["low"].shift(-1)
+        close_next = data["close"].shift(-1)
+        volume_next = data["volume"].shift(-1)
+
+        if self.label_mode == "close_to_close":
+            base = data["close"]
+            base_issue = base.isna()
+        elif self.label_mode == "next_open_to_open":
+            if "open" not in data:
+                raise KeyError("next_open_to_open mode requires 'open' column for 1d HLC labels")
+            base = data["open"].shift(-1)
+            base_issue = base.isna()
+        else:
+            raise ValueError(f"不支持的 label_mode: {self.label_mode}，仅支持 'close_to_close' 或 'next_open_to_open'")
+
+        next_issue = (
+            high_next.isna()
+            | low_next.isna()
+            | close_next.isna()
+            | volume_next.isna()
+            | (volume_next == 0)
+        )
+        invalid = base_issue | next_issue
+
+        out = pd.DataFrame(index=data.index)
+        out["label_1d_high"] = (high_next / base - 1.0).mask(invalid)
+        out["label_1d_low"] = (low_next / base - 1.0).mask(invalid)
+        out["label_1d_close"] = (close_next / base - 1.0).mask(invalid)
+        return out
 
     def compute_and_save(self, data: pd.DataFrame, path: str | Path) -> Path:
         """计算并保存为 Parquet
