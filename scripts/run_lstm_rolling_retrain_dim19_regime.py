@@ -27,6 +27,15 @@ from ashare_lab.evaluation.metrics import (
     summarize_daily_cs,
 )
 
+try:
+    from scripts.config_io import dump_json, extract_arg_overrides
+except ModuleNotFoundError:  # pragma: no cover - direct script execution fallback
+    from config_io import dump_json, extract_arg_overrides
+try:
+    from scripts.env_guard import ensure_required_conda_env
+except ModuleNotFoundError:  # pragma: no cover - direct script execution fallback
+    from env_guard import ensure_required_conda_env
+
 FEATURES_DIM19 = [
     "return_1d",
     "return_5d",
@@ -49,8 +58,8 @@ FEATURES_DIM19 = [
     "market_amount_z20",
 ]
 
-LABEL_COLS = ["label_3d", "label_5d", "label_10d"]
-PRED_COLS = ["pred_3d", "pred_5d", "pred_10d"]
+DEFAULT_LABEL_COLS = ["label_3d", "label_5d", "label_10d"]
+DEFAULT_PRED_COLS = ["pred_3d", "pred_5d", "pred_10d"]
 LOSS_TYPES = ("l1", "ic_aware", "rank_aware", "ic_rank_aware")
 FEATURE_MODES = ("dim19", "auto")
 BACKBONES = ("lstm", "transformer")
@@ -58,6 +67,7 @@ LR_SCHEDULERS = ("none", "cosine", "cosine_warm_restart", "plateau")
 OPTIMIZERS = ("adamw", "adam")
 NORM_TYPES = ("layernorm", "rmsnorm")
 GRAD_CLIP_MODES = ("none", "norm", "value")
+CONFIG_SECTION_NAME = "run_lstm_rolling_retrain_dim19_regime"
 
 
 def _months_to_weeks(months: int) -> int:
@@ -91,31 +101,158 @@ def _set_seed(seed: int) -> None:
         torch.cuda.manual_seed_all(seed)
 
 
-def _metrics(pred: np.ndarray, y: np.ndarray) -> dict[str, float]:
-    ic = [information_coefficient(pred[:, i], y[:, i]) for i in range(3)]
-    ric = [rank_information_coefficient(pred[:, i], y[:, i]) for i in range(3)]
-    mae = [mean_absolute_error(pred[:, i], y[:, i]) for i in range(3)]
+def _label_sort_key(col: str) -> tuple[int, int, str]:
+    m = re.fullmatch(r"label_(\d+)d$", col)
+    if m is not None:
+        return (0, int(m.group(1)), "")
+    m = re.fullmatch(r"label_(\d+)d_(.+)", col)
+    if m is not None:
+        return (1, int(m.group(1)), str(m.group(2)))
+    return (2, 10**9, str(col))
+
+
+def _infer_label_cols(df: pd.DataFrame) -> list[str]:
+    labels = [c for c in df.columns if isinstance(c, str) and c.startswith("label_")]
+    if not labels:
+        raise ValueError("dataset has no label columns (expect columns starting with 'label_')")
+    if all(c in labels for c in DEFAULT_LABEL_COLS):
+        extras = [c for c in labels if c not in DEFAULT_LABEL_COLS]
+        extras.sort(key=_label_sort_key)
+        return list(DEFAULT_LABEL_COLS) + extras
+    return sorted(labels, key=_label_sort_key)
+
+
+def _pred_col_from_label(label_col: str) -> str:
+    if not label_col.startswith("label_"):
+        raise ValueError(f"invalid label column: {label_col}")
+    return f"pred_{label_col[6:]}"
+
+
+def _target_name_from_label(label_col: str) -> str:
+    if label_col.startswith("label_"):
+        return label_col[6:]
+    return label_col
+
+
+def _is_sign_calibratable_label(label_col: str) -> bool:
+    if re.fullmatch(r"label_(\d+)d", label_col):
+        return True
+    if re.fullmatch(r"label_(\d+)d_close", label_col):
+        return True
+    return False
+
+
+def _hlc_1d_index_map(label_cols: list[str]) -> dict[str, int]:
+    idx: dict[str, int] = {}
+    for name in ("label_1d_high", "label_1d_low", "label_1d_close"):
+        if name in label_cols:
+            idx[name] = int(label_cols.index(name))
+    return idx
+
+
+def _compute_hlc_1d_consistency(
+    pred: np.ndarray,
+    y: np.ndarray,
+    label_cols: list[str],
+) -> dict[str, float]:
+    """Compute 1d H/L/C structure consistency metrics.
+
+    Returns empty dict when required 1d HLC labels are not present.
+    """
+    idx_map = _hlc_1d_index_map(label_cols)
+    required = ("label_1d_high", "label_1d_low", "label_1d_close")
+    if not all(k in idx_map for k in required):
+        return {}
+
+    i_high = idx_map["label_1d_high"]
+    i_low = idx_map["label_1d_low"]
+    i_close = idx_map["label_1d_close"]
+
+    pred_high = pred[:, i_high]
+    pred_low = pred[:, i_low]
+    pred_close = pred[:, i_close]
+
+    label_high = y[:, i_high]
+    label_low = y[:, i_low]
+    label_close = y[:, i_close]
+
+    finite_mask = (
+        np.isfinite(pred_high)
+        & np.isfinite(pred_low)
+        & np.isfinite(pred_close)
+        & np.isfinite(label_high)
+        & np.isfinite(label_low)
+        & np.isfinite(label_close)
+    )
+    valid_count = int(np.sum(finite_mask))
+    if valid_count <= 0:
+        return {
+            "hlc_1d_valid_count": 0.0,
+            "order_violation_rate_1d_hlc": 1.0,
+            "range_mae_1d_hlc": 0.0,
+            "inside_rate_1d_hlc": 0.0,
+        }
+
+    ph = pred_high[finite_mask]
+    pl = pred_low[finite_mask]
+    pc = pred_close[finite_mask]
+    lh = label_high[finite_mask]
+    ll = label_low[finite_mask]
+
+    order_violation = (pl > pc) | (pc > ph)
+    pred_range = ph - pl
+    label_range = lh - ll
+    inside = (pc >= ll) & (pc <= lh)
+
     return {
-        "ic_3d": float(ic[0]),
-        "ic_5d": float(ic[1]),
-        "ic_10d": float(ic[2]),
-        "avg_ic": float(np.mean(ic)),
-        "rank_ic_3d": float(ric[0]),
-        "rank_ic_5d": float(ric[1]),
-        "rank_ic_10d": float(ric[2]),
-        "avg_rank_ic": float(np.mean(ric)),
-        "mae_3d": float(mae[0]),
-        "mae_5d": float(mae[1]),
-        "mae_10d": float(mae[2]),
-        "avg_mae": float(np.mean(mae)),
+        "hlc_1d_valid_count": float(valid_count),
+        "order_violation_rate_1d_hlc": float(np.mean(order_violation)),
+        "range_mae_1d_hlc": float(np.mean(np.abs(pred_range - label_range))),
+        "inside_rate_1d_hlc": float(np.mean(inside)),
     }
 
 
-def _extract_xy(df: pd.DataFrame, feature_bases: list[str], seq_len: int) -> tuple[np.ndarray, np.ndarray]:
+def _metrics(pred: np.ndarray, y: np.ndarray, label_cols: list[str]) -> dict[str, float]:
+    if pred.ndim != 2 or y.ndim != 2:
+        raise ValueError("pred/y must be 2-D arrays")
+    if pred.shape != y.shape:
+        raise ValueError(f"pred/y shape mismatch: {pred.shape} vs {y.shape}")
+    if pred.shape[1] != len(label_cols):
+        raise ValueError(f"label_cols size mismatch: {len(label_cols)} vs {pred.shape[1]}")
+
+    ic_vals: list[float] = []
+    ric_vals: list[float] = []
+    mae_vals: list[float] = []
+    out: dict[str, float] = {}
+    for idx, label_col in enumerate(label_cols):
+        target = _target_name_from_label(label_col)
+        ic_v = float(information_coefficient(pred[:, idx], y[:, idx]))
+        ric_v = float(rank_information_coefficient(pred[:, idx], y[:, idx]))
+        mae_v = float(mean_absolute_error(pred[:, idx], y[:, idx]))
+        out[f"ic_{target}"] = ic_v
+        out[f"rank_ic_{target}"] = ric_v
+        out[f"mae_{target}"] = mae_v
+        ic_vals.append(ic_v)
+        ric_vals.append(ric_v)
+        mae_vals.append(mae_v)
+
+    out["avg_ic"] = float(np.mean(ic_vals))
+    out["avg_rank_ic"] = float(np.mean(ric_vals))
+    out["avg_mae"] = float(np.mean(mae_vals))
+    out.update(_compute_hlc_1d_consistency(pred, y, label_cols))
+    return out
+
+
+def _extract_xy(
+    df: pd.DataFrame,
+    feature_bases: list[str],
+    seq_len: int,
+    label_cols: list[str],
+) -> tuple[np.ndarray, np.ndarray]:
     x_cols = [f"{b}_t{t}" for t in range(seq_len) for b in feature_bases]
     x = df[x_cols].to_numpy(dtype=np.float32, copy=False).reshape(len(df), seq_len, len(feature_bases))
     x = np.nan_to_num(x, nan=0.0)
-    y = df[LABEL_COLS].to_numpy(dtype=np.float32, copy=False)
+    y = df[label_cols].to_numpy(dtype=np.float32, copy=False)
     return x, y
 
 
@@ -140,11 +277,11 @@ def _infer_feature_bases(df: pd.DataFrame, seq_len: int) -> list[str]:
 def _infer_max_horizon_days(label_cols: list[str]) -> int:
     horizons: list[int] = []
     for col in label_cols:
-        m = re.fullmatch(r"label_(\d+)d", str(col))
+        m = re.fullmatch(r"label_(\d+)d(?:_.+)?", str(col))
         if m is not None:
             horizons.append(int(m.group(1)))
     if not horizons:
-        raise ValueError("failed to infer horizon days from LABEL_COLS")
+        raise ValueError("failed to infer horizon days from label columns")
     return int(max(horizons))
 
 
@@ -263,7 +400,8 @@ class MtlLSTM(nn.Module):
         hidden_size: int,
         num_layers: int,
         dropout: float,
-        loss_weights: tuple[float, float, float],
+        pred_cols: tuple[str, ...],
+        loss_weights: tuple[float, ...],
         loss_type: str,
         loss_alpha: float,
         ic_rank_beta: float,
@@ -271,6 +409,11 @@ class MtlLSTM(nn.Module):
         norm_eps: float,
     ) -> None:
         super().__init__()
+        self.pred_cols = tuple(pred_cols)
+        if len(self.pred_cols) == 0:
+            raise ValueError("pred_cols is empty")
+        if len(loss_weights) != len(self.pred_cols):
+            raise ValueError("loss_weights length must match pred_cols length")
         self.loss_weights = torch.tensor(loss_weights, dtype=torch.float32)
         self.loss_type = loss_type
         self.loss_alpha = float(loss_alpha)
@@ -291,25 +434,19 @@ class MtlLSTM(nn.Module):
                 nn.Linear(hidden_size // 2, 1),
             )
 
-        self.head_3d = _head()
-        self.head_5d = _head()
-        self.head_10d = _head()
+        self.heads = nn.ModuleDict({pred_key: _head() for pred_key in self.pred_cols})
 
     def forward(self, x: torch.Tensor, labels: torch.Tensor | None = None):
         out, _ = self.lstm(x)
         h = self.norm(out[:, -1, :])
-        preds = {
-            "pred_3d": self.head_3d(h).squeeze(-1),
-            "pred_5d": self.head_5d(h).squeeze(-1),
-            "pred_10d": self.head_10d(h).squeeze(-1),
-        }
+        preds = {pred_key: self.heads[pred_key](h).squeeze(-1) for pred_key in self.pred_cols}
         if labels is None:
             return preds
         weights = self.loss_weights.to(device=labels.device, dtype=labels.dtype)
         per_head: list[torch.Tensor] = []
         details: dict[str, torch.Tensor] = {}
 
-        for idx, pred_key in enumerate(PRED_COLS):
+        for idx, pred_key in enumerate(self.pred_cols):
             head_total, head_parts = _compute_head_loss(
                 preds[pred_key],
                 labels[:, idx],
@@ -339,7 +476,8 @@ class MtlTransformer(nn.Module):
         n_heads: int,
         d_ff: int,
         dropout: float,
-        loss_weights: tuple[float, float, float],
+        pred_cols: tuple[str, ...],
+        loss_weights: tuple[float, ...],
         loss_type: str,
         loss_alpha: float,
         ic_rank_beta: float,
@@ -347,6 +485,11 @@ class MtlTransformer(nn.Module):
         norm_eps: float,
     ) -> None:
         super().__init__()
+        self.pred_cols = tuple(pred_cols)
+        if len(self.pred_cols) == 0:
+            raise ValueError("pred_cols is empty")
+        if len(loss_weights) != len(self.pred_cols):
+            raise ValueError("loss_weights length must match pred_cols length")
         self.loss_weights = torch.tensor(loss_weights, dtype=torch.float32)
         self.loss_type = loss_type
         self.loss_alpha = float(loss_alpha)
@@ -378,27 +521,21 @@ class MtlTransformer(nn.Module):
                 nn.Linear(d_model // 2, 1),
             )
 
-        self.head_3d = _head()
-        self.head_5d = _head()
-        self.head_10d = _head()
+        self.heads = nn.ModuleDict({pred_key: _head() for pred_key in self.pred_cols})
 
     def forward(self, x: torch.Tensor, labels: torch.Tensor | None = None):
         h = self.input_proj(x)
         h = h + self.pos_embed[:, : h.shape[1], :]
         h = self.encoder(h)
         h = self.norm(h[:, -1, :])
-        preds = {
-            "pred_3d": self.head_3d(h).squeeze(-1),
-            "pred_5d": self.head_5d(h).squeeze(-1),
-            "pred_10d": self.head_10d(h).squeeze(-1),
-        }
+        preds = {pred_key: self.heads[pred_key](h).squeeze(-1) for pred_key in self.pred_cols}
         if labels is None:
             return preds
         weights = self.loss_weights.to(device=labels.device, dtype=labels.dtype)
         per_head: list[torch.Tensor] = []
         details: dict[str, torch.Tensor] = {}
 
-        for idx, pred_key in enumerate(PRED_COLS):
+        for idx, pred_key in enumerate(self.pred_cols):
             head_total, head_parts = _compute_head_loss(
                 preds[pred_key],
                 labels[:, idx],
@@ -418,22 +555,35 @@ class MtlTransformer(nn.Module):
 
 
 @torch.no_grad()
-def _predict(model: nn.Module, x: np.ndarray, batch_size: int, device: torch.device) -> np.ndarray:
+def _predict(
+    model: nn.Module,
+    x: np.ndarray,
+    batch_size: int,
+    device: torch.device,
+    pred_cols: list[str],
+) -> np.ndarray:
     loader = DataLoader(TensorDataset(torch.from_numpy(x)), batch_size=batch_size, shuffle=False)
     model.eval()
     rows: list[np.ndarray] = []
     for (xb,) in loader:
         out = model(xb.to(device))
-        rows.append(
-            torch.stack([out["pred_3d"], out["pred_5d"], out["pred_10d"]], dim=1).detach().cpu().numpy()
-        )
+        rows.append(torch.stack([out[pred_key] for pred_key in pred_cols], dim=1).detach().cpu().numpy())
     return np.concatenate(rows, axis=0)
 
 
 @torch.no_grad()
-def _eval(model: nn.Module, x: np.ndarray, y: np.ndarray, batch_size: int, device: torch.device) -> dict[str, float]:
-    pred = _predict(model, x, batch_size=batch_size, device=device)
-    return _metrics(pred, y)
+def _eval(
+    model: nn.Module,
+    x: np.ndarray,
+    y: np.ndarray,
+    batch_size: int,
+    device: torch.device,
+    *,
+    label_cols: list[str],
+    pred_cols: list[str],
+) -> dict[str, float]:
+    pred = _predict(model, x, batch_size=batch_size, device=device, pred_cols=pred_cols)
+    return _metrics(pred, y, label_cols=label_cols)
 
 
 @dataclass(frozen=True)
@@ -463,7 +613,9 @@ class TrainConfig:
     batch_size: int
     max_epochs: int
     patience: int
-    loss_weights: tuple[float, float, float]
+    label_cols: tuple[str, ...]
+    pred_cols: tuple[str, ...]
+    loss_weights: tuple[float, ...]
     loss_type: str
     loss_alpha: float
     ic_rank_beta: float
@@ -483,6 +635,7 @@ def _train_one_model(
             hidden_size=cfg.hidden_size,
             num_layers=cfg.num_layers,
             dropout=cfg.dropout,
+            pred_cols=cfg.pred_cols,
             loss_weights=cfg.loss_weights,
             loss_type=cfg.loss_type,
             loss_alpha=cfg.loss_alpha,
@@ -499,6 +652,7 @@ def _train_one_model(
             n_heads=cfg.n_heads,
             d_ff=cfg.d_ff,
             dropout=cfg.dropout,
+            pred_cols=cfg.pred_cols,
             loss_weights=cfg.loss_weights,
             loss_type=cfg.loss_type,
             loss_alpha=cfg.loss_alpha,
@@ -590,19 +744,17 @@ def _train_one_model(
 
         # valid metrics
         model.eval()
-        vp = [[], [], []]
-        vy = [[], [], []]
+        n_heads = len(cfg.pred_cols)
+        vp = [[] for _ in range(n_heads)]
+        vy = [[] for _ in range(n_heads)]
         for xb, yb in valid_loader:
             out = model(xb.to(device))
-            vp[0].append(out["pred_3d"].detach().cpu().numpy())
-            vp[1].append(out["pred_5d"].detach().cpu().numpy())
-            vp[2].append(out["pred_10d"].detach().cpu().numpy())
-            vy[0].append(yb[:, 0].numpy())
-            vy[1].append(yb[:, 1].numpy())
-            vy[2].append(yb[:, 2].numpy())
-        pred = np.stack([np.concatenate(vp[i]) for i in range(3)], axis=1)
-        yv = np.stack([np.concatenate(vy[i]) for i in range(3)], axis=1)
-        met = _metrics(pred, yv)
+            for i_head, pred_key in enumerate(cfg.pred_cols):
+                vp[i_head].append(out[pred_key].detach().cpu().numpy())
+                vy[i_head].append(yb[:, i_head].numpy())
+        pred = np.stack([np.concatenate(vp[i]) for i in range(n_heads)], axis=1)
+        yv = np.stack([np.concatenate(vy[i]) for i in range(n_heads)], axis=1)
+        met = _metrics(pred, yv, label_cols=list(cfg.label_cols))
         if scheduler is not None:
             if cfg.lr_scheduler == "plateau":
                 # plateau scheduler reacts to validation metric.
@@ -631,7 +783,15 @@ def _train_one_model(
     if best_state is not None:
         model.load_state_dict(best_state)
     model.to(device)
-    valid_best = _eval(model, x_valid, y_valid, cfg.batch_size, device)
+    valid_best = _eval(
+        model,
+        x_valid,
+        y_valid,
+        cfg.batch_size,
+        device,
+        label_cols=list(cfg.label_cols),
+        pred_cols=list(cfg.pred_cols),
+    )
     train_seconds = time.perf_counter() - t0
     return model, valid_best, epochs, float(train_seconds)
 
@@ -671,6 +831,63 @@ def _choose_sign_consensus(hist_ic: float, val_ic: float, threshold: float) -> t
     return 1, "no_signal"
 
 
+def _parse_head_weight_overrides(text: str) -> dict[str, float]:
+    out: dict[str, float] = {}
+    raw = str(text).strip()
+    if not raw:
+        return out
+    for item in raw.split(","):
+        part = item.strip()
+        if not part:
+            continue
+        if ":" in part:
+            key, val = part.split(":", 1)
+        elif "=" in part:
+            key, val = part.split("=", 1)
+        else:
+            raise ValueError(
+                "invalid --head-loss-weights format; expected 'label_xxx:1.0,label_yyy:0.5'"
+            )
+        col = key.strip()
+        weight = float(val.strip())
+        if weight < 0:
+            raise ValueError(f"head weight must be >= 0, got {weight} for {col}")
+        out[col] = weight
+    return out
+
+
+def _resolve_loss_weights(
+    *,
+    label_cols: list[str],
+    w3: float,
+    w5: float,
+    w10: float,
+    extra_head_weight: float,
+    head_loss_weights: str,
+) -> tuple[float, ...]:
+    if w3 < 0 or w5 < 0 or w10 < 0:
+        raise ValueError("w3/w5/w10 must be non-negative")
+    if extra_head_weight < 0:
+        raise ValueError("extra_head_weight must be non-negative")
+    overrides = _parse_head_weight_overrides(head_loss_weights)
+    weights: list[float] = []
+    for col in label_cols:
+        if col in overrides:
+            w = float(overrides[col])
+        elif col == "label_3d":
+            w = float(w3)
+        elif col == "label_5d":
+            w = float(w5)
+        elif col == "label_10d":
+            w = float(w10)
+        else:
+            w = float(extra_head_weight)
+        weights.append(w)
+    if sum(weights) <= 0:
+        raise ValueError("resolved loss weights sum to 0")
+    return tuple(weights)
+
+
 def _select_train_valid_for_month(
     train_pool: pd.DataFrame,
     month_start: pd.Timestamp,
@@ -708,8 +925,14 @@ def _select_train_valid_for_month(
     return train_df, valid_df, split_stats
 
 
-def main() -> None:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Rolling retrain + horizon sign calibration.")
+    parser.add_argument("--config-file", default="", help="JSON/TOML config file path (args mapping)")
+    parser.add_argument(
+        "--effective-config-out",
+        default="",
+        help="optional: save effective merged config (after CLI overrides) to JSON",
+    )
     parser.add_argument("--dataset-dir", default="data/datasets/lstm_sector70_19d_mkt_20210101_20260120")
     parser.add_argument("--backbone", choices=list(BACKBONES), default="lstm")
     parser.add_argument("--seq-len", type=int, default=20)
@@ -761,6 +984,17 @@ def main() -> None:
     parser.add_argument("--w3", type=float, default=1.0)
     parser.add_argument("--w5", type=float, default=1.0)
     parser.add_argument("--w10", type=float, default=1.0)
+    parser.add_argument(
+        "--extra-head-weight",
+        type=float,
+        default=1.0,
+        help="非 3d/5d/10d 头的默认损失权重（例如 1d_high/1d_low/1d_close）",
+    )
+    parser.add_argument(
+        "--head-loss-weights",
+        default="",
+        help="可选：按标签列名覆写权重，如 label_1d_high:0.5,label_1d_low:0.5,label_1d_close:1.0",
+    )
     parser.add_argument("--loss-type", choices=list(LOSS_TYPES), default="l1")
     parser.add_argument("--loss-alpha", type=float, default=0.3, help="混合损失里 L1 占比，范围 [0,1]")
     parser.add_argument(
@@ -797,7 +1031,30 @@ def main() -> None:
         "--report",
         default="output/reports/lstm_dim19_rolling78w_horizoncal_20260303.json",
     )
+    return parser
+
+
+def _argparse_allowed_keys(parser: argparse.ArgumentParser) -> set[str]:
+    return {a.dest for a in parser._actions if a.dest != "help"}
+
+
+def main() -> None:
+    ensure_required_conda_env("ashare-lab")
+    parser = _build_parser()
+    pre_args, _ = parser.parse_known_args()
+    config_section_used: str | None = None
+    if pre_args.config_file:
+        allowed_keys = _argparse_allowed_keys(parser) - {"config_file", "effective_config_out"}
+        overrides, config_section_used = extract_arg_overrides(
+            config_path=pre_args.config_file,
+            allowed_keys=allowed_keys,
+            section_candidates=(CONFIG_SECTION_NAME, "lstm"),
+        )
+        parser.set_defaults(**overrides)
     args = parser.parse_args()
+    config_file_resolved = (
+        str(Path(args.config_file).resolve()) if str(args.config_file).strip() else ""
+    )
 
     train_window_weeks = _resolve_window_weeks(
         weeks=args.train_window_weeks,
@@ -818,8 +1075,10 @@ def main() -> None:
         field_name="calibration_weeks",
     )
 
-    if args.w3 < 0 or args.w5 < 0 or args.w10 < 0 or (args.w3 + args.w5 + args.w10) <= 0:
-        raise ValueError("loss weights must be non-negative and sum to > 0")
+    if args.w3 < 0 or args.w5 < 0 or args.w10 < 0:
+        raise ValueError("w3/w5/w10 must be non-negative")
+    if args.extra_head_weight < 0:
+        raise ValueError("extra_head_weight must be non-negative")
     if not (0.0 <= args.loss_alpha <= 1.0):
         raise ValueError("loss_alpha must be within [0,1]")
     if not (0.0 <= args.ic_rank_beta <= 1.0):
@@ -845,8 +1104,47 @@ def main() -> None:
     if args.norm_eps <= 0:
         raise ValueError("norm_eps must be > 0")
 
+    effective_config_path = ""
+    effective_config_out = str(args.effective_config_out).strip()
+    if effective_config_out:
+        effective_config_path = effective_config_out
+    elif config_file_resolved:
+        report_path = Path(args.report)
+        effective_config_path = str(
+            report_path.with_name(f"{report_path.stem}_effective_config.json")
+        )
+
+    if effective_config_path:
+        allowed_effective = _argparse_allowed_keys(parser) - {"config_file", "effective_config_out"}
+        effective_args = {k: getattr(args, k) for k in sorted(allowed_effective)}
+        saved = dump_json(
+            effective_config_path,
+            {
+                "script": CONFIG_SECTION_NAME,
+                "config_file": config_file_resolved or None,
+                "config_section": config_section_used,
+                "args": effective_args,
+            },
+        )
+        print(f"Saved effective config: {saved}")
+
     _set_seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    ddir = Path(args.dataset_dir)
+    train_df = pd.read_parquet(ddir / "train.parquet")
+    valid_df = pd.read_parquet(ddir / "valid.parquet")
+    test_df = pd.read_parquet(ddir / "test.parquet")
+    label_cols = _infer_label_cols(train_df)
+    pred_cols = [_pred_col_from_label(c) for c in label_cols]
+    loss_weights = _resolve_loss_weights(
+        label_cols=label_cols,
+        w3=float(args.w3),
+        w5=float(args.w5),
+        w10=float(args.w10),
+        extra_head_weight=float(args.extra_head_weight),
+        head_loss_weights=str(args.head_loss_weights),
+    )
     cfg = TrainConfig(
         backbone=str(args.backbone),
         hidden_size=args.hidden_size,
@@ -873,21 +1171,24 @@ def main() -> None:
         batch_size=args.batch_size,
         max_epochs=args.max_epochs,
         patience=args.patience,
-        loss_weights=(float(args.w3), float(args.w5), float(args.w10)),
+        label_cols=tuple(label_cols),
+        pred_cols=tuple(pred_cols),
+        loss_weights=tuple(loss_weights),
         loss_type=str(args.loss_type),
         loss_alpha=float(args.loss_alpha),
         ic_rank_beta=float(args.ic_rank_beta),
     )
 
-    ddir = Path(args.dataset_dir)
-    train_df = pd.read_parquet(ddir / "train.parquet")
-    valid_df = pd.read_parquet(ddir / "valid.parquet")
-    test_df = pd.read_parquet(ddir / "test.parquet")
     full_df = pd.concat([train_df, valid_df, test_df], ignore_index=True)
     full_df["date"] = pd.to_datetime(full_df["date"])
     full_df["symbol"] = full_df["symbol"].astype(str)
     full_df = full_df.sort_values(["date", "symbol"]).reset_index(drop=True)
-    maturity_horizon_days = _infer_max_horizon_days(LABEL_COLS)
+    missing_label_cols = [c for c in label_cols if c not in full_df.columns]
+    if missing_label_cols:
+        preview = ", ".join(missing_label_cols[:5])
+        raise ValueError(f"dataset missing required label columns (showing up to 5): {preview}")
+
+    maturity_horizon_days = _infer_max_horizon_days(label_cols)
     maturity_shift_days = _label_mode_shift_days(str(args.label_mode))
     full_df = _attach_label_maturity_date(
         full_df,
@@ -918,6 +1219,10 @@ def main() -> None:
     oos_rows: list[pd.DataFrame] = []
     week_logs: list[dict[str, object]] = []
     save_weekly_checkpoints = bool(args.save_weekly_checkpoints or args.save_monthly_checkpoints)
+    signable_specs: list[tuple[int, str, str, str]] = []
+    for idx, (label_col, pred_col) in enumerate(zip(label_cols, pred_cols)):
+        if _is_sign_calibratable_label(label_col):
+            signable_specs.append((idx, label_col, pred_col, _target_name_from_label(label_col)))
 
     ckpt_dir = Path("models/rolling_dim19")
     ckpt_dir.mkdir(parents=True, exist_ok=True)
@@ -948,13 +1253,13 @@ def main() -> None:
         # month-specific seed for reproducibility and mild de-correlation
         _set_seed(args.seed + i)
 
-        x_tr, y_tr = _extract_xy(tr_df, feature_bases, args.seq_len)
-        x_va, y_va = _extract_xy(va_df, feature_bases, args.seq_len)
-        x_wk, y_wk = _extract_xy(week_df, feature_bases, args.seq_len)
+        x_tr, y_tr = _extract_xy(tr_df, feature_bases, args.seq_len, label_cols=label_cols)
+        x_va, y_va = _extract_xy(va_df, feature_bases, args.seq_len, label_cols=label_cols)
+        x_wk, y_wk = _extract_xy(week_df, feature_bases, args.seq_len, label_cols=label_cols)
 
         model, val_metrics, epochs_ran, train_seconds = _train_one_model(x_tr, y_tr, x_va, y_va, cfg, device)
-        pred_val = _predict(model, x_va, cfg.batch_size, device)
-        pred_week = _predict(model, x_wk, cfg.batch_size, device)
+        pred_val = _predict(model, x_va, cfg.batch_size, device, pred_cols=pred_cols)
+        pred_week = _predict(model, x_wk, cfg.batch_size, device, pred_cols=pred_cols)
 
         # build calibration score per horizon from trailing realized history
         hist_df = pd.concat(hist_rows, ignore_index=True) if hist_rows else pd.DataFrame()
@@ -978,24 +1283,24 @@ def main() -> None:
         else:
             hist_use = pd.DataFrame()
 
-        signs: list[int] = []
+        signs: list[int] = [1 for _ in label_cols]
         decisions: list[dict[str, float | int]] = []
-        for h in range(3):
-            val_ic = float(information_coefficient(pred_val[:, h], y_va[:, h]))
+        for idx, label_col, pred_col, target_name in signable_specs:
+            val_ic = float(information_coefficient(pred_val[:, idx], y_va[:, idx]))
             hist_ic = float("nan")
             if not hist_use.empty:
                 hist_ic = float(
                     information_coefficient(
-                        hist_use[PRED_COLS[h]].to_numpy(dtype=float, copy=False),
-                        hist_use[LABEL_COLS[h]].to_numpy(dtype=float, copy=False),
+                        hist_use[pred_col].to_numpy(dtype=float, copy=False),
+                        hist_use[label_col].to_numpy(dtype=float, copy=False),
                     )
                 )
             score = hist_ic if np.isfinite(hist_ic) else val_ic
             sign, reason = _choose_sign_consensus(hist_ic, val_ic, args.sign_threshold)
-            signs.append(sign)
+            signs[idx] = int(sign)
             decisions.append(
                 {
-                    "horizon": int([3, 5, 10][h]),
+                    "target": target_name,
                     "val_ic": val_ic,
                     "hist_ic": hist_ic,
                     "score_used": float(score),
@@ -1005,22 +1310,22 @@ def main() -> None:
             )
 
         pred_cal = pred_week.copy()
-        for h in range(3):
-            pred_cal[:, h] = signs[h] * pred_cal[:, h]
+        for idx in range(len(label_cols)):
+            pred_cal[:, idx] = signs[idx] * pred_cal[:, idx]
 
-        week_raw = _metrics(pred_week, y_wk)
-        week_cal = _metrics(pred_cal, y_wk)
+        week_raw = _metrics(pred_week, y_wk, label_cols=label_cols)
+        week_cal = _metrics(pred_cal, y_wk, label_cols=label_cols)
         print(
             f"week_raw_avg_ic={week_raw['avg_ic']:.4f} week_cal_avg_ic={week_cal['avg_ic']:.4f} "
             f"signs={signs}"
         )
 
-        week_out = week_df[["date", "symbol"] + LABEL_COLS].copy()
-        for h, c in enumerate(PRED_COLS):
+        week_out = week_df[["date", "symbol"] + label_cols].copy()
+        for h, c in enumerate(pred_cols):
             week_out[c] = pred_week[:, h]
             week_out[f"{c}_cal"] = pred_cal[:, h]
         oos_rows.append(week_out)
-        hist_rows.append(week_out[["date", "symbol"] + LABEL_COLS + PRED_COLS].copy())
+        hist_rows.append(week_out[["date", "symbol"] + label_cols + pred_cols].copy())
 
         if save_weekly_checkpoints:
             ckpt_path = ckpt_dir / f"best_dim19_week_end_{week_end.strftime('%Y%m%d')}.pt"
@@ -1051,12 +1356,12 @@ def main() -> None:
         raise RuntimeError("no out-of-sample predictions generated")
 
     oos = pd.concat(oos_rows, ignore_index=True)
-    y = oos[LABEL_COLS].to_numpy(dtype=float, copy=False)
-    raw = oos[PRED_COLS].to_numpy(dtype=float, copy=False)
-    cal = oos[[f"{c}_cal" for c in PRED_COLS]].to_numpy(dtype=float, copy=False)
+    y = oos[label_cols].to_numpy(dtype=float, copy=False)
+    raw = oos[pred_cols].to_numpy(dtype=float, copy=False)
+    cal = oos[[f"{c}_cal" for c in pred_cols]].to_numpy(dtype=float, copy=False)
 
-    raw_metrics = _metrics(raw, y)
-    cal_metrics = _metrics(cal, y)
+    raw_metrics = _metrics(raw, y, label_cols=label_cols)
+    cal_metrics = _metrics(cal, y, label_cols=label_cols)
 
     # --- evaluation_protocol ---
     evaluation_protocol = {
@@ -1072,9 +1377,10 @@ def main() -> None:
     oos["date"] = pd.to_datetime(oos["date"])
     cs_idx = pd.MultiIndex.from_frame(oos[["date", "symbol"]])
     daily_cs: dict[str, dict] = {}
-    for hkey, h in [("h3", 3), ("h5", 5), ("h10", 10)]:
-        pred_s = pd.Series(oos[f"pred_{h}d"].to_numpy(dtype=float), index=cs_idx)
-        label_s = pd.Series(oos[f"label_{h}d"].to_numpy(dtype=float), index=cs_idx)
+    for label_col, pred_col in zip(label_cols, pred_cols):
+        hkey = _target_name_from_label(label_col)
+        pred_s = pd.Series(oos[pred_col].to_numpy(dtype=float), index=cs_idx)
+        label_s = pd.Series(oos[label_col].to_numpy(dtype=float), index=cs_idx)
         ic_daily = calculate_daily_cs_ic(pred_s, label_s, method="pearson")
         ric_daily = calculate_daily_cs_ic(pred_s, label_s, method="spearman")
         # Ensure JSON-safe types for monthly records (numpy -> Python native)
@@ -1135,7 +1441,14 @@ def main() -> None:
             "batch_size": int(args.batch_size),
             "max_epochs": int(args.max_epochs),
             "patience": int(args.patience),
-            "loss_weights": {"3d": float(args.w3), "5d": float(args.w5), "10d": float(args.w10)},
+            "label_columns": label_cols,
+            "prediction_columns": pred_cols,
+            "loss_weights": {
+                _target_name_from_label(label_cols[i]): float(cfg.loss_weights[i])
+                for i in range(len(label_cols))
+            },
+            "extra_head_weight": float(args.extra_head_weight),
+            "head_loss_weights_override": _parse_head_weight_overrides(str(args.head_loss_weights)),
             "loss_type": str(args.loss_type),
             "loss_alpha": float(args.loss_alpha),
             "ic_rank_beta": float(args.ic_rank_beta),
@@ -1151,6 +1464,9 @@ def main() -> None:
             "retrain_week_freq": "W-FRI",
             "save_weekly_checkpoints": bool(save_weekly_checkpoints),
             "months": [str(m) for m in legacy_months],
+            "config_file": config_file_resolved,
+            "config_section": config_section_used,
+            "effective_config_path": effective_config_path,
         },
         "raw_oos_metrics": raw_metrics,
         "calibrated_oos_metrics": cal_metrics,

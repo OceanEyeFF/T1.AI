@@ -21,6 +21,15 @@ from ashare_lab.evaluation.metrics import (
     rank_information_coefficient,
 )
 
+try:
+    from scripts.config_io import dump_json, extract_arg_overrides
+except ModuleNotFoundError:  # pragma: no cover - direct script execution fallback
+    from config_io import dump_json, extract_arg_overrides
+try:
+    from scripts.env_guard import ensure_required_conda_env
+except ModuleNotFoundError:  # pragma: no cover - direct script execution fallback
+    from env_guard import ensure_required_conda_env
+
 FEATURES_DIM19 = [
     "return_1d",
     "return_5d",
@@ -47,6 +56,7 @@ LABEL_COLS = ["label_3d", "label_5d", "label_10d"]
 PRED_COLS = ["pred_3d", "pred_5d", "pred_10d"]
 FEATURE_MODES = ("dim19", "auto")
 XGB_DEVICES = ("cpu", "cuda")
+CONFIG_SECTION_NAME = "run_xgboost_rolling_retrain_regime"
 
 
 def _months_to_weeks(months: int) -> int:
@@ -332,8 +342,14 @@ def _fit_predict_multihorizon(
     return val_pred, test_pred, head_logs, float(time.perf_counter() - t0)
 
 
-def main() -> None:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="XGBoost rolling retrain + horizon sign calibration.")
+    parser.add_argument("--config-file", default="", help="JSON/TOML config file path (args mapping)")
+    parser.add_argument(
+        "--effective-config-out",
+        default="",
+        help="optional: save effective merged config (after CLI overrides) to JSON",
+    )
     parser.add_argument("--dataset-dir", default="data/datasets/lstm_quick8_52d_no_hist_hl_20230101_20260120_ts")
     parser.add_argument("--seq-len", type=int, default=20)
     parser.add_argument("--feature-mode", choices=list(FEATURE_MODES), default="auto")
@@ -383,7 +399,30 @@ def main() -> None:
         "--report",
         default="output/reports/xgboost_dim52_auto_window104w_seq20_20260305.json",
     )
+    return parser
+
+
+def _argparse_allowed_keys(parser: argparse.ArgumentParser) -> set[str]:
+    return {a.dest for a in parser._actions if a.dest != "help"}
+
+
+def main() -> None:
+    ensure_required_conda_env("ashare-lab")
+    parser = _build_parser()
+    pre_args, _ = parser.parse_known_args()
+    config_section_used: str | None = None
+    if pre_args.config_file:
+        allowed_keys = _argparse_allowed_keys(parser) - {"config_file", "effective_config_out"}
+        overrides, config_section_used = extract_arg_overrides(
+            config_path=pre_args.config_file,
+            allowed_keys=allowed_keys,
+            section_candidates=(CONFIG_SECTION_NAME, "xgb"),
+        )
+        parser.set_defaults(**overrides)
     args = parser.parse_args()
+    config_file_resolved = (
+        str(Path(args.config_file).resolve()) if str(args.config_file).strip() else ""
+    )
 
     train_window_weeks = _resolve_window_weeks(
         weeks=args.train_window_weeks,
@@ -422,6 +461,30 @@ def main() -> None:
         raise ValueError("reg_alpha/reg_lambda must be >= 0")
     if args.n_jobs == 0:
         raise ValueError("n_jobs cannot be 0")
+
+    effective_config_path = ""
+    effective_config_out = str(args.effective_config_out).strip()
+    if effective_config_out:
+        effective_config_path = effective_config_out
+    elif config_file_resolved:
+        report_path = Path(args.report)
+        effective_config_path = str(
+            report_path.with_name(f"{report_path.stem}_effective_config.json")
+        )
+
+    if effective_config_path:
+        allowed_effective = _argparse_allowed_keys(parser) - {"config_file", "effective_config_out"}
+        effective_args = {k: getattr(args, k) for k in sorted(allowed_effective)}
+        saved = dump_json(
+            effective_config_path,
+            {
+                "script": CONFIG_SECTION_NAME,
+                "config_file": config_file_resolved or None,
+                "config_section": config_section_used,
+                "args": effective_args,
+            },
+        )
+        print(f"Saved effective config: {saved}")
 
     _set_seed(args.seed)
     cfg = XgbConfig(
@@ -656,6 +719,9 @@ def main() -> None:
             "prediction_frequency": "daily",
             "retrain_week_freq": "W-FRI",
             "months": [str(m) for m in legacy_months],
+            "config_file": config_file_resolved,
+            "config_section": config_section_used,
+            "effective_config_path": effective_config_path,
         },
         "raw_oos_metrics": raw_metrics,
         "calibrated_oos_metrics": cal_metrics,
