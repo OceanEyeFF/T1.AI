@@ -17,6 +17,8 @@
 4. [多头输出和数据切分.md](%E5%A4%9A%E5%A4%B4%E8%BE%93%E5%87%BA%E5%92%8C%E6%95%B0%E6%8D%AE%E5%88%87%E5%88%86.md)
 5. [警惕伪信号.md](%E8%AD%A6%E6%83%95%E4%BC%AA%E4%BF%A1%E5%8F%B7.md)
 6. [IC评估体系最小改造清单与计划.md](IC%E8%AF%84%E4%BC%B0%E4%BD%93%E7%B3%BB%E6%9C%80%E5%B0%8F%E6%94%B9%E9%80%A0%E6%B8%85%E5%8D%95%E4%B8%8E%E8%AE%A1%E5%88%92.md)
+7. [future_roadmap_suggestions_20260307.md](future_roadmap_suggestions_20260307.md)
+8. [multilevel_tuning_plan_20260307.md](multilevel_tuning_plan_20260307.md)
 
 ## 文档分组
 
@@ -27,12 +29,17 @@
 - [警惕伪信号.md](%E8%AD%A6%E6%83%95%E4%BC%AA%E4%BF%A1%E5%8F%B7.md)：伪信号与回测偏差风险
 - [IC评估体系最小改造清单与计划.md](IC%E8%AF%84%E4%BC%B0%E4%BD%93%E7%B3%BB%E6%9C%80%E5%B0%8F%E6%94%B9%E9%80%A0%E6%B8%85%E5%8D%95%E4%B8%8E%E8%AE%A1%E5%88%92.md)：专项改造任务
 - [IC评估体系改造Prompt包.md](IC%E8%AF%84%E4%BC%B0%E4%BD%93%E7%B3%BB%E6%94%B9%E9%80%A0Prompt%E5%8C%85.md)：执行辅助材料
+- [future_roadmap_suggestions_20260307.md](future_roadmap_suggestions_20260307.md)：后续路线图（已做去重校准与事实对齐）
+- [multilevel_tuning_plan_20260307.md](multilevel_tuning_plan_20260307.md)：LSTM/XGBoost 多级别自动微调方案
 
 ## 当前默认训练策略入口
 
 - 默认口径见 [数据窗口结构的区别.md](%E6%95%B0%E6%8D%AE%E7%AA%97%E5%8F%A3%E7%BB%93%E6%9E%84%E7%9A%84%E5%8C%BA%E5%88%AB.md) 的“`9. 本项目当前采用的训练策略（2026-03-06 修订）`”。
 - 默认多头与切分数值见 [多头输出和数据切分.md](%E5%A4%9A%E5%A4%B4%E8%BE%93%E5%87%BA%E5%92%8C%E6%95%B0%E6%8D%AE%E5%88%87%E5%88%86.md) 的“`七、本项目默认口径（2026-03-06 定稿）`”。
 - 关键规则是：`weekly retrain + daily inference + maturity-gated training pool + walk-forward evaluation`。
+- 多级微调默认入口采用配置文件驱动：`configs/experiments/lstm_rolling_baseline.toml` 与 `configs/experiments/xgb_rolling_baseline.toml`。
+- 1d 头扩展评估入口见 [multilevel_tuning_plan_20260307.md](multilevel_tuning_plan_20260307.md) 的“`6.1 1d H/L/C 头评估补充（LSTM）`”。
+- 训练与调参脚本要求 `ashare-lab` 环境（已接入环境守卫），建议统一使用：`conda run -n ashare-lab python ...`。
 - 防偏差核对项见 [research_checklist.md](research_checklist.md) 的“`6. 防偏差检查`”。
 
 ## 历史实验

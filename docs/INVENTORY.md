@@ -1,6 +1,6 @@
 # 文档清单（按颗粒度）
 
-更新时间：2026-03-06  
+更新时间：2026-03-08  
 说明：本清单按“粗颗粒 -> 中颗粒 -> 细颗粒 -> 研究 -> 归档”列出仓库文档。
 
 ## 1. 总入口
@@ -50,6 +50,8 @@
 - `research/警惕伪信号.md`
 - `research/IC评估体系最小改造清单与计划.md`
 - `research/IC评估体系改造Prompt包.md`
+- `research/future_roadmap_suggestions_20260307.md`
+- `research/multilevel_tuning_plan_20260307.md`
 - `research/A股短中线预测IC提升方案：诊断与可执行研究计划.pdf`
 - `research/A股短中线多头预测的 IC 提升与评估体系可执行研究计划.pdf`
 
