@@ -1,0 +1,24 @@
+[run_xgboost_rolling_retrain_regime]
+dataset_dir = "data/datasets/lstm_quick8_52d_no_hist_hl_20230101_20260120_ts"
+seq_len = 20
+feature_mode = "auto"
+
+train_window_weeks = 104
+valid_window_weeks = 8
+calibration_weeks = 12
+sign_threshold = 0.02
+
+n_estimators = 200
+max_depth = 6
+learning_rate = 0.03
+subsample = 0.8
+colsample_bytree = 0.8
+min_child_weight = 1.0
+gamma = 0.0
+reg_alpha = 0.0
+reg_lambda = 1.0
+n_jobs = 8
+early_stopping_rounds = 20
+device = "cpu"
+
+seed = 42

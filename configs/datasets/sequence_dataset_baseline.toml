@@ -1,0 +1,26 @@
+[build_sequence_dataset]
+start = "20230101"
+end = "20260120"
+
+# Choose one input mode:
+# 1) symbols list
+symbols = "600519,000333,601318"
+# 2) or symbols csv (comment out symbols above)
+# symbols_csv = "data/symbols_lstm_sectors_70.csv"
+
+source = "akshare"
+cache_dir = "data/cache"
+output_dir = "data/datasets/sequence_baseline_20230101_20260120"
+
+seq_len = 20
+stride = 1
+valid_weeks = 26
+test_weeks = 26
+
+# Deprecated split mode; keep unset for fixed-weeks split.
+# train_ratio = 0.7
+# valid_ratio = 0.15
+
+horizons = "3,5,10"
+label_mode = "close_to_close"
+include_1d_hlc_labels = true

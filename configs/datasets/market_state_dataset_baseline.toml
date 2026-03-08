@@ -1,0 +1,41 @@
+[build_sequence_dataset_market_state]
+symbols_csv = "data/symbols_lstm_sectors_70.csv"
+cache_dir = "data/cache"
+source = "tushare_live"
+request_interval_seconds = 0.8
+
+start = "20210101"
+end = "20260120"
+seq_len = 20
+stride = 1
+
+valid_weeks = 26
+test_weeks = 26
+# Deprecated split mode; keep unset for fixed-weeks split.
+# train_ratio = 0.7
+# valid_ratio = 0.15
+
+horizons = "3,5,10"
+label_mode = "close_to_close"
+include_1d_hlc_labels = true
+output_dir = "data/datasets/lstm_sector70_19d_mkt_20210101_20260120"
+
+feature_profile = "compact44"
+include_short_term_features = true
+
+sector_etf_map_csv = "data/mappings/sector_etf_map.csv"
+include_sector_etf_features = true
+
+include_odp_commodity_features = false
+commodity_source = "odp"
+odp_provider = "yfinance"
+odp_base_url = ""
+odp_prefer_rest = false
+odp_commodity_symbols = "CL=F,GC=F,HG=F,NG=F,SI=F,ZC=F"
+
+tushare_fut_exchanges = "SHFE,DCE,CZCE,INE,GFEX"
+tushare_fut_symbols = "CU.SHF,AL.SHF,ZN.SHF,PB.SHF,NI.SHF,SN.SHF,AU.SHF,AG.SHF,RB.SHF,HC.SHF,SC.INE,FU.SHF,BU.SHF,PG.DCE,ZC.CZCE"
+tushare_fut_main_only = true
+tushare_fut_page_limit = 2000
+tushare_fut_max_pages = 120
+tushare_fut_page_sleep_seconds = 0.05
