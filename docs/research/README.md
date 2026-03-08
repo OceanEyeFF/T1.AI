@@ -17,8 +17,9 @@
 4. [多头输出和数据切分.md](%E5%A4%9A%E5%A4%B4%E8%BE%93%E5%87%BA%E5%92%8C%E6%95%B0%E6%8D%AE%E5%88%87%E5%88%86.md)
 5. [警惕伪信号.md](%E8%AD%A6%E6%83%95%E4%BC%AA%E4%BF%A1%E5%8F%B7.md)
 6. [IC评估体系最小改造清单与计划.md](IC%E8%AF%84%E4%BC%B0%E4%BD%93%E7%B3%BB%E6%9C%80%E5%B0%8F%E6%94%B9%E9%80%A0%E6%B8%85%E5%8D%95%E4%B8%8E%E8%AE%A1%E5%88%92.md)
-7. [future_roadmap_suggestions_20260307.md](future_roadmap_suggestions_20260307.md)
-8. [multilevel_tuning_plan_20260307.md](multilevel_tuning_plan_20260307.md)
+7. [future_roadmap_suggestions.md](future_roadmap_suggestions.md)
+8. [future_roadmap_suggestions_20260307.md](future_roadmap_suggestions_20260307.md)（历史版）
+9. [multilevel_tuning_plan_20260307.md](multilevel_tuning_plan_20260307.md)
 
 ## 文档分组
 
@@ -29,7 +30,8 @@
 - [警惕伪信号.md](%E8%AD%A6%E6%83%95%E4%BC%AA%E4%BF%A1%E5%8F%B7.md)：伪信号与回测偏差风险
 - [IC评估体系最小改造清单与计划.md](IC%E8%AF%84%E4%BC%B0%E4%BD%93%E7%B3%BB%E6%9C%80%E5%B0%8F%E6%94%B9%E9%80%A0%E6%B8%85%E5%8D%95%E4%B8%8E%E8%AE%A1%E5%88%92.md)：专项改造任务
 - [IC评估体系改造Prompt包.md](IC%E8%AF%84%E4%BC%B0%E4%BD%93%E7%B3%BB%E6%94%B9%E9%80%A0Prompt%E5%8C%85.md)：执行辅助材料
-- [future_roadmap_suggestions_20260307.md](future_roadmap_suggestions_20260307.md)：后续路线图（已做去重校准与事实对齐）
+- [future_roadmap_suggestions.md](future_roadmap_suggestions.md)：后续路线图（2026-03-08 更新，含提交一致性审计）
+- [future_roadmap_suggestions_20260307.md](future_roadmap_suggestions_20260307.md)：后续路线图（2026-03-07 历史版）
 - [multilevel_tuning_plan_20260307.md](multilevel_tuning_plan_20260307.md)：LSTM/XGBoost 多级别自动微调方案
 
 ## 当前默认训练策略入口
