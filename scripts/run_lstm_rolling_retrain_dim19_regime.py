@@ -40,6 +40,10 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - direct script execution fallback
     from config_io import dump_json, extract_arg_overrides
 try:
+    from scripts.compare_ic_reports import GateThresholds, passes_gate, summarize_monthly
+except ModuleNotFoundError:  # pragma: no cover - direct script execution fallback
+    from compare_ic_reports import GateThresholds, passes_gate, summarize_monthly
+try:
     from scripts.env_guard import ensure_required_conda_env
 except ModuleNotFoundError:  # pragma: no cover - direct script execution fallback
     from env_guard import ensure_required_conda_env
@@ -76,6 +80,7 @@ OPTIMIZERS = ("adamw", "adam")
 NORM_TYPES = ("layernorm", "rmsnorm")
 GRAD_CLIP_MODES = ("none", "norm", "value")
 CONFIG_SECTION_NAME = "run_lstm_rolling_retrain_dim19_regime"
+CONFIG_STATUS_CHOICES = ("baseline", "candidate-best", "frozen-best")
 
 
 def _months_to_weeks(months: int) -> int:
@@ -872,6 +877,140 @@ def _resolve_loss_weights(
     return tuple(weights)
 
 
+def _build_mainline_model_profile(
+    *,
+    model_track: str,
+    config_profile: str,
+    config_status: str,
+    label_cols: list[str],
+    pred_cols: list[str],
+) -> dict[str, object]:
+    primary_label_cols = [col for col in PRIMARY_TREND_LABEL_COLS if col in label_cols]
+    primary_pred_cols = [col for col in PRIMARY_TREND_PRED_COLS if col in pred_cols]
+    aggregation_ready = (
+        str(model_track) == "mainline_3510d"
+        and primary_label_cols == list(PRIMARY_TREND_LABEL_COLS)
+        and primary_pred_cols == list(PRIMARY_TREND_PRED_COLS)
+    )
+    return {
+        "model_track": str(model_track),
+        "config_profile": str(config_profile),
+        "config_status": str(config_status),
+        "primary_label_columns": primary_label_cols,
+        "primary_prediction_columns": primary_pred_cols,
+        "aggregation_target": ("alpha_score" if aggregation_ready else ""),
+        "aggregation_ready": bool(aggregation_ready),
+    }
+
+
+def _weekly_metric_key(metric_source: str) -> str:
+    return "raw_avg_ic" if metric_source == "raw" else "cal_avg_ic"
+
+
+def _monthly_values_from_weekly_logs(weekly_logs: list[dict[str, object]], metric_source: str) -> list[float]:
+    key = _weekly_metric_key(metric_source)
+    grouped: dict[str, list[float]] = {}
+    for row in weekly_logs:
+        week_start = str(row.get("week_start", ""))
+        if len(week_start) < 7:
+            continue
+        month = week_start[:7]
+        value = row.get(key)
+        if value is None:
+            continue
+        try:
+            fv = float(value)
+        except (TypeError, ValueError):
+            continue
+        if not np.isfinite(fv):
+            continue
+        grouped.setdefault(month, []).append(fv)
+    if not grouped:
+        return []
+    return [float(sum(grouped[m]) / len(grouped[m])) for m in sorted(grouped.keys())]
+
+
+def _mean_ic_5_10(metrics: dict[str, float]) -> float:
+    return 0.5 * (float(metrics.get("ic_5d", 0.0)) + float(metrics.get("ic_10d", 0.0)))
+
+
+def _mean_rank_ic_5_10(metrics: dict[str, float]) -> float:
+    return 0.5 * (float(metrics.get("rank_ic_5d", 0.0)) + float(metrics.get("rank_ic_10d", 0.0)))
+
+
+def _build_comparison_panel(
+    raw_metrics: dict[str, float],
+    cal_metrics: dict[str, float],
+    weekly_logs: list[dict[str, object]],
+) -> dict[str, object]:
+    gate = GateThresholds()
+
+    def _panel_block(metrics: dict[str, float], metric_source: str) -> dict[str, object]:
+        monthly_values = _monthly_values_from_weekly_logs(weekly_logs, metric_source=metric_source)
+        monthly_summary = summarize_monthly(monthly_values)
+        mean_ic_5_10 = _mean_ic_5_10(metrics)
+        mean_rank_ic_5_10 = _mean_rank_ic_5_10(metrics)
+        gate_pass = passes_gate(mean_ic_5_10, mean_rank_ic_5_10, monthly_summary, gate, daily_summary=None)
+        return {
+            "mean_ic_5_10": float(mean_ic_5_10),
+            "mean_rank_ic_5_10": float(mean_rank_ic_5_10),
+            "avg_ic_all_heads": float(metrics.get("avg_ic", 0.0)),
+            "avg_rank_ic_all_heads": float(metrics.get("avg_rank_ic", 0.0)),
+            "monthly_win_rate": float(monthly_summary.win_rate),
+            "worst_month": float(monthly_summary.worst),
+            "max_consecutive_negative_months": int(monthly_summary.max_consecutive_negative_months),
+            "month_count": int(monthly_summary.month_count),
+            "pass_gate": bool(gate_pass),
+        }
+
+    raw_panel = _panel_block(raw_metrics, metric_source="raw")
+    cal_panel = _panel_block(cal_metrics, metric_source="calibrated")
+    return {
+        "focus_targets": ["5d", "10d"],
+        "gate_thresholds": {
+            "mean_ic_5_10": float(gate.mean_ic_5_10),
+            "mean_rank_ic_5_10": float(gate.mean_rank_ic_5_10),
+            "monthly_win_rate": float(gate.monthly_win_rate),
+            "worst_month": float(gate.worst_month),
+            "max_consecutive_negative_months": int(gate.max_consecutive_negative_months),
+        },
+        "raw": raw_panel,
+        "calibrated": cal_panel,
+        "delta_cal_minus_raw": {
+            "mean_ic_5_10": float(cal_panel["mean_ic_5_10"] - raw_panel["mean_ic_5_10"]),
+            "mean_rank_ic_5_10": float(cal_panel["mean_rank_ic_5_10"] - raw_panel["mean_rank_ic_5_10"]),
+            "monthly_win_rate": float(cal_panel["monthly_win_rate"] - raw_panel["monthly_win_rate"]),
+            "worst_month": float(cal_panel["worst_month"] - raw_panel["worst_month"]),
+            "max_consecutive_negative_months": int(
+                cal_panel["max_consecutive_negative_months"] - raw_panel["max_consecutive_negative_months"]
+            ),
+        },
+    }
+
+
+def _build_config_status_policy(config_status: str) -> dict[str, object]:
+    return {
+        "current_status": str(config_status),
+        "definitions": {
+            "baseline": "当前默认工作参数，用于稳定复现与后续对照，不代表最优参数。",
+            "candidate-best": "在统一 OOS 窗口下相对 baseline 展现出更好或更稳结果的候选参数。",
+            "frozen-best": "已通过重复验证并确认冻结为当前主线默认候选的参数档位。",
+        },
+        "promotion_rules": {
+            "baseline_to_candidate-best": [
+                "必须与 baseline 使用同一 OOS 时间窗、同一评估协议、同一主指标口径",
+                "comparison_panel 至少通过默认 gate，且不依赖协议漂移制造优势",
+                "相对 baseline 的主目标指标提升应可复述为同窗对照结果",
+            ],
+            "candidate-best_to_frozen-best": [
+                "必须完成重复验证，结论不依赖单次随机种子或单个时间窗",
+                "必须保持主线 schema、聚合输出与默认报告口径一致",
+                "必须由显式冻结动作确认，不能把临时领先结果直接写回默认 baseline",
+            ],
+        },
+    }
+
+
 def _select_train_valid_for_month(
     train_pool: pd.DataFrame,
     month_start: pd.Timestamp,
@@ -994,6 +1133,22 @@ def _build_parser() -> argparse.ArgumentParser:
         help="仅在 ic_rank_aware 下生效：非L1部分中 IC loss 占比，范围 [0,1]",
     )
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--model-track",
+        default="mainline_3510d",
+        help="模型线标识，默认 mainline_3510d",
+    )
+    parser.add_argument(
+        "--config-profile",
+        default="lstm_rolling_baseline",
+        help="当前配置档位名称，写入报告用于区分 baseline/candidate/frozen",
+    )
+    parser.add_argument(
+        "--config-status",
+        choices=list(CONFIG_STATUS_CHOICES),
+        default="baseline",
+        help="当前配置状态：baseline / candidate-best / frozen-best",
+    )
     parser.add_argument(
         "--label-mode",
         default="close_to_close",
@@ -1121,6 +1276,13 @@ def main() -> None:
     test_df = pd.read_parquet(ddir / "test.parquet")
     label_cols = _infer_label_cols(train_df)
     pred_cols = [pred_col_from_label(c) for c in label_cols]
+    mainline_model_profile = _build_mainline_model_profile(
+        model_track=str(args.model_track),
+        config_profile=str(args.config_profile),
+        config_status=str(args.config_status),
+        label_cols=label_cols,
+        pred_cols=pred_cols,
+    )
     loss_weights = _resolve_loss_weights(
         label_cols=label_cols,
         w3=float(args.w3),
@@ -1346,6 +1508,8 @@ def main() -> None:
 
     raw_metrics = _metrics(raw, y, label_cols=label_cols)
     cal_metrics = _metrics(cal, y, label_cols=label_cols)
+    comparison_panel = _build_comparison_panel(raw_metrics, cal_metrics, week_logs)
+    config_status_policy = _build_config_status_policy(str(args.config_status))
 
     # --- evaluation_protocol ---
     evaluation_protocol = {
@@ -1437,6 +1601,9 @@ def main() -> None:
             "loss_alpha": float(args.loss_alpha),
             "ic_rank_beta": float(args.ic_rank_beta),
             "seed": int(args.seed),
+            "model_track": str(args.model_track),
+            "config_profile": str(args.config_profile),
+            "config_status": str(args.config_status),
             "label_mode": str(args.label_mode),
             "maturity_gate_enabled": True,
             "maturity_gate_horizon_days": int(maturity_horizon_days),
@@ -1463,6 +1630,9 @@ def main() -> None:
         "monthly_logs": week_logs,
         "evaluation_protocol": evaluation_protocol,
         "daily_cs": daily_cs,
+        "mainline_model_profile": mainline_model_profile,
+        "comparison_panel": comparison_panel,
+        "config_status_policy": config_status_policy,
     }
 
     if args.save_oos_parquet:

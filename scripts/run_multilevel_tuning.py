@@ -141,6 +141,9 @@ def _snapshot_lstm(config: dict[str, Any]) -> dict[str, Any]:
         "loss_alpha": float(config.get("loss_alpha", 0.3)),
         "ic_rank_beta": float(config.get("ic_rank_beta", 0.5)),
         "seed": int(config.get("seed", 42)),
+        "model_track": str(config.get("model_track", "mainline_3510d")),
+        "config_profile": str(config.get("config_profile", "lstm_rolling_baseline")),
+        "config_status": str(config.get("config_status", "baseline")),
         "label_mode": str(config.get("label_mode", "close_to_close")),
     }
 
@@ -526,6 +529,9 @@ LSTM_ARG_ORDER = [
     ("loss_alpha", "--loss-alpha"),
     ("ic_rank_beta", "--ic-rank-beta"),
     ("seed", "--seed"),
+    ("model_track", "--model-track"),
+    ("config_profile", "--config-profile"),
+    ("config_status", "--config-status"),
     ("label_mode", "--label-mode"),
 ]
 

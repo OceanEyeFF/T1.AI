@@ -46,4 +46,7 @@ loss_alpha = 0.176
 ic_rank_beta = 0.5
 
 seed = 42
+model_track = "mainline_3510d"
+config_profile = "lstm_rolling_baseline"
+config_status = "baseline"
 label_mode = "close_to_close"

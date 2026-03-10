@@ -60,7 +60,7 @@
 
 当前仍未完成：
 
-- baseline 级别的统一比较面板还未真正跑齐；
+- baseline 级别的统一比较面板还未在真实主线数据上跑齐；
 - 默认参数仍是 `baseline`，不能叫“最优参数”；
 - 聚合层还没有建立在稳定 baseline 之上的最终门禁。
 
@@ -78,6 +78,28 @@
 - 跑出同口径 OOS 报告与月度稳定性面板；
 - 明确当前参数属于 `baseline`、`candidate-best` 还是 `frozen-best`；
 - 保证 `alpha_score` 仍可回溯到三头贡献，不破坏主线聚合接口。
+
+### 2026-03-10 当前进度
+
+已完成：
+
+- `LSTM` baseline 已显式写入 `model_track / config_profile / config_status`；
+- 单份 `LSTM` 报告已补统一比较面板，固定输出：
+  - `IC / RankIC`
+  - 月胜率
+  - 最差月
+  - 连续负月
+  - `raw vs calibrated` 差分
+- 已在合成数据上跑通最小同窗对照：
+  - `baseline`
+  - 一个轻量 `candidate-best` 候选参数
+  - 同口径比较脚本可直接消费两份报告并生成统一比较结果
+
+仍未完成：
+
+- 真实主线数据上的 baseline vs candidate 对照还没补齐；
+- `candidate-best -> frozen-best` 仍未进入正式冻结阶段；
+- 当前还不能把默认参数写成“最优参数”。
 
 完成标准：
 

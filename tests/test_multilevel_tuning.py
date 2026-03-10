@@ -55,6 +55,9 @@ def _mock_lstm_config() -> dict:
         "loss_alpha": 0.176,
         "ic_rank_beta": 0.5,
         "seed": 42,
+        "model_track": "mainline_3510d",
+        "config_profile": "lstm_rolling_baseline",
+        "config_status": "baseline",
         "label_mode": "close_to_close",
     }
 
@@ -91,6 +94,8 @@ def test_snapshot_lstm_extracts_loss_weights() -> None:
     assert base["w5"] == 0.45
     assert base["w10"] == 0.45
     assert base["feature_count"] == 2
+    assert base["config_profile"] == "lstm_rolling_baseline"
+    assert base["config_status"] == "baseline"
 
 
 def test_build_lstm_specs_l1_non_empty_and_unique() -> None:
