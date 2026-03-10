@@ -26,6 +26,7 @@ from ashare_lab.evaluation.metrics import (
     rank_information_coefficient,
     summarize_daily_cs,
 )
+from ashare_lab.evaluation.trade_like_panel import build_primary_trade_like_comparison_panel
 from ashare_lab.trend_schema import (
     PRIMARY_TREND_LABEL_COLS,
     PRIMARY_TREND_PRED_COLS,
@@ -39,10 +40,6 @@ try:
     from scripts.config_io import dump_json, extract_arg_overrides
 except ModuleNotFoundError:  # pragma: no cover - direct script execution fallback
     from config_io import dump_json, extract_arg_overrides
-try:
-    from scripts.compare_ic_reports import GateThresholds, passes_gate, summarize_monthly
-except ModuleNotFoundError:  # pragma: no cover - direct script execution fallback
-    from compare_ic_reports import GateThresholds, passes_gate, summarize_monthly
 try:
     from scripts.env_guard import ensure_required_conda_env
 except ModuleNotFoundError:  # pragma: no cover - direct script execution fallback
@@ -903,89 +900,12 @@ def _build_mainline_model_profile(
     }
 
 
-def _weekly_metric_key(metric_source: str) -> str:
-    return "raw_avg_ic" if metric_source == "raw" else "cal_avg_ic"
-
-
-def _monthly_values_from_weekly_logs(weekly_logs: list[dict[str, object]], metric_source: str) -> list[float]:
-    key = _weekly_metric_key(metric_source)
-    grouped: dict[str, list[float]] = {}
-    for row in weekly_logs:
-        week_start = str(row.get("week_start", ""))
-        if len(week_start) < 7:
-            continue
-        month = week_start[:7]
-        value = row.get(key)
-        if value is None:
-            continue
-        try:
-            fv = float(value)
-        except (TypeError, ValueError):
-            continue
-        if not np.isfinite(fv):
-            continue
-        grouped.setdefault(month, []).append(fv)
-    if not grouped:
-        return []
-    return [float(sum(grouped[m]) / len(grouped[m])) for m in sorted(grouped.keys())]
-
-
-def _mean_ic_5_10(metrics: dict[str, float]) -> float:
-    return 0.5 * (float(metrics.get("ic_5d", 0.0)) + float(metrics.get("ic_10d", 0.0)))
-
-
-def _mean_rank_ic_5_10(metrics: dict[str, float]) -> float:
-    return 0.5 * (float(metrics.get("rank_ic_5d", 0.0)) + float(metrics.get("rank_ic_10d", 0.0)))
-
-
 def _build_comparison_panel(
-    raw_metrics: dict[str, float],
-    cal_metrics: dict[str, float],
-    weekly_logs: list[dict[str, object]],
+    oos: pd.DataFrame,
+    *,
+    top_n: int,
 ) -> dict[str, object]:
-    gate = GateThresholds()
-
-    def _panel_block(metrics: dict[str, float], metric_source: str) -> dict[str, object]:
-        monthly_values = _monthly_values_from_weekly_logs(weekly_logs, metric_source=metric_source)
-        monthly_summary = summarize_monthly(monthly_values)
-        mean_ic_5_10 = _mean_ic_5_10(metrics)
-        mean_rank_ic_5_10 = _mean_rank_ic_5_10(metrics)
-        gate_pass = passes_gate(mean_ic_5_10, mean_rank_ic_5_10, monthly_summary, gate, daily_summary=None)
-        return {
-            "mean_ic_5_10": float(mean_ic_5_10),
-            "mean_rank_ic_5_10": float(mean_rank_ic_5_10),
-            "avg_ic_all_heads": float(metrics.get("avg_ic", 0.0)),
-            "avg_rank_ic_all_heads": float(metrics.get("avg_rank_ic", 0.0)),
-            "monthly_win_rate": float(monthly_summary.win_rate),
-            "worst_month": float(monthly_summary.worst),
-            "max_consecutive_negative_months": int(monthly_summary.max_consecutive_negative_months),
-            "month_count": int(monthly_summary.month_count),
-            "pass_gate": bool(gate_pass),
-        }
-
-    raw_panel = _panel_block(raw_metrics, metric_source="raw")
-    cal_panel = _panel_block(cal_metrics, metric_source="calibrated")
-    return {
-        "focus_targets": ["5d", "10d"],
-        "gate_thresholds": {
-            "mean_ic_5_10": float(gate.mean_ic_5_10),
-            "mean_rank_ic_5_10": float(gate.mean_rank_ic_5_10),
-            "monthly_win_rate": float(gate.monthly_win_rate),
-            "worst_month": float(gate.worst_month),
-            "max_consecutive_negative_months": int(gate.max_consecutive_negative_months),
-        },
-        "raw": raw_panel,
-        "calibrated": cal_panel,
-        "delta_cal_minus_raw": {
-            "mean_ic_5_10": float(cal_panel["mean_ic_5_10"] - raw_panel["mean_ic_5_10"]),
-            "mean_rank_ic_5_10": float(cal_panel["mean_rank_ic_5_10"] - raw_panel["mean_rank_ic_5_10"]),
-            "monthly_win_rate": float(cal_panel["monthly_win_rate"] - raw_panel["monthly_win_rate"]),
-            "worst_month": float(cal_panel["worst_month"] - raw_panel["worst_month"]),
-            "max_consecutive_negative_months": int(
-                cal_panel["max_consecutive_negative_months"] - raw_panel["max_consecutive_negative_months"]
-            ),
-        },
-    }
+    return build_primary_trade_like_comparison_panel(oos, top_n=top_n)
 
 
 def _build_config_status_policy(config_status: str) -> dict[str, object]:
@@ -999,7 +919,7 @@ def _build_config_status_policy(config_status: str) -> dict[str, object]:
         "promotion_rules": {
             "baseline_to_candidate-best": [
                 "必须与 baseline 使用同一 OOS 时间窗、同一评估协议、同一主指标口径",
-                "comparison_panel 至少通过默认 gate，且不依赖协议漂移制造优势",
+                "trade_like comparison_panel 至少通过默认 gate，且不依赖协议漂移制造优势",
                 "相对 baseline 的主目标指标提升应可复述为同窗对照结果",
             ],
             "candidate-best_to_frozen-best": [
@@ -1167,6 +1087,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="可选：保存 OOS 逐样本预测（含 raw/cal）到 parquet，用于 daily-CS 统一评估",
     )
     parser.add_argument(
+        "--comparison-top-n",
+        type=int,
+        default=10,
+        help="主线比较面板按 alpha_score 取前 N 名做等权交易近似评估",
+    )
+    parser.add_argument(
         "--report",
         default="output/reports/lstm_dim19_rolling78w_horizoncal_20260303.json",
     )
@@ -1242,6 +1168,8 @@ def main() -> None:
         raise ValueError("grad_clip_threshold must be >= 0")
     if args.norm_eps <= 0:
         raise ValueError("norm_eps must be > 0")
+    if args.comparison_top_n <= 0:
+        raise ValueError("comparison_top_n must be > 0")
 
     effective_config_path = ""
     effective_config_out = str(args.effective_config_out).strip()
@@ -1508,7 +1436,7 @@ def main() -> None:
 
     raw_metrics = _metrics(raw, y, label_cols=label_cols)
     cal_metrics = _metrics(cal, y, label_cols=label_cols)
-    comparison_panel = _build_comparison_panel(raw_metrics, cal_metrics, week_logs)
+    comparison_panel = _build_comparison_panel(oos, top_n=int(args.comparison_top_n))
     config_status_policy = _build_config_status_policy(str(args.config_status))
 
     # --- evaluation_protocol ---
@@ -1604,6 +1532,7 @@ def main() -> None:
             "model_track": str(args.model_track),
             "config_profile": str(args.config_profile),
             "config_status": str(args.config_status),
+            "comparison_top_n": int(args.comparison_top_n),
             "label_mode": str(args.label_mode),
             "maturity_gate_enabled": True,
             "maturity_gate_horizon_days": int(maturity_horizon_days),

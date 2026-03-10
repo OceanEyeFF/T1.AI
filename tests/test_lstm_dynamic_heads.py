@@ -85,38 +85,38 @@ def test_build_mainline_model_profile_marks_primary_aggregation_ready() -> None:
 
 
 def test_build_comparison_panel_contains_monthly_gate_metrics() -> None:
-    raw_metrics = {
-        "ic_3d": 0.01,
-        "ic_5d": 0.05,
-        "ic_10d": 0.09,
-        "rank_ic_3d": 0.01,
-        "rank_ic_5d": 0.08,
-        "rank_ic_10d": 0.12,
-        "avg_ic": 0.05,
-        "avg_rank_ic": 0.07,
-    }
-    cal_metrics = {
-        "ic_3d": 0.02,
-        "ic_5d": 0.06,
-        "ic_10d": 0.10,
-        "rank_ic_3d": 0.02,
-        "rank_ic_5d": 0.09,
-        "rank_ic_10d": 0.13,
-        "avg_ic": 0.06,
-        "avg_rank_ic": 0.08,
-    }
-    weekly_logs = [
-        {"week_start": "2025-01-03", "raw_avg_ic": 0.04, "cal_avg_ic": 0.05},
-        {"week_start": "2025-01-10", "raw_avg_ic": 0.06, "cal_avg_ic": 0.07},
-        {"week_start": "2025-02-07", "raw_avg_ic": -0.02, "cal_avg_ic": 0.01},
-        {"week_start": "2025-02-14", "raw_avg_ic": 0.03, "cal_avg_ic": 0.04},
-    ]
-    panel = _build_comparison_panel(raw_metrics, cal_metrics, weekly_logs)
-    assert panel["focus_targets"] == ["5d", "10d"]
-    assert panel["raw"]["mean_ic_5_10"] == 0.07
-    assert panel["calibrated"]["mean_rank_ic_5_10"] == 0.11
-    assert panel["raw"]["month_count"] == 2
-    assert panel["delta_cal_minus_raw"]["mean_ic_5_10"] > 0
+    oos = pd.DataFrame(
+        {
+            "date": pd.to_datetime(
+                [
+                    "2025-01-03",
+                    "2025-01-03",
+                    "2025-01-03",
+                    "2025-01-10",
+                    "2025-01-10",
+                    "2025-01-10",
+                ]
+            ),
+            "symbol": ["A", "B", "C", "A", "B", "C"],
+            "label_3d": [0.05, 0.01, -0.02, 0.04, 0.00, -0.03],
+            "label_5d": [0.08, 0.00, -0.03, 0.06, -0.01, -0.04],
+            "label_10d": [0.10, -0.02, -0.05, 0.09, 0.00, -0.06],
+            "pred_3d": [0.9, 0.1, -0.5, 0.8, 0.0, -0.4],
+            "pred_5d": [1.0, 0.2, -0.6, 0.9, 0.1, -0.5],
+            "pred_10d": [1.1, 0.0, -0.7, 1.0, 0.1, -0.6],
+            "pred_3d_cal": [1.0, 0.0, -0.6, 0.9, -0.1, -0.5],
+            "pred_5d_cal": [1.1, 0.1, -0.7, 1.0, 0.0, -0.6],
+            "pred_10d_cal": [1.2, -0.1, -0.8, 1.1, 0.0, -0.7],
+        }
+    )
+    panel = _build_comparison_panel(oos, top_n=1)
+    assert panel["score_target"] == "alpha_score"
+    assert panel["evaluation_method"] == "topn_equal_weight_excess"
+    assert panel["raw"]["available"] is True
+    assert panel["raw"]["day_count"] == 2
+    assert panel["raw"]["mean_excess_return"] > 0
+    assert panel["raw"]["monthly_win_rate"] == 1.0
+    assert panel["calibrated"]["mean_rank_ic"] >= panel["raw"]["mean_rank_ic"]
 
 
 def test_build_config_status_policy_defines_promotion_rules() -> None:
@@ -124,3 +124,4 @@ def test_build_config_status_policy_defines_promotion_rules() -> None:
     assert policy["current_status"] == "baseline"
     assert "baseline_to_candidate-best" in policy["promotion_rules"]
     assert "candidate-best_to_frozen-best" in policy["promotion_rules"]
+    assert "trade_like comparison_panel" in policy["promotion_rules"]["baseline_to_candidate-best"][1]
