@@ -1,17 +1,41 @@
-# A-share Low-Frequency Lab (A股低频高效交易实验仓库)
+# T1.AI / A-share Low-Frequency Lab
 
-目标：用 **日频评估、低换手执行** 的方式，在严格模拟 A 股约束（T+1、涨跌停、成交失败、最低手续费）下，构建可复现的选股与仓位管理研究框架。
+目标：在严格模拟 A 股约束的前提下，构建一套可复现、可审计、可迭代的中短周期研究与执行框架。
 
-## 约束与目标
+当前默认约束包括：
 
-- 约束：见 `docs/interfaces/constraints.md`
-- 盈利/验收目标：见 `docs/interfaces/objectives.md`
-- 数据契约（内部统一 schema）：见 `docs/interfaces/data_contract.md`
-- 交易协议（信号/成交时点、持有周期、做T策略）：见 `docs/interfaces/protocol.md`
+- 只做多，不对冲；
+- 严格遵守 `T+1`、涨跌停、成交失败与最低手续费约束；
+- 先保证研究口径与执行口径正确，再讨论模型复杂度扩展。
 
-## Quickstart（V0：先用 akshare 跑通链路）
+## 当前开发口径（2026-03-10）
 
-1) 安装依赖
+当前代码与文档已经收敛到三条明确工作线：
+
+1. **执行层主优先级**
+   - 当前最核心工程任务不是继续堆新模型，而是补齐执行层；
+   - 重点是换仓门槛、成本覆盖、风险禁买、成交阻断诊断与标准化日志。
+
+2. **主线模型固定为 `3d/5d/10d`**
+   - 这是当前默认主 alpha 研究线；
+   - 后续主模型开发应围绕这条线推进；
+   - 不应把 `1d` 旁路实验直接并入主线默认配置、默认损失或默认报告。
+
+3. **`1d` 作为独立短周期研究线**
+   - `1d` 只回答“是否值得独立存在”；
+   - 当前不进入主线交易打分；
+   - 实验顺序固定为“先基线、再增量、再换模型、再消融”。
+
+这三条口径的详细说明分别见：
+
+- 当前执行入口：[NEXT_STEPS.md](NEXT_STEPS.md)
+- 长期路线入口：[ROADMAP.md](ROADMAP.md)
+- 模型线边界：[docs/modules/model_line_boundaries_1d_vs_3510d_20260309.md](docs/modules/model_line_boundaries_1d_vs_3510d_20260309.md)
+- `1d` 独立执行策略：[docs/research/1d_independent_model_execution_strategy_20260309.md](docs/research/1d_independent_model_execution_strategy_20260309.md)
+
+## 快速开始
+
+### 1. 安装依赖
 
 ```bash
 conda env create -f environment.yml
@@ -21,7 +45,7 @@ python -m pip install -e ".[dev]" --no-deps
 python -c "import torch; print('cuda_available=', torch.cuda.is_available())"
 ```
 
-2) 构建股票池快照（可选，用于全市场回测）
+### 2. 构建股票池快照
 
 ```bash
 # 使用当前日期
@@ -32,11 +56,12 @@ python scripts/build_universe.py --date 20241231
 ```
 
 输出：
+
 - 股票池快照保存到 `data/cache/universe/<date>.csv`
 - 包含股票代码、名称等基础信息
-- 已过滤 ST/北交/科创/创业板
+- 已过滤 ST / 北交 / 科创 / 创业板
 
-3) 跑一个最小回测（默认 Top3 动量，日频评估，开盘撮合 + 沪深300超额）
+### 3. 跑一个最小回测
 
 ```bash
 python scripts/run_backtest.py \
@@ -46,28 +71,33 @@ python scripts/run_backtest.py \
 ```
 
 输出：
+
 - 终端打印回测摘要（CAGR、最大回撤、换手、成本占比等）
 - 若基准可用，打印超额统计（`excess_*`）
-- 结果写入 `runs/<timestamp>/`（权益曲线、交易明细）
-
-## 重要说明（新手必读）
-
-- 本仓库默认 **只做多**、**不对冲**、**不做 ST/北交/科创/创业板**。
-- 成本使用保守口径：`max(5元, 成交额 * 0.001)`（总摩擦成本），并在回测中逐笔扣除。
-- 日频策略不等于每天都大量交易：默认会加入“换仓门槛/触发阈值”，避免小优势被成本吞掉。
+- 结果写入 `runs/<timestamp>/`
 
 ## 文档入口
 
-- 文档总导航：[docs/README.md](docs/README.md)
+建议阅读顺序：
+
+1. [README.md](README.md)
+2. [NEXT_STEPS.md](NEXT_STEPS.md)
+3. [ROADMAP.md](ROADMAP.md)
+4. [docs/README.md](docs/README.md)
+5. [docs/modules/model_line_boundaries_1d_vs_3510d_20260309.md](docs/modules/model_line_boundaries_1d_vs_3510d_20260309.md)
+6. [docs/research/1d_independent_model_execution_strategy_20260309.md](docs/research/1d_independent_model_execution_strategy_20260309.md)
+7. [docs/interfaces/protocol.md](docs/interfaces/protocol.md)
+8. [docs/interfaces/data_contract.md](docs/interfaces/data_contract.md)
+
+分层导航：
+
 - Overview：[docs/overview/README.md](docs/overview/README.md)
 - Modules：[docs/modules/README.md](docs/modules/README.md)
 - Interfaces：[docs/interfaces/README.md](docs/interfaces/README.md)
 - Research：[docs/research/README.md](docs/research/README.md)
-- 主题映射索引：[docs/overview/topic_maps.md](docs/overview/topic_maps.md)
-- 主题缺口索引：[docs/overview/topic_gaps.md](docs/overview/topic_gaps.md)
-- 文档治理规则：[docs/overview/doc_governance.md](docs/overview/doc_governance.md)
-- 交易协议：[docs/interfaces/protocol.md](docs/interfaces/protocol.md)（信号/成交时点、持有周期、做T策略）
-- 协议配置：`configs/protocol.yaml`（可配置参数）
-- 数据来源：[docs/modules/data_sources.md](docs/modules/data_sources.md)
-- 新闻/公告数据建议：[docs/modules/news_sources.md](docs/modules/news_sources.md)
-- 开发路线图：[NEXT_STEPS.md](NEXT_STEPS.md)
+
+## 当前阶段不做的事情
+
+- 不把 `1d` 直接并入默认主线头结构；
+- 不让新闻 / 公告 / 外部插件阻塞执行层收敛；
+- 不在入口文档继续保留已经过期的旧阶段任务清单。
