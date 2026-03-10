@@ -2,6 +2,8 @@
 
 > 目的：基于最近一批提交的**代码实际变更**，重新校准后续路线图，避免“提交信息和真实落地不一致”导致的规划偏差。
 
+说明：当前 `3d/5d/10d` 主模型层的详细执行顺序，已单独整理到 [mainline_3510d_model_development_plan_20260310.md](mainline_3510d_model_development_plan_20260310.md)。本文继续保留项目级研究背景与路线判断，不再承担主模型层的专项执行清单。
+
 ---
 
 ## 1. 最近提交一致性审计（Commit message ↔ code reality）

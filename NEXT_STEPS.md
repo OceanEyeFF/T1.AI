@@ -27,6 +27,7 @@
 相关文档：
 
 - 模型边界：[docs/modules/model_line_boundaries_1d_vs_3510d_20260309.md](docs/modules/model_line_boundaries_1d_vs_3510d_20260309.md)
+- 主模型层专项计划：[docs/research/mainline_3510d_model_development_plan_20260310.md](docs/research/mainline_3510d_model_development_plan_20260310.md)
 - `1d` 执行策略：[docs/research/1d_independent_model_execution_strategy_20260309.md](docs/research/1d_independent_model_execution_strategy_20260309.md)
 - 研究路线建议：[docs/research/future_roadmap_suggestions.md](docs/research/future_roadmap_suggestions.md)
 
@@ -64,6 +65,8 @@
 ## 工作线 B：主线模型 `3d/5d/10d`
 
 **目标：** 稳定当前主 alpha 研究线，而不是盲目扩头。
+
+详细执行顺序见：[docs/research/mainline_3510d_model_development_plan_20260310.md](docs/research/mainline_3510d_model_development_plan_20260310.md)
 
 ### 当前规则
 
