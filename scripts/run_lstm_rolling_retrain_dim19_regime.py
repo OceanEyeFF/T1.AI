@@ -26,6 +26,14 @@ from ashare_lab.evaluation.metrics import (
     rank_information_coefficient,
     summarize_daily_cs,
 )
+from ashare_lab.trend_schema import (
+    PRIMARY_TREND_LABEL_COLS,
+    PRIMARY_TREND_PRED_COLS,
+    PRIMARY_TREND_WEIGHT_BY_LABEL,
+    infer_label_cols,
+    pred_col_from_label,
+    target_name_from_label,
+)
 
 try:
     from scripts.config_io import dump_json, extract_arg_overrides
@@ -58,8 +66,8 @@ FEATURES_DIM19 = [
     "market_amount_z20",
 ]
 
-DEFAULT_LABEL_COLS = ["label_3d", "label_5d", "label_10d"]
-DEFAULT_PRED_COLS = ["pred_3d", "pred_5d", "pred_10d"]
+DEFAULT_LABEL_COLS = list(PRIMARY_TREND_LABEL_COLS)
+DEFAULT_PRED_COLS = list(PRIMARY_TREND_PRED_COLS)
 LOSS_TYPES = ("l1", "ic_aware", "rank_aware", "ic_rank_aware")
 FEATURE_MODES = ("dim19", "auto")
 BACKBONES = ("lstm", "transformer")
@@ -101,37 +109,11 @@ def _set_seed(seed: int) -> None:
         torch.cuda.manual_seed_all(seed)
 
 
-def _label_sort_key(col: str) -> tuple[int, int, str]:
-    m = re.fullmatch(r"label_(\d+)d$", col)
-    if m is not None:
-        return (0, int(m.group(1)), "")
-    m = re.fullmatch(r"label_(\d+)d_(.+)", col)
-    if m is not None:
-        return (1, int(m.group(1)), str(m.group(2)))
-    return (2, 10**9, str(col))
-
-
 def _infer_label_cols(df: pd.DataFrame) -> list[str]:
-    labels = [c for c in df.columns if isinstance(c, str) and c.startswith("label_")]
+    labels = infer_label_cols(df.columns)
     if not labels:
         raise ValueError("dataset has no label columns (expect columns starting with 'label_')")
-    if all(c in labels for c in DEFAULT_LABEL_COLS):
-        extras = [c for c in labels if c not in DEFAULT_LABEL_COLS]
-        extras.sort(key=_label_sort_key)
-        return list(DEFAULT_LABEL_COLS) + extras
-    return sorted(labels, key=_label_sort_key)
-
-
-def _pred_col_from_label(label_col: str) -> str:
-    if not label_col.startswith("label_"):
-        raise ValueError(f"invalid label column: {label_col}")
-    return f"pred_{label_col[6:]}"
-
-
-def _target_name_from_label(label_col: str) -> str:
-    if label_col.startswith("label_"):
-        return label_col[6:]
-    return label_col
+    return labels
 
 
 def _is_sign_calibratable_label(label_col: str) -> bool:
@@ -225,7 +207,7 @@ def _metrics(pred: np.ndarray, y: np.ndarray, label_cols: list[str]) -> dict[str
     mae_vals: list[float] = []
     out: dict[str, float] = {}
     for idx, label_col in enumerate(label_cols):
-        target = _target_name_from_label(label_col)
+        target = target_name_from_label(label_col)
         ic_v = float(information_coefficient(pred[:, idx], y[:, idx]))
         ric_v = float(rank_information_coefficient(pred[:, idx], y[:, idx]))
         mae_v = float(mean_absolute_error(pred[:, idx], y[:, idx]))
@@ -874,12 +856,14 @@ def _resolve_loss_weights(
     for col in label_cols:
         if col in overrides:
             w = float(overrides[col])
-        elif col == "label_3d":
-            w = float(w3)
-        elif col == "label_5d":
-            w = float(w5)
-        elif col == "label_10d":
-            w = float(w10)
+        elif col in PRIMARY_TREND_WEIGHT_BY_LABEL:
+            weight_key = PRIMARY_TREND_WEIGHT_BY_LABEL[col]
+            if weight_key == "w3":
+                w = float(w3)
+            elif weight_key == "w5":
+                w = float(w5)
+            else:
+                w = float(w10)
         else:
             w = float(extra_head_weight)
         weights.append(w)
@@ -1136,7 +1120,7 @@ def main() -> None:
     valid_df = pd.read_parquet(ddir / "valid.parquet")
     test_df = pd.read_parquet(ddir / "test.parquet")
     label_cols = _infer_label_cols(train_df)
-    pred_cols = [_pred_col_from_label(c) for c in label_cols]
+    pred_cols = [pred_col_from_label(c) for c in label_cols]
     loss_weights = _resolve_loss_weights(
         label_cols=label_cols,
         w3=float(args.w3),
@@ -1222,7 +1206,7 @@ def main() -> None:
     signable_specs: list[tuple[int, str, str, str]] = []
     for idx, (label_col, pred_col) in enumerate(zip(label_cols, pred_cols)):
         if _is_sign_calibratable_label(label_col):
-            signable_specs.append((idx, label_col, pred_col, _target_name_from_label(label_col)))
+            signable_specs.append((idx, label_col, pred_col, target_name_from_label(label_col)))
 
     ckpt_dir = Path("models/rolling_dim19")
     ckpt_dir.mkdir(parents=True, exist_ok=True)
@@ -1378,7 +1362,7 @@ def main() -> None:
     cs_idx = pd.MultiIndex.from_frame(oos[["date", "symbol"]])
     daily_cs: dict[str, dict] = {}
     for label_col, pred_col in zip(label_cols, pred_cols):
-        hkey = _target_name_from_label(label_col)
+        hkey = target_name_from_label(label_col)
         pred_s = pd.Series(oos[pred_col].to_numpy(dtype=float), index=cs_idx)
         label_s = pd.Series(oos[label_col].to_numpy(dtype=float), index=cs_idx)
         ic_daily = calculate_daily_cs_ic(pred_s, label_s, method="pearson")
@@ -1444,7 +1428,7 @@ def main() -> None:
             "label_columns": label_cols,
             "prediction_columns": pred_cols,
             "loss_weights": {
-                _target_name_from_label(label_cols[i]): float(cfg.loss_weights[i])
+                target_name_from_label(label_cols[i]): float(cfg.loss_weights[i])
                 for i in range(len(label_cols))
             },
             "extra_head_weight": float(args.extra_head_weight),

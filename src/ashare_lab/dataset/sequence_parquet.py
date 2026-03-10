@@ -16,18 +16,13 @@ import numpy as np
 import pandas as pd
 import torch
 
+from ashare_lab.trend_schema import PRIMARY_TREND_LABEL_COLS, infer_label_cols
+
 __all__ = ["load_sequence_parquet"]
 
 
 def _infer_label_columns(df: pd.DataFrame) -> list[str]:
-    cols: list[tuple[int, str]] = []
-    for c in df.columns:
-        if isinstance(c, str) and c.startswith("label_") and c.endswith("d"):
-            mid = c[len("label_") : -1]
-            if mid.isdigit():
-                cols.append((int(mid), c))
-    cols = sorted(cols, key=lambda x: x[0])
-    return [c for _, c in cols]
+    return infer_label_cols(df.columns)
 
 
 def _infer_feature_bases(df: pd.DataFrame, seq_len: int) -> list[str]:
@@ -87,12 +82,10 @@ def load_sequence_parquet(path: Path, seq_len: int | None = None) -> tuple[torch
             raise ValueError(f"seq_len mismatch: config={seq_len}, data={inferred_len} ({path})")
 
     label_cols = _infer_label_columns(df)
-    if label_cols[:3] != ["label_3d", "label_5d", "label_10d"]:
-        # tolerate additional labels, but require these 3 to exist
-        required = {"label_3d", "label_5d", "label_10d"}
-        if not required.issubset(set(label_cols)):
-            raise ValueError(f"parquet must contain labels {sorted(required)}; got {label_cols}")
-        label_cols = ["label_3d", "label_5d", "label_10d"]
+    required = set(PRIMARY_TREND_LABEL_COLS)
+    if not required.issubset(set(label_cols)):
+        raise ValueError(f"parquet must contain labels {sorted(required)}; got {label_cols}")
+    label_cols = list(PRIMARY_TREND_LABEL_COLS)
 
     bases = _infer_feature_bases(df, seq_len)
     if not bases:

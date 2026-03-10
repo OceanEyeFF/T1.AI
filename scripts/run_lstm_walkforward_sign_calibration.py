@@ -30,6 +30,7 @@ from ashare_lab.evaluation.metrics import (
     mean_absolute_error,
     rank_information_coefficient,
 )
+from ashare_lab.trend_schema import PRIMARY_TREND_LABEL_COLS, PRIMARY_TREND_PRED_COLS
 
 
 DEFAULT_FEATURES_11 = [
@@ -46,8 +47,8 @@ DEFAULT_FEATURES_11 = [
     "price_slope_20d",
 ]
 
-LABEL_COLS = ["label_3d", "label_5d", "label_10d"]
-PRED_COLS = ["pred_3d", "pred_5d", "pred_10d"]
+LABEL_COLS = list(PRIMARY_TREND_LABEL_COLS)
+PRED_COLS = list(PRIMARY_TREND_PRED_COLS)
 
 
 @dataclass(frozen=True)

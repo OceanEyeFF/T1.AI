@@ -14,6 +14,12 @@ from typing import Iterable, Mapping, Sequence
 import torch
 import torch.nn as nn
 
+from ashare_lab.trend_schema import (
+    PRIMARY_TREND_LABEL_COLS,
+    PRIMARY_TREND_PRED_COLS,
+    target_name_from_pred,
+)
+
 
 @dataclass
 class TransformerConfig:
@@ -152,37 +158,34 @@ def compute_mtl_loss(
     """计算三头加权L1损失。
 
     Args:
-        predictions: dict需含`pred_3d/pred_5d/pred_10d`，或长度3的序列。
-        labels: [batch, 3] 标签张量（列顺序：3d,5d,10d）。
+        predictions: dict需含主线趋势头预测列，或长度等于主线头数的序列。
+        labels: [batch, 3] 标签张量（列顺序遵循主线趋势头 schema）。
         loss_weights: 三个头的权重。
     """
-    if labels.ndim != 2 or labels.size(1) != 3:
-        raise ValueError("labels must have shape [batch, 3]")
+    num_heads = len(PRIMARY_TREND_LABEL_COLS)
+    if labels.ndim != 2 or labels.size(1) != num_heads:
+        raise ValueError(f"labels must have shape [batch, {num_heads}]")
 
     if isinstance(predictions, Mapping):
-        preds_tuple = (
-            predictions["pred_3d"],
-            predictions["pred_5d"],
-            predictions["pred_10d"],
-        )
+        preds_tuple = tuple(predictions[pred_col] for pred_col in PRIMARY_TREND_PRED_COLS)
     else:
         preds_tuple = tuple(predictions)
 
-    if len(preds_tuple) != 3:
+    if len(preds_tuple) != num_heads:
         raise ValueError("predictions must contain three heads")
 
     weights = torch.as_tensor(loss_weights, device=labels.device, dtype=labels.dtype)
-    if weights.numel() != 3:
+    if weights.numel() != num_heads:
         raise ValueError("loss_weights must have three elements")
 
-    head_losses = [_masked_l1_loss(preds_tuple[i], labels[:, i]) for i in range(3)]
+    head_losses = [_masked_l1_loss(preds_tuple[i], labels[:, i]) for i in range(num_heads)]
 
     total_loss = torch.stack(head_losses).mul(weights).sum()
-    return total_loss, {
-        "l1_3d": head_losses[0],
-        "l1_5d": head_losses[1],
-        "l1_10d": head_losses[2],
+    details = {
+        f"l1_{target_name_from_pred(pred_col)}": head_losses[idx]
+        for idx, pred_col in enumerate(PRIMARY_TREND_PRED_COLS)
     }
+    return total_loss, details
 
 
 def compute_ic_aware_mtl_loss(
@@ -194,8 +197,8 @@ def compute_ic_aware_mtl_loss(
     """计算三头加权IC-Aware损失。
 
     Args:
-        predictions: dict需含`pred_3d/pred_5d/pred_10d`，或长度3的序列。
-        labels: [batch, 3] 标签张量（列顺序：3d,5d,10d）。
+        predictions: dict需含主线趋势头预测列，或长度等于主线头数的序列。
+        labels: [batch, 3] 标签张量（列顺序遵循主线趋势头 schema）。
         loss_weights: 三个头的权重。
         alpha: L1权重，建议0.3（重IC轻L1）。
 
@@ -203,47 +206,37 @@ def compute_ic_aware_mtl_loss(
         total_loss: 总损失
         head_losses: 各头的详细损失（包含L1、IC、混合损失）
     """
-    if labels.ndim != 2 or labels.size(1) != 3:
-        raise ValueError("labels must have shape [batch, 3]")
+    num_heads = len(PRIMARY_TREND_LABEL_COLS)
+    if labels.ndim != 2 or labels.size(1) != num_heads:
+        raise ValueError(f"labels must have shape [batch, {num_heads}]")
 
     if isinstance(predictions, Mapping):
-        preds_tuple = (
-            predictions["pred_3d"],
-            predictions["pred_5d"],
-            predictions["pred_10d"],
-        )
+        preds_tuple = tuple(predictions[pred_col] for pred_col in PRIMARY_TREND_PRED_COLS)
     else:
         preds_tuple = tuple(predictions)
 
-    if len(preds_tuple) != 3:
+    if len(preds_tuple) != num_heads:
         raise ValueError("predictions must contain three heads")
 
     weights = torch.as_tensor(loss_weights, device=labels.device, dtype=labels.dtype)
-    if weights.numel() != 3:
+    if weights.numel() != num_heads:
         raise ValueError("loss_weights must have three elements")
 
     # 计算各头的IC-Aware损失
-    head_losses = [_ic_aware_loss(preds_tuple[i], labels[:, i], alpha) for i in range(3)]
+    head_losses = [_ic_aware_loss(preds_tuple[i], labels[:, i], alpha) for i in range(num_heads)]
 
     # 同时计算L1和IC用于监控
-    l1_losses = [_masked_l1_loss(preds_tuple[i], labels[:, i]) for i in range(3)]
-    ic_values = [_pearson_correlation(preds_tuple[i], labels[:, i]) for i in range(3)]
+    l1_losses = [_masked_l1_loss(preds_tuple[i], labels[:, i]) for i in range(num_heads)]
+    ic_values = [_pearson_correlation(preds_tuple[i], labels[:, i]) for i in range(num_heads)]
 
     total_loss = torch.stack(head_losses).mul(weights).sum()
-    return total_loss, {
-        # IC-Aware混合损失（用于优化）
-        "ic_aware_3d": head_losses[0],
-        "ic_aware_5d": head_losses[1],
-        "ic_aware_10d": head_losses[2],
-        # L1损失（用于监控）
-        "l1_3d": l1_losses[0],
-        "l1_5d": l1_losses[1],
-        "l1_10d": l1_losses[2],
-        # IC值（用于监控）
-        "ic_3d": ic_values[0],
-        "ic_5d": ic_values[1],
-        "ic_10d": ic_values[2],
-    }
+    details: dict[str, torch.Tensor] = {}
+    for idx, pred_col in enumerate(PRIMARY_TREND_PRED_COLS):
+        target = target_name_from_pred(pred_col)
+        details[f"ic_aware_{target}"] = head_losses[idx]
+        details[f"l1_{target}"] = l1_losses[idx]
+        details[f"ic_{target}"] = ic_values[idx]
+    return total_loss, details
 
 
 def freeze_encoder_layers(model: nn.Module, num_layers: int) -> None:
@@ -319,9 +312,7 @@ class MTLTransformer(nn.Module):
                 nn.Linear(config.d_model // 2, 1),
             )
 
-        self.head_3d = _make_head()
-        self.head_5d = _make_head()
-        self.head_10d = _make_head()
+        self.heads = nn.ModuleDict({pred_col: _make_head() for pred_col in PRIMARY_TREND_PRED_COLS})
 
     def forward(
         self,
@@ -351,9 +342,7 @@ class MTLTransformer(nn.Module):
         pooled = x[:, -1, :]
 
         predictions: dict[str, torch.Tensor] = {
-            "pred_3d": self.head_3d(pooled).squeeze(-1),
-            "pred_5d": self.head_5d(pooled).squeeze(-1),
-            "pred_10d": self.head_10d(pooled).squeeze(-1),
+            pred_col: self.heads[pred_col](pooled).squeeze(-1) for pred_col in PRIMARY_TREND_PRED_COLS
         }
 
         if labels is None:

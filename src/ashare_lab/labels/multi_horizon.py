@@ -15,6 +15,8 @@ from typing import Iterable, List, Literal
 
 import pandas as pd
 
+from ashare_lab.trend_schema import PRIMARY_TREND_HORIZONS, label_col_for_horizon
+
 # 标签模式类型定义
 LabelMode = Literal["close_to_close", "next_open_to_open"]
 
@@ -46,12 +48,12 @@ class MultiHorizonLabel:
             - "next_open_to_open": label[t] = open[t+h+1] / open[t+1] - 1（推荐）
     """
 
-    horizons: Iterable[int] = field(default_factory=lambda: (3, 5, 10))
+    horizons: Iterable[int] = field(default_factory=lambda: PRIMARY_TREND_HORIZONS)
     label_mode: LabelMode = "close_to_close"  # 默认保持旧行为，向后兼容
 
     @property
     def names(self) -> List[str]:
-        return [f"label_{h}d" for h in self.horizons]
+        return [label_col_for_horizon(h) for h in self.horizons]
 
     def compute(self, data: pd.DataFrame) -> pd.DataFrame:
         """计算多跨度标签
@@ -103,7 +105,7 @@ class MultiHorizonLabel:
 
             # 停牌掩码：如果未来窗口内任何一天缺价/停牌，label 置为 NaN
             invalid = _window_has_issue(issue_mask, h + shift_offset)
-            label_df[f"label_{h}d"] = forward_ret.mask(invalid)
+            label_df[label_col_for_horizon(h)] = forward_ret.mask(invalid)
 
         return label_df
 

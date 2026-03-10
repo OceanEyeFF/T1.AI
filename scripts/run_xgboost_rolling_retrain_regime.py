@@ -20,6 +20,7 @@ from ashare_lab.evaluation.metrics import (
     mean_absolute_error,
     rank_information_coefficient,
 )
+from ashare_lab.trend_schema import PRIMARY_TREND_LABEL_COLS, PRIMARY_TREND_PRED_COLS
 
 try:
     from scripts.config_io import dump_json, extract_arg_overrides
@@ -52,8 +53,8 @@ FEATURES_DIM19 = [
     "market_amount_z20",
 ]
 
-LABEL_COLS = ["label_3d", "label_5d", "label_10d"]
-PRED_COLS = ["pred_3d", "pred_5d", "pred_10d"]
+LABEL_COLS = list(PRIMARY_TREND_LABEL_COLS)
+PRED_COLS = list(PRIMARY_TREND_PRED_COLS)
 FEATURE_MODES = ("dim19", "auto")
 XGB_DEVICES = ("cpu", "cuda")
 CONFIG_SECTION_NAME = "run_xgboost_rolling_retrain_regime"

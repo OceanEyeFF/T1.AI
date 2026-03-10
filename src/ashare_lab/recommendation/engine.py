@@ -19,6 +19,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from ashare_lab.trend_schema import PRIMARY_TREND_HORIZONS, PRIMARY_TREND_PRED_COLS
+
 try:  # torch is a project dependency, but keep import optional for lightweight unit tests.
     import torch
 except Exception:  # pragma: no cover - defensive import
@@ -95,9 +97,8 @@ class RecommendationEngine:
         predictions = self._infer(x)
 
         pred_by_horizon = {
-            "3d": predictions["pred_3d"],
-            "5d": predictions["pred_5d"],
-            "10d": predictions["pred_10d"],
+            f"{horizon}d": predictions[pred_col]
+            for horizon, pred_col in zip(PRIMARY_TREND_HORIZONS, PRIMARY_TREND_PRED_COLS)
         }
 
         valid_mask = self._valid_prediction_mask(symbols, meta, pred_by_horizon)
@@ -203,7 +204,7 @@ class RecommendationEngine:
         if not isinstance(preds, Mapping):
             raise ValueError("Model output must be a mapping with prediction heads")
 
-        for key in ("pred_3d", "pred_5d", "pred_10d"):
+        for key in PRIMARY_TREND_PRED_COLS:
             if key not in preds:
                 raise ValueError(f"Model output missing required key: {key}")
 
@@ -232,7 +233,7 @@ class RecommendationEngine:
                 continue
 
             ok = True
-            for h in ("3d", "5d", "10d"):
+            for h in (f"{horizon}d" for horizon in PRIMARY_TREND_HORIZONS):
                 value = preds_lists[h][idx]
                 if not math.isfinite(value):
                     ok = False
@@ -450,4 +451,3 @@ def _confidence_map(
         return float(max(0.0, min(1.0, v)))
 
     return {symbol: clamp01((score - lo) / (hi - lo)) for symbol, score in selected}
-

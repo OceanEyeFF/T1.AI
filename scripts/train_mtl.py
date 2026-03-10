@@ -8,7 +8,7 @@
 - 配置化超参，YAML文件与命令行可同时覆盖
 
 数据集格式（Parquet，task-1/build_sequence_dataset.py产出）：
-  - 必须包含三列标签：label_3d, label_5d, label_10d（允许 NaN）
+  - 必须包含主线趋势标签列：label_3d, label_5d, label_10d（允许 NaN）
   - 特征列采用展开序列格式：{feature_name}_t{0..seq_len-1}
   - 可选包含 meta 列：date, symbol, mask（不参与训练）
 
@@ -41,6 +41,7 @@ from ashare_lab.models.transformer import (
     create_mtl_model,
     freeze_encoder_layers,
 )
+from ashare_lab.trend_schema import PRIMARY_TREND_LABEL_COLS
 from ashare_lab.training.mtl_finetune import (
     IncrementalTrainConfig,
     IncrementalTrainer,
@@ -106,7 +107,7 @@ def _synthetic_dataset(
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """生成合成特征和标签，方便dry-run与单元测试。"""
     features = torch.randn(num_samples, seq_len, input_dim)
-    labels = torch.randn(num_samples, 3)
+    labels = torch.randn(num_samples, len(PRIMARY_TREND_LABEL_COLS))
     if nan_ratio > 0:
         mask = torch.rand_like(labels).lt(nan_ratio)
         labels = labels.masked_fill(mask, float("nan"))
