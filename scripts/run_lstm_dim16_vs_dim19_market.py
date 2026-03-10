@@ -1,5 +1,9 @@
 #!/usr/bin/env python
-"""Compare 16-dim baseline features vs 19-dim (16 + market state) on same hyperparameters."""
+"""Compare 16-dim baseline features vs 19-dim (16 + market state) on same hyperparameters.
+
+This is an experiment-specific script, not the canonical main-line schema entry.
+Primary 3d/5d/10d schema changes should land in `ashare_lab.trend_schema` first.
+"""
 
 from __future__ import annotations
 

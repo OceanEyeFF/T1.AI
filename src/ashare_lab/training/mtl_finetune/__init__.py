@@ -23,6 +23,7 @@ import yaml
 
 from ashare_lab.evaluation.metrics import information_coefficient
 from ashare_lab.models.transformer import EarlyStoppingIC, MTLTransformer, freeze_encoder_layers
+from ashare_lab.trend_schema import PRIMARY_TREND_LABEL_COLS, PRIMARY_TREND_PRED_COLS, target_name_from_pred
 
 
 def load_yaml(path: Path) -> dict:
@@ -70,9 +71,10 @@ def as_int(value: object, default: int) -> int:
 
 
 def count_labeled_samples(labels: torch.Tensor) -> int:
-    """Count samples that have at least one non-NaN label across 3 horizons."""
-    if labels.ndim != 2 or labels.size(1) != 3:
-        raise ValueError("labels must have shape [N, 3]")
+    """Count samples that have at least one non-NaN label across primary trend heads."""
+    num_heads = len(PRIMARY_TREND_LABEL_COLS)
+    if labels.ndim != 2 or labels.size(1) != num_heads:
+        raise ValueError(f"labels must have shape [N, {num_heads}]")
     all_nan = torch.isnan(labels).all(dim=1)
     return int((~all_nan).sum().item())
 
@@ -108,28 +110,28 @@ def evaluate(
     all_preds: list[torch.Tensor] = []
     all_labels: list[torch.Tensor] = []
     total_loss = 0.0
+    num_heads = len(PRIMARY_TREND_PRED_COLS)
     for feats, labels in loader:
         feats, labels = feats.to(device), labels.to(device)
         preds, losses = model(feats, labels, loss_weights=loss_weights)
-        stacked_pred = torch.stack([preds["pred_3d"], preds["pred_5d"], preds["pred_10d"]], dim=1)
+        stacked_pred = torch.stack([preds[pred_col] for pred_col in PRIMARY_TREND_PRED_COLS], dim=1)
         all_preds.append(stacked_pred.cpu())
         all_labels.append(labels.cpu())
         total_loss += float(losses["total"].item())
 
-    preds_arr = torch.cat(all_preds).numpy() if all_preds else np.zeros((0, 3), dtype=float)
-    labels_arr = torch.cat(all_labels).numpy() if all_labels else np.zeros((0, 3), dtype=float)
+    preds_arr = torch.cat(all_preds).numpy() if all_preds else np.zeros((0, num_heads), dtype=float)
+    labels_arr = torch.cat(all_labels).numpy() if all_labels else np.zeros((0, num_heads), dtype=float)
 
-    ic_3d = information_coefficient(preds_arr[:, 0], labels_arr[:, 0]) if preds_arr.size else 0.0
-    ic_5d = information_coefficient(preds_arr[:, 1], labels_arr[:, 1]) if preds_arr.size else 0.0
-    ic_10d = information_coefficient(preds_arr[:, 2], labels_arr[:, 2]) if preds_arr.size else 0.0
-    ic = float(np.mean([ic_3d, ic_5d, ic_10d])) if preds_arr.size else 0.0
-    return {
-        "loss": float(total_loss / max(1, len(loader))),
-        "ic": float(ic),
-        "ic_3d": float(ic_3d),
-        "ic_5d": float(ic_5d),
-        "ic_10d": float(ic_10d),
-    }
+    metrics = {"loss": float(total_loss / max(1, len(loader)))}
+    head_ics: list[float] = []
+    for idx, pred_col in enumerate(PRIMARY_TREND_PRED_COLS):
+        target = target_name_from_pred(pred_col)
+        ic_value = information_coefficient(preds_arr[:, idx], labels_arr[:, idx]) if preds_arr.size else 0.0
+        metrics[f"ic_{target}"] = float(ic_value)
+        head_ics.append(float(ic_value))
+
+    metrics["ic"] = float(np.mean(head_ics)) if head_ics else 0.0
+    return metrics
 
 
 def save_checkpoint_atomic(path: Path, payload: Mapping[str, object]) -> None:
@@ -511,4 +513,3 @@ __all__ = [
     "save_checkpoint_atomic",
     "train_one_epoch",
 ]
-

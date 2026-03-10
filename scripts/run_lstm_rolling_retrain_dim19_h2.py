@@ -1,5 +1,9 @@
 #!/usr/bin/env python
-"""Rolling retrain for 2-head LSTM (5d/10d only) on dim19 market-state features."""
+"""Rolling retrain for 2-head LSTM (5d/10d only) on dim19 market-state features.
+
+This is a specialized 5d/10d variant, not the canonical main-line schema entry.
+Primary 3d/5d/10d schema changes should land in `ashare_lab.trend_schema` first.
+"""
 
 from __future__ import annotations
 
