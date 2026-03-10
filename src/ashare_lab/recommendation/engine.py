@@ -21,6 +21,13 @@ from typing import Any, Mapping, Sequence
 
 from ashare_lab.trend_schema import PRIMARY_TREND_HORIZONS, PRIMARY_TREND_PRED_COLS
 
+from .trend_aggregation import (
+    AggregatedTrendScore,
+    TrendAggregationConfig,
+    aggregate_primary_trend_scores,
+    rank_primary_trend_scores,
+)
+
 try:  # torch is a project dependency, but keep import optional for lightweight unit tests.
     import torch
 except Exception:  # pragma: no cover - defensive import
@@ -133,6 +140,75 @@ class RecommendationEngine:
             out[horizon] = recs
 
         return out
+
+    def generate_trend_recommendations(
+        self,
+        date: str,
+        top_n: int = 10,
+        *,
+        aggregation_config: TrendAggregationConfig | None = None,
+    ) -> tuple[list[Recommendation], dict[str, AggregatedTrendScore]]:
+        """Generate a single aggregated main-line trend ranking."""
+        if top_n <= 0:
+            raise ValueError("top_n must be positive")
+
+        symbols_with_names = self._get_universe(date)
+        filtered = [(s, n) for s, n in symbols_with_names if self._is_allowed_symbol(s, n)]
+        if not filtered:
+            raise ValueError("No tradable symbols after filtering")
+
+        symbols = [s for s, _ in filtered]
+        names = {s: n for s, n in filtered}
+
+        x, meta = self._build_features(symbols, date)
+        predictions = self._infer(x)
+
+        pred_by_horizon = {
+            f"{horizon}d": predictions[pred_col]
+            for horizon, pred_col in zip(PRIMARY_TREND_HORIZONS, PRIMARY_TREND_PRED_COLS)
+        }
+        valid_mask = self._valid_prediction_mask(symbols, meta, pred_by_horizon)
+
+        valid_symbols = [s for s, ok in zip(symbols, valid_mask) if ok]
+        if len(valid_symbols) < top_n:
+            raise ValueError(f"Not enough valid symbols for Top-{top_n}: got {len(valid_symbols)}")
+
+        filtered_predictions = {
+            pred_col: [value for value, ok in zip(_to_1d_float_list(predictions[pred_col]), valid_mask) if ok]
+            for pred_col in PRIMARY_TREND_PRED_COLS
+        }
+        filtered_meta = {symbol: meta.get(symbol, {}) for symbol in valid_symbols}
+
+        aggregated = aggregate_primary_trend_scores(valid_symbols, filtered_predictions, aggregation_config)
+        ranked = rank_primary_trend_scores(aggregated)
+        selected = ranked[:top_n]
+
+        all_scores = [(item.symbol, float(item.aggregate_score)) for item in ranked if math.isfinite(item.aggregate_score)]
+        top_scores = [(item.symbol, float(item.aggregate_score)) for item in selected if math.isfinite(item.aggregate_score)]
+        conf = _confidence_map(all_scores, top_scores)
+
+        recs: list[Recommendation] = []
+        diagnostics: dict[str, AggregatedTrendScore] = {}
+        for rank, item in enumerate(selected, start=1):
+            diagnostics[item.symbol] = item
+            symbol_meta = filtered_meta.get(item.symbol, {})
+            reason = self._extract_reason(item.symbol, symbol_meta)
+            contrib = item.weighted_contributions
+            reason = (
+                f"主线聚合(3d={contrib['3d']:.2f}, 5d={contrib['5d']:.2f}, 10d={contrib['10d']:.2f}) | {reason}"
+            )
+            recs.append(
+                Recommendation(
+                    rank=rank,
+                    symbol=item.symbol,
+                    name=str(symbol_meta.get("name") or names.get(item.symbol) or ""),
+                    predicted_return=float(item.aggregate_score),
+                    confidence=float(conf.get(item.symbol, 0.5)),
+                    reason=reason,
+                )
+            )
+
+        return recs, diagnostics
 
     def _get_universe(self, date: str) -> list[tuple[str, str]]:
         """Get universe as a list of (symbol, name)."""
