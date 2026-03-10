@@ -40,6 +40,7 @@
 
 - 默认主线仍是 `3d/5d/10d`，不是 `1d`。
 - `1d` 当前只作为独立短周期研究线推进，不进入默认主线打分。
+- 默认推荐打分先把 `pred_3d/pred_5d/pred_10d` 聚合为单一 `alpha_score`，默认权重 `0.2 / 0.4 / 0.4`。
 - 默认训练节奏仍以 `weekly retrain + daily inference + maturity-gated training pool + walk-forward evaluation` 为主。
 - 多级微调仍采用配置文件驱动，但不能覆盖模型线边界规则。
 - 任何 `1d` 结论进入默认流程前，都必须先同步到 `overview` / `modules` / `interfaces` 层。

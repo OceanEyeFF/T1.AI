@@ -85,9 +85,14 @@
 ```json
 {
   "symbol": "600519.SH",
-  "horizon": "5d",
+  "horizon": "aggregated_3510d",
   "alpha_score": 0.37,
   "uncertainty": 0.22,
+  "components": {
+    "pred_3d": 0.12,
+    "pred_5d": 0.31,
+    "pred_10d": 0.28
+  },
   "regime_prob": {"R0": 0.05, "R1": 0.20, "R2": 0.62, "R3": 0.13},
   "explain": {
     "features": [{"name": "apm", "contrib": 0.18}],
@@ -97,6 +102,12 @@
   "data_flags": ["news_delay_ok", "no_leakage"]
 }
 ```
+
+当前默认口径补充：
+
+- 研究层可以保留单头 `pred_3d` / `pred_5d` / `pred_10d` 作为中间输出
+- 推荐/排序层默认消费聚合后的 `alpha_score`
+- `alpha_score` 当前定义为主线 `3d/5d/10d` 头在横截面标准化后的加权和，默认权重 `0.2 / 0.4 / 0.4`
 
 ## 5.2 决策输出（Trading Output）
 

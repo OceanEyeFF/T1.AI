@@ -16,6 +16,7 @@
 原因是当前真正需要先读清楚的，不只是目录结构，而是：
 
 - 主线模型固定为 `3d/5d/10d`
+- 主线推荐层默认把 `3d/5d/10d` 三头聚合为单一 `alpha_score`
 - `1d` 只作为独立研究线
 - 执行层是当前第一优先级
 
@@ -47,6 +48,7 @@
 
 - 需要确认当前开发优先级时，从 [../NEXT_STEPS.md](../NEXT_STEPS.md) 开始。
 - 需要做主线模型开发前，先读 [modules/model_line_boundaries_1d_vs_3510d_20260309.md](modules/model_line_boundaries_1d_vs_3510d_20260309.md)。
+- 需要确认主线聚合输出与推荐接口时，补读 [modules/system_io_and_architecture_spec.md](modules/system_io_and_architecture_spec.md) 和 [research/多头输出和数据切分.md](research/%E5%A4%9A%E5%A4%B4%E8%BE%93%E5%87%BA%E5%92%8C%E6%95%B0%E6%8D%AE%E5%88%87%E5%88%86.md)。
 - 需要推进 `1d` 研究前，先读 [research/1d_independent_model_execution_strategy_20260309.md](research/1d_independent_model_execution_strategy_20260309.md)。
 - 需要确认协议、字段和交易约束时，转到 [interfaces/README.md](interfaces/README.md)。
 
