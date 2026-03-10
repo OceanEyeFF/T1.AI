@@ -21,6 +21,7 @@
 8. [future_roadmap_suggestions.md](future_roadmap_suggestions.md)
 9. [future_roadmap_suggestions_20260307.md](future_roadmap_suggestions_20260307.md)（历史版）
 10. [multilevel_tuning_plan_20260307.md](multilevel_tuning_plan_20260307.md)
+11. [mainline_3510d_development_retrospective_20260310.md](mainline_3510d_development_retrospective_20260310.md)
 
 ## 文档分组
 
@@ -35,6 +36,7 @@
 - [IC评估体系改造Prompt包.md](IC%E8%AF%84%E4%BC%B0%E4%BD%93%E7%B3%BB%E6%94%B9%E9%80%A0Prompt%E5%8C%85.md)：执行辅助材料
 - [future_roadmap_suggestions.md](future_roadmap_suggestions.md)：最近一轮研究路线校准
 - [multilevel_tuning_plan_20260307.md](multilevel_tuning_plan_20260307.md)：LSTM / XGBoost 多级别自动微调方案
+- [mainline_3510d_development_retrospective_20260310.md](mainline_3510d_development_retrospective_20260310.md)：本轮 `3d/5d/10d` 主模型分支开发复盘
 
 ## 当前默认研究口径
 
