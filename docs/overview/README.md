@@ -46,6 +46,7 @@
 - [dual_window_evaluation_baseline_20260311.md](dual_window_evaluation_baseline_20260311.md)：双窗口评估基线
 - [config_and_artifact_naming_20260311.md](config_and_artifact_naming_20260311.md)：配置与实验产物命名/版本规范（G4）
 - [shared_layer_inventory_20260311.md](shared_layer_inventory_20260311.md)：1d/3d|5d|10d 公用层盘点（G3）
+- [branch_baseline_conflict_analysis_20260311.md](branch_baseline_conflict_analysis_20260311.md)：分支与基线文档冲突分析（治理期后）
 
 ## 使用边界
 
