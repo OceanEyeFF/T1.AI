@@ -50,7 +50,7 @@
 
 ### Research
 
-- [../research/IC评估体系最小改造清单与计划.md](../research/IC%E8%AF%84%E4%BC%B0%E4%BD%93%E7%B3%BB%E6%9C%80%E5%B0%8F%E6%94%B9%E9%80%A0%E6%B8%85%E5%8D%95%E4%B8%8E%E8%AE%A1%E5%88%92.md)
+- [../archive/ic_reform_completed_20260305/IC评估体系最小改造清单与计划.md](../archive/ic_reform_completed_20260305/IC%E8%AF%84%E4%BC%B0%E4%BD%93%E7%B3%BB%E6%9C%80%E5%B0%8F%E6%94%B9%E9%80%A0%E6%B8%85%E5%8D%95%E4%B8%8E%E8%AE%A1%E5%88%92.md)（已归档）
 - [../research/警惕伪信号.md](../research/%E8%AD%A6%E6%83%95%E4%BC%AA%E4%BF%A1%E5%8F%B7.md)
 
 ## 3. 训练主线

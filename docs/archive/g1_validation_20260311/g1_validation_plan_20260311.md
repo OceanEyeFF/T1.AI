@@ -2,7 +2,7 @@
 
 ## 0. 验证目的
 
-在真正应用 [merge_audit_checklist_20260311.md](../overview/merge_audit_checklist_20260311.md) 之前，先在独立分支上验证其可操作性。
+在真正应用 [merge_audit_checklist_20260311.md](../../overview/merge_audit_checklist_20260311.md) 之前，先在独立分支上验证其可操作性。
 
 **核心目标：**
 - 验证 checklist 的每个检查项是否可判断、无歧义
@@ -88,7 +88,7 @@ git commit -m "init: create G1 validation branch"
 #### 2.2 检查文档颗粒度
 
 **操作：**
-1. 对照 [doc_governance.md](../overview/doc_governance.md)
+1. 对照 [doc_governance.md](../../overview/doc_governance.md)
 2. 确认每个文档的目标目录是否正确
 3. 检查文档命名是否符合长期/短期规则
 
@@ -421,7 +421,7 @@ git branch -D feature/g1-validation
 
 ## 7. 关联文档
 
-- [Merge/Audit Checklist](../overview/merge_audit_checklist_20260311.md) - 被验证对象
-- [Develop 任务文档](develop.md) - G1 任务状态
-- [治理总清单](develop_governance_backlog_20260311.md) - G1 在治理全局中的位置
-- [执行层分支任务](feature_execution_layer_v2.md) - 验证对象分支
+- [Merge/Audit Checklist](../../overview/merge_audit_checklist_20260311.md) - 被验证对象
+- [Develop 任务文档](../../branch_tasks/develop.md) - G1 任务状态
+- [治理总清单](../../branch_tasks/develop_governance_backlog_20260311.md) - G1 在治理全局中的位置
+- [执行层分支任务](../../branch_tasks/feature_execution_layer_v2.md) - 验证对象分支

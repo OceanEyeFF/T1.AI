@@ -18,7 +18,11 @@
 专项治理清单：
 
 - [develop_governance_backlog_20260311.md](develop_governance_backlog_20260311.md) — develop 治理期 4 项核心专题总清单
-- [g1_validation_plan_20260311.md](g1_validation_plan_20260311.md) — G1 Checklist 验证方案（验证 execution-layer-v2）
+
+已归档过程文件（移至 `archive/g1_validation_20260311/`）：
+
+- ~~g1_validation_plan_20260311.md~~ — G1 验证方案
+- ~~g1_validation_exec_guide.md~~ — G1 验证执行指引
 
 ## 维护规则
 

@@ -130,7 +130,7 @@ develop 治理完成
 
 **完成时间：** 2026-03-11
 **产出文档：** [merge_audit_checklist_20260311.md](../overview/merge_audit_checklist_20260311.md)
-**验证方案：** [g1_validation_plan_20260311.md](g1_validation_plan_20260311.md)
+**验证方案：** [g1_validation_plan_20260311.md](../archive/g1_validation_20260311/g1_validation_plan_20260311.md)
 **验证完成：** 2026-03-11，发现 5 个问题并全部修正
 **验证归档：** `docs/archive/g1_validation_20260311/`
 **改进提交：** `79b827f docs(governance): improve merge audit checklist based on G1 validation`
@@ -170,62 +170,86 @@ develop 治理完成
 
 ### 4.2 What - 交付产物
 
-- [ ] 更新文档：`docs/overview/doc_governance.md`
-  - 增加 `branch_tasks/` 的颗粒度规则
-  - 增加归档触发条件与归档流程
-  - 增加入口文档（README.md 族）的修改权限规则
-  - 增加"谁维护、何时归档"矩阵
-- [ ] 更新文档：`docs/INVENTORY.md`
-  - 补齐当前所有文档的状态标记
-- [ ] 可选新增：`docs/overview/doc_lifecycle_rules_20260311.md`
-  - 如果 `doc_governance.md` 膨胀过大则拆分
+- [x] 拆分 `doc_governance.md`（命名/颗粒度）+ 新增 `doc_lifecycle_rules_20260311.md`（归档/权限/矩阵）
+- [x] 更新文档：`docs/overview/doc_governance.md`
+  - 增加 `branch_tasks/` 作为第 6 层颗粒度
+  - 引用新的 lifecycle rules 文档
+- [x] 新增文档：`docs/overview/doc_lifecycle_rules_20260311.md`
+  - 归档流程（触发条件/目标位置/动作清单）
+  - 入口文档修改权限规则（严格集中制）
+  - 维护责任矩阵（按目录分配维护者）
+  - 文档状态定义（active/frozen/stale/archived）
+  - 分支任务文档模板
+- [x] 更新文档：`docs/INVENTORY.md`
+  - 全量 60+ 文件带状态标记
 
 ### 4.3 Tasks - 可执行子任务
 
-- [ ] G2.1 盘点当前 docs/ 下所有文档，标记状态：
-  - `active`：正在使用的基线文档
-  - `frozen`：已冻结、不应修改的快照
-  - `stale`：可能过期、需要确认是否归档
-  - `archive-candidate`：应移入 archive/
-- [ ] G2.2 定义 `branch_tasks/` 的颗粒度规则：
+- [x] G2.1 盘点当前 docs/ 下所有文档，标记状态：
+  - `active`：约 40 个
+  - `frozen`：约 7 个（审计快照、复盘、外部 PDF）
+  - `archive-candidate` → 已归档：5 个
+- [x] G2.2 定义 `branch_tasks/` 的颗粒度规则：
+  - 在 `doc_governance.md` 中正式定义为第 6 层
   - 每分支一个文件，不做跨分支合并文档
-  - 已归档分支的任务文档保留但标注"已归档"
-  - 新分支必须从模板创建任务文档
-- [ ] G2.3 定义入口文档修改权限规则：
-  - `docs/README.md`：只在 develop 上修改，功能分支不修改
-  - `docs/*/README.md`：同层文档变更时同步更新
-  - 根目录 `README.md`：只做导航更新，细节下沉
-- [ ] G2.4 定义归档流程：
-  - 归档触发条件（分支已合并/方案已废弃/结论已提炼）
-  - 归档目标位置（`docs/archive/`）
-  - 归档动作（移动 + 更新索引 + 留 redirect 说明）
-- [ ] G2.5 定义"谁维护、何时归档"矩阵：
-  - overview/ → develop 分支维护
-  - modules/ → 对应模块所在分支维护
-  - research/ → 对应研究分支维护
-  - branch_tasks/ → 各分支自维护
-  - archive/ → develop 统一管理
-- [ ] G2.6 更新 `docs/INVENTORY.md` 补齐状态标记
-- [ ] G2.7 清理当前明显过期或重复的文档（如有）
+  - 已归档分支的任务文档保留但标注 `frozen`
+  - 新分支必须从模板创建（模板在 `doc_lifecycle_rules` § 6）
+- [x] G2.3 定义入口文档修改权限规则：
+  - 严格集中制：所有入口 README 只在 develop 上修改
+  - 功能分支如需变更入口文档，须在任务文档中记录诉求
+  - 入口文档清单已明确列出
+- [x] G2.4 定义归档流程：
+  - 5 类触发条件（分支合并/方案废弃/结论提炼/专项完成/时效过期）
+  - 归档子目录选择规则
+  - 归档四步动作（确认/移动/更新索引/留 redirect）
+- [x] G2.5 定义"谁维护、何时归档"矩阵：
+  - 6 层目录各有明确维护分支和归档责任
+  - 新增/删除/状态变更的同步动作标准
+- [x] G2.6 更新 `docs/INVENTORY.md` 补齐全量状态标记
+- [x] G2.7 清理当前明显过期或重复的文档：
+  - 归档 IC 改造 2 文件 → `archive/ic_reform_completed_20260305/`
+  - 归档 G1 验证 2 过程文件 → `archive/g1_validation_20260311/`
+  - 归档旧版路线建议 → `archive/long_term/`
+  - 更新 `research/README.md` 移除已归档文档引用
+  - 更新 `modules/README.md` 补入股票池文档
+  - 更新 `overview/README.md` 补入治理文档和基线快照
+  - 更新 `branch_tasks/README.md` 标注已归档文件
 
 ### 4.4 Done - 验收标准
 
-- [ ] 新建文档时，创建者可以快速判断放在哪个目录
-- [ ] 入口文档不再是分支合并冲突的高频热点
-- [ ] 过期文档有明确的归档路径，不在活跃目录里长期滞留
-- [ ] `INVENTORY.md` 是最新的、有状态标记的完整索引
+- [x] 新建文档时，创建者可以快速判断放在哪个目录（6 层 + 模板）
+- [x] 入口文档不再是分支合并冲突的高频热点（严格集中制）
+- [x] 过期文档有明确的归档路径，不在活跃目录里长期滞留（5 个已归档）
+- [x] `INVENTORY.md` 是最新的、有状态标记的完整索引（60+ 文件全覆盖）
+
+**完成时间：** 2026-03-11
+**产出文档：**
+- [doc_lifecycle_rules_20260311.md](../overview/doc_lifecycle_rules_20260311.md)
+- [doc_governance.md](../overview/doc_governance.md)（更新）
+- [INVENTORY.md](../INVENTORY.md)（重写）
+
+**关键决策记录：**
+1. doc_governance.md 拆分为两个文档（命名/颗粒度 vs 生命周期/权限）
+2. branch_tasks/ 定位为独立第 6 层
+3. 入口文档采用严格集中制（只在 develop 修改）
+4. IC 改造 + G1 验证过程文件立即归档
+
+**状态：✅ G2 核心规则已完成，待跨分支验证**
 
 ### 4.5 跨分支同步动作
 
 完成后须执行：
 
 1. 到 `feature/model-d1-research` worktree 检查：
-   - 其 docs/ 改动是否符合新规则
+   - 其 docs/ 改动是否符合新的入口文档集中制规则
    - 三处冲突文件（docs/README.md, docs/research/README.md）的合并策略是否可依据新规则确定
+   - → 结论：新规则下，1d 分支**不应修改**任何入口 README，合并时由 develop 统一处理
 2. 到 `feature/execution-layer-v2` worktree 检查：
    - working memory 文档归类是否已按新规则标记
    - 稳定设计文档的归属目录是否正确
-3. 确认 `feature/model-3d-5d-10d-head` 的文档产物在 develop 中的状态标记
+3. ✅ 确认 `feature/model-3d-5d-10d-head` 的文档产物在 develop 中的状态标记
+   - 任务文档已标记 `frozen`（INVENTORY.md）
+   - 归档说明已补入任务文档
 
 ---
 

@@ -19,9 +19,8 @@
 6. [警惕伪信号.md](%E8%AD%A6%E6%83%95%E4%BC%AA%E4%BF%A1%E5%8F%B7.md)
 7. [1d_independent_model_research_plan.md](1d_independent_model_research_plan.md)
 8. [future_roadmap_suggestions.md](future_roadmap_suggestions.md)
-9. [future_roadmap_suggestions_20260307.md](future_roadmap_suggestions_20260307.md)（历史版）
-10. [multilevel_tuning_plan_20260307.md](multilevel_tuning_plan_20260307.md)
-11. [mainline_3510d_development_retrospective_20260310.md](mainline_3510d_development_retrospective_20260310.md)
+9. [multilevel_tuning_plan_20260307.md](multilevel_tuning_plan_20260307.md)
+10. [mainline_3510d_development_retrospective_20260310.md](mainline_3510d_development_retrospective_20260310.md)
 
 ## 文档分组
 
@@ -32,8 +31,6 @@
 - [数据窗口结构的区别.md](%E6%95%B0%E6%8D%AE%E7%AA%97%E5%8F%A3%E7%BB%93%E6%9E%84%E7%9A%84%E5%8C%BA%E5%88%AB.md)：训练窗口与重训策略
 - [多头输出和数据切分.md](%E5%A4%9A%E5%A4%B4%E8%BE%93%E5%87%BA%E5%92%8C%E6%95%B0%E6%8D%AE%E5%88%87%E5%88%86.md)：默认多头配置与固定切分数值
 - [警惕伪信号.md](%E8%AD%A6%E6%83%95%E4%BC%AA%E4%BF%A1%E5%8F%B7.md)：伪信号与回测偏差风险
-- [IC评估体系最小改造清单与计划.md](IC%E8%AF%84%E4%BC%B0%E4%BD%93%E7%B3%BB%E6%9C%80%E5%B0%8F%E6%94%B9%E9%80%A0%E6%B8%85%E5%8D%95%E4%B8%8E%E8%AE%A1%E5%88%92.md)：专项改造任务
-- [IC评估体系改造Prompt包.md](IC%E8%AF%84%E4%BC%B0%E4%BD%93%E7%B3%BB%E6%94%B9%E9%80%A0Prompt%E5%8C%85.md)：执行辅助材料
 - [future_roadmap_suggestions.md](future_roadmap_suggestions.md)：最近一轮研究路线校准
 - [multilevel_tuning_plan_20260307.md](multilevel_tuning_plan_20260307.md)：LSTM / XGBoost 多级别自动微调方案
 - [mainline_3510d_development_retrospective_20260310.md](mainline_3510d_development_retrospective_20260310.md)：本轮 `3d/5d/10d` 主模型分支开发复盘
@@ -55,4 +52,4 @@
 ## 使用边界
 
 - 研究层不直接改写接口层与执行层默认定义。
-- 若研究结论已经成为当前默认口径，必须同步更新 [../README.md](../README.md)、[../NEXT_STEPS.md](../NEXT_STEPS.md) 或对应模块文档。
+- 若研究结论已经成为当前默认口径，必须同步更新 [../README.md](../README.md)、[../../NEXT_STEPS.md](../../NEXT_STEPS.md) 或对应模块文档。
