@@ -19,6 +19,12 @@
 
 - [develop_governance_backlog_20260311.md](develop_governance_backlog_20260311.md) — develop 治理期 4 项核心专题总清单
 
+分支合并指南：
+
+- [d1_research_merge_guide_20260311.md](d1_research_merge_guide_20260311.md) — d1-research 分支合并操作指南
+- [execution_layer_merge_guide_20260311.md](execution_layer_merge_guide_20260311.md) — execution-layer-v2 分支合并操作指南
+- [3d5d10d_merge_guide_20260311.md](3d5d10d_merge_guide_20260311.md) — 3d-5d-10d-head 分支快进指南
+
 已归档过程文件（移至 `archive/g1_validation_20260311/`）：
 
 - ~~g1_validation_plan_20260311.md~~ — G1 验证方案

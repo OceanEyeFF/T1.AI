@@ -88,6 +88,9 @@
 - `branch_tasks/feature_model_d1_research.md` — `active` — 1d 研究分支任务
 - `branch_tasks/feature_execution_layer_v2.md` — `active` — 执行层分支任务
 - `branch_tasks/feature_model_3d_5d_10d_head.md` — `frozen` — 3d/5d/10d 分支任务（已同步/待归档）
+- `branch_tasks/d1_research_merge_guide_20260311.md` — `active` — d1-research 分支合并指南
+- `branch_tasks/execution_layer_merge_guide_20260311.md` — `active` — execution-layer-v2 分支合并指南
+- `branch_tasks/3d5d10d_merge_guide_20260311.md` — `active` — 3d-5d-10d-head 分支快进指南
 
 ## 7. Archive
 
