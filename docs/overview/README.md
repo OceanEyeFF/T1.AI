@@ -39,11 +39,13 @@
 - [project_update_plan_2026Q1.md](project_update_plan_2026Q1.md)：阶段性项目更新计划
 - [ai_finance_external_benchmark_2026.md](ai_finance_external_benchmark_2026.md)：外部对标与方向输入
 
-### 基线快照
+### 基线快照与规范
 
 - [branch_consolidation_audit_20260311.md](branch_consolidation_audit_20260311.md)：分支整理审计（frozen）
 - [post_mainline_sync_optimization_plan_20260311.md](post_mainline_sync_optimization_plan_20260311.md)：主模型同步后优化计划
 - [dual_window_evaluation_baseline_20260311.md](dual_window_evaluation_baseline_20260311.md)：双窗口评估基线
+- [config_and_artifact_naming_20260311.md](config_and_artifact_naming_20260311.md)：配置与实验产物命名/版本规范（G4）
+- [shared_layer_inventory_20260311.md](shared_layer_inventory_20260311.md)：1d/3d|5d|10d 公用层盘点（G3）
 
 ## 使用边界
 

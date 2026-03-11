@@ -267,8 +267,8 @@ develop 治理完成
 
 ### 5.2 What - 交付产物
 
-- [ ] 新增文档：`docs/overview/shared_layer_inventory_20260311.md`
-- [ ] 包含以下内容：
+- [x] 新增文档：`docs/overview/shared_layer_inventory_20260311.md`
+- [x] 包含以下内容：
   - 重复代码点位清单（文件级 + 函数级）
   - 每个重复点的 contract 一致性判断
   - 可抽象层 vs 不可抽象层的分类
@@ -276,18 +276,17 @@ develop 治理完成
 
 ### 5.3 Tasks - 可执行子任务
 
-- [ ] G3.1 列出 1d 和 3d|5d|10d 两条线的代码文件清单
-- [ ] G3.2 对每个重复点判断 contract 一致性：
+- [x] G3.1 列出 1d 和 3d|5d|10d 两条线的代码文件清单
+- [x] G3.2 对每个重复点判断 contract 一致性：
   - 输入 contract 是否相同
   - 输出 contract 是否相同
   - 评估 contract 是否相同
-- [ ] G3.3 分类标注：
-  - **可立即抽象**：schema、metadata、report loader、config parser
-  - **需等 contract 统一后抽象**：数据集构建、实验配置读取
-  - **暂不抽象**：训练主流程、模型本体逻辑
-  - **不应抽象**：两线本质不同的部分
-- [ ] G3.4 对可立即抽象的层，给出推荐的模块位置和接口草案
-- [ ] G3.5 明确"公用层抽象的技术门槛"：
+- [x] G3.3 分类标注：
+  - **可立即共享**：44 个文件完全一致（data/, features/, evaluation/metrics.py 等）
+  - **需等 contract 统一后抽象**：6 个文件（trend_schema 引起的分歧）
+  - **不应抽象**：主线专属（trade_like_panel, trend_aggregation）+ 1d 专属资产
+- [x] G3.4 对可立即抽象的层，给出推荐的模块位置和接口草案
+- [x] G3.5 明确"公用层抽象的技术门槛"：
   - 两条线必须共享同一个输入 contract
   - 两条线必须共享同一个输出 contract
   - 两条线必须共享同一个评估 contract
@@ -295,10 +294,23 @@ develop 治理完成
 
 ### 5.4 Done - 验收标准
 
-- [ ] 盘点文档覆盖了 `src/ashare_lab/` 下主要重复代码区域
-- [ ] 每个重复点都有 contract 一致性判断，不是简单的"名字一样就统一"
-- [ ] 推荐的抽象优先级有明确理由，不是凭感觉排序
-- [ ] 明确哪些"不应抽象"，避免后续再反复讨论
+- [x] 盘点文档覆盖了 `src/ashare_lab/` 下主要重复代码区域
+- [x] 每个重复点都有 contract 一致性判断，不是简单的"名字一样就统一"
+- [x] 推荐的抽象优先级有明确理由，不是凭感觉排序
+- [x] 明确哪些"不应抽象"，避免后续再反复讨论
+
+**完成时间：** 2026-03-11
+**产出文档：** [shared_layer_inventory_20260311.md](../overview/shared_layer_inventory_20260311.md)
+
+**关键发现：**
+1. 所有分歧的唯一根因是 `trend_schema.py`（3d-5d-10d-head 合入时引入）
+2. 1d 和 execution-layer-v2 的分歧代码逐字节一致（共享旧基底）
+3. 44/55 个 src/ 文件完全一致，已是事实公用层（占 80%）
+4. 6 个分歧文件的语义差异为零（除 recommendation 新增功能外）
+5. `compare_ic_reports.py` 的 1d 版本比 develop 更通用（horizon-generic），建议反向采纳
+6. 三层抽象优先级：P0 确认现有公用层 → P1 采纳 horizon-generic 比较工具 → P2 trend_schema 参数化
+
+**状态：✅ G3 盘点已完成**
 
 ### 5.5 跨分支同步动作
 
@@ -311,6 +323,26 @@ develop 治理完成
 2. 确认 `feature/model-3d-5d-10d-head` 已同步进 develop 的代码：
    - 哪些已是公用层的一部分
    - 哪些仍是 3d|5d|10d 专属
+
+**跨分支同步结果：**
+
+**1d 分支检查结论：**
+- 输入 contract 完全一致（data/, features/ 全部共享）
+- 标签/输出 contract 值一致但机制不同（hardcode vs trend_schema）
+- 1d 的 `compare_ic_reports.py` 已做 horizon-generic 改造，比 develop 更通用
+- 合入时 6 个 src/ 文件冲突全部因 trend_schema，合并策略清晰
+- 1d 独有资产（configs/1d_independent/, scripts/run_xgboost_1d_*, tests/test_xgb_1d_*）可直接合入
+- 任务文档需新增："合入时须决定是否采用 trend_schema"
+
+**execution-layer-v2 检查结论：**
+- 与 1d 面临完全相同的 6 个文件冲突（基底一致）
+- 建议先合 1d 再合 execution-layer（减少重复冲突解决）
+- 执行层无额外代码层面影响
+
+**3d-5d-10d-head 确认：**
+- 已贡献 3 个主线专属文件（trend_schema, trade_like_panel, trend_aggregation）
+- 已贡献 trend_schema 重构（影响 6 个共享文件）
+- 其余 44 个文件为未修改的公用层基底
 
 ---
 
@@ -327,63 +359,85 @@ develop 治理完成
 
 ### 6.2 What - 交付产物
 
-- [ ] 新增文档：`docs/overview/config_and_artifact_naming_20260311.md`
-- [ ] 包含以下内容：
-  - 配置文件命名规范
-  - 实验产物目录结构规范
-  - ID 体系完整定义
-  - 配置状态语义定义
-  - 版本升级规则
+- [x] 新增文档：`docs/overview/config_and_artifact_naming_20260311.md`
+- [x] 包含以下内容：
+  - 配置文件命名规范（§ 2）
+  - 实验产物目录结构规范（§ 3）
+  - ID 体系完整定义（§ 4）
+  - 配置状态语义定义（§ 5）
+  - 版本升级规则（§ 6）
+  - 当前配置盘点与合规评估（§ 7）
+  - 已有基线对齐确认（§ 8）
 
 ### 6.3 Tasks - 可执行子任务
 
-- [ ] G4.1 定义 configs/ 命名规范：
-  - 目录结构：`configs/{category}/{name}.toml`
-  - 命名规则：`{model_track}_{config_profile}_{version}.toml`
-  - 分类：`datasets/`、`experiments/`、`stock_pools/`、`evaluations/`
-- [ ] G4.2 定义实验产物目录结构：
-  - 输出根目录
-  - 子目录命名规则
-  - 必须包含的 metadata 文件
-- [ ] G4.3 定义完整 ID 体系：
-  - `dataset_id`：数据集标识
-  - `stock_pool_id`：股票池标识（已有基线）
-  - `evaluation_window_id`：评估窗口标识（已有基线）
-  - `experiment_id`：实验标识
-  - `model_track`：模型线标识
-  - `config_profile`：配置档标识
-- [ ] G4.4 定义配置状态三分类：
-  - `baseline`：当前默认基线，稳定可引用
-  - `candidate`：候选配置，正在验证中
-  - `frozen`：冻结快照，不再修改
-  - 状态流转规则：candidate → baseline（通过门禁）→ frozen（被新 baseline 替代）
-- [ ] G4.5 定义版本升级触发条件：
-  - 哪些变化必须升版本
-  - 哪些变化只需更新 metadata
-  - 版本号格式统一
-- [ ] G4.6 盘点当前已有配置，标注是否符合新规范
-- [ ] G4.7 将已有基线文档（stock_pool_registry、dual_window_evaluation）中的 ID 定义
-      与本规范对齐，消除不一致
+- [x] G4.1 定义 configs/ 命名规范：
+  - 目录结构：`configs/{category}/{name}.toml`（§ 2.1）
+  - 文件命名：`{backbone}_{task_scope}_{profile_tag}.toml`（§ 2.2）
+  - 分类：`datasets/`、`experiments/`、`stock_pools/`（待建）、`evaluations/`（待建）
+  - 元数据必填字段已定义（§ 2.3）
+- [x] G4.2 定义实验产物目录结构：
+  - 按 model_track 分子目录：`output/reports/{model_track}/`（§ 3.2）
+  - 必须包含 `_effective_config.json`，字段已定义（§ 3.3）
+  - 临时目录（`_smoke_*`/`_tmp_*`）规则已定义（§ 3.4）
+- [x] G4.3 定义完整 ID 体系：
+  - `model_track`：`mainline_3510d` / `1d_independent`（§ 4.1）
+  - `config_profile`：与文件名一致（§ 4.2）
+  - `dataset_id`：`{type}_{pool}_{dim}d_{dates}`（§ 4.3）
+  - `stock_pool_id`：引用 registry 基线（§ 4.4）
+  - `evaluation_window_id`：引用评估基线（§ 4.5）
+  - `experiment_id`：`{profile}_{track}_{date}` 运行时拼接（§ 4.6）
+- [x] G4.4 定义配置状态三分类：
+  - baseline / candidate / frozen 语义已定义（§ 5.1）
+  - 流转规则：candidate → baseline（通过门禁）→ frozen（被替代）（§ 5.2）
+  - fastpilot 特殊说明（§ 5.4）
+- [x] G4.5 定义版本升级触发条件：
+  - 必须升版本：超参/数据集/窗口/损失函数/标签/特征变化（§ 6.1）
+  - 不需升版本：注释/格式/输出路径变化（§ 6.2）
+  - 版本号格式统一（§ 6.3）
+- [x] G4.6 盘点当前已有配置，标注是否符合新规范：
+  - develop：1 个合规，3 个缺元数据，2 个建议补注释（§ 7.1）
+  - 1d 分支：5 个缺元数据（§ 7.2）
+  - 顶层 YAML：3 个保留，1 个标记 legacy（§ 7.3）
+  - reports/ 目录全部平铺，建议渐进迁移（§ 7.4）
+- [x] G4.7 将已有基线文档中的 ID 定义与本规范对齐：
+  - stock_pool_registry：✅ 一致（§ 8.1）
+  - dual_window_evaluation：✅ 一致（§ 8.2）
+  - 联合字段集为超集关系（§ 8.3）
 
 ### 6.4 Done - 验收标准
 
-- [ ] 新建配置文件时，可以快速确定命名、位置和版本号
-- [ ] 实验输出有统一目录结构，不同实验的产物可比
-- [ ] ID 体系完整且无冲突，已有基线文档与新规范一致
-- [ ] baseline / candidate / frozen 三种状态有明确语义，不再靠口头约定
+- [x] 新建配置文件时，可以快速确定命名、位置和版本号
+- [x] 实验输出有统一目录结构，不同实验的产物可比
+- [x] ID 体系完整且无冲突，已有基线文档与新规范一致
+- [x] baseline / candidate / frozen 三种状态有明确语义，不再靠口头约定
 
 ### 6.5 跨分支同步动作
 
 完成后须执行：
 
-1. 到 `feature/model-d1-research` worktree 深入检查：
-   - 1d 独立配置（`configs/datasets/1d_independent/`、`configs/experiments/1d_independent/`）
-     是否符合新命名规范
-   - 1d 实验协议中的 stock_pool_id / evaluation_window_id 引用是否与新规范一致
-   - 在任务文档中标注需要调整的配置文件
-2. 到 `feature/execution-layer-v2` worktree 检查：
-   - 执行层设计文档中引用的配置/产物格式是否与新规范兼容
-3. 确认 `feature/model-3d-5d-10d-head` 已有配置在 develop 中的状态标记
+1. ✅ 到 `feature/model-d1-research` 检查：
+   - `configs/*/1d_independent/` 子目录命名模式**符合新规范**（§ 2.1 允许模型线子目录）
+   - 5 个实验配置缺失 `model_track`/`config_profile`/`config_status`，已在任务文档标注
+   - stock_pool_id / evaluation_window_id 引用待 1d 配置补齐后自然对齐
+2. ✅ 到 `feature/execution-layer-v2` 检查：
+   - 无额外配置文件，主要影响在后续实现时须遵守新规范
+   - 已在任务文档补注配置/产物/ID 规范引用
+3. ✅ 确认 `feature/model-3d-5d-10d-head` 配置状态：
+   - 已在 develop 中，3 个配置缺元数据字段，已在任务文档标注
+   - 补齐工作在 develop 上执行
+
+**完成时间：** 2026-03-11
+**产出文档：** [config_and_artifact_naming_20260311.md](../overview/config_and_artifact_naming_20260311.md)
+
+**关键决策记录：**
+1. 新配置一律 TOML，旧 YAML 保留但不新增
+2. 文件命名 `{backbone}_{task_scope}_{profile_tag}.toml`，config_profile 与文件名一致
+3. ID 体系 6 个核心 ID，experiment_id 运行时拼接不写入配置
+4. 配置状态三分类 + fastpilot 特殊说明
+5. 与 stock_pool_registry 和 dual_window_evaluation 已有基线完全对齐
+
+**状态：✅ G4 核心规范已完成，待跨分支配置实际补齐**
 
 ---
 
@@ -415,12 +469,20 @@ G2 和 G3 可以稍后补，但不能跳过。
 
 以下条件全部满足后，可认为"develop 治理期"核心工作完成：
 
-- [ ] G1：Merge/Audit Checklist 已形成且被后续分支任务引用
-- [ ] G2：docs/ 治理规则已更新，INVENTORY.md 已标注状态
-- [ ] G3：公用层盘点文档已形成，抽象优先级已明确
-- [ ] G4：配置与产物规范已形成，已有基线与新规范已对齐
-- [ ] 所有受影响分支的任务文档已同步更新
-- [ ] `develop.md` 中的治理相关任务已标记完成或关联到具体产物
+- [x] G1：Merge/Audit Checklist 已形成且被后续分支任务引用
+- [x] G2：docs/ 治理规则已更新，INVENTORY.md 已标注状态
+- [x] G3：公用层盘点文档已形成，抽象优先级已明确
+- [x] G4：配置与产物规范已形成，已有基线与新规范已对齐
+- [x] 所有受影响分支的任务文档已同步更新
+  - d1-research：G1/G2/G3/G4 全部引用 ✅
+  - execution-layer-v2：G1/G2/G3/G4 全部引用 ✅
+  - 3d-5d-10d-head：G1/G3/G4 引用 + INVENTORY frozen 标记 ✅
+- [x] `develop.md` 中的治理相关任务已标记完成或关联到具体产物
+  - 双窗口评估协议：✅ 标记完成
+  - trade_like panel 评估口径：✅ 标记完成
+  - 统一 contract：关联到 G4 + registry + 评估基线（代码接线待推进）
+  - 分支模板/配置模板：关联到 G2 + G4（模板实体化待推进）
+  - merge/audit checklist：✅ 此前已标记完成
 
 ---
 

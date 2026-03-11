@@ -32,6 +32,24 @@
 - [ ] 本分支状态明确标记为”已同步/待归档”
 - [ ] 后续主模型工作全部转到 `develop`
 
+## G3 公用层盘点确认
+
+已在 [shared_layer_inventory](../overview/shared_layer_inventory_20260311.md) 中确认本分支的贡献：
+
+- 贡献 3 个主线专属文件：`trend_schema.py`、`trade_like_panel.py`、`trend_aggregation.py`
+- 贡献 trend_schema 重构（影响 6 个共享文件的 import/常量引用）
+- 其余 44 个 src/ 文件为未修改的公用层基底
+
+## G4 配置合规说明
+
+已同步到 develop 的配置文件中，以下需补齐元数据字段（参见 [config_and_artifact_naming](../overview/config_and_artifact_naming_20260311.md) § 7.1）：
+
+- `experiments/lstm_rolling_fastpilot.toml` — 缺 `model_track`/`config_profile`/`config_status`
+- `experiments/xgb_rolling_baseline.toml` — 同上
+- `experiments/xgb_rolling_fastpilot.toml` — 同上
+
+仅 `experiments/lstm_rolling_baseline.toml` 已合规。补齐工作在 develop 上执行即可。
+
 ## 归档说明
 
 - 本分支已于 2026-03-11 同步进 `develop`

@@ -25,6 +25,8 @@
 - `overview/branch_consolidation_audit_20260311.md` — `frozen` — 分支整理审计快照
 - `overview/post_mainline_sync_optimization_plan_20260311.md` — `active` — 主模型同步后优化计划
 - `overview/dual_window_evaluation_baseline_20260311.md` — `active` — 双窗口评估基线
+- `overview/config_and_artifact_naming_20260311.md` — `active` — 配置与实验产物命名/版本规范（G4 产出）
+- `overview/shared_layer_inventory_20260311.md` — `active` — 1d/3d|5d|10d 公用层盘点（G3 产出）
 - `overview/topic_maps.md` — `active` — 主题映射索引
 - `overview/topic_gaps.md` — `active` — 主题缺口索引
 - `overview/future_state_blueprint.md` — `active` — 项目未来蓝图
