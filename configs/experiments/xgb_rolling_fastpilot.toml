@@ -22,3 +22,6 @@ early_stopping_rounds = 20
 device = "cpu"
 
 seed = 42
+model_track = "mainline_3510d"
+config_profile = "xgb_rolling_fastpilot"
+config_status = "candidate"

@@ -99,10 +99,9 @@ PYTHONPATH=src:. pytest -q \
 **跨分支影响统计：**
 - `feature/model-d1-research`：4 个治理专题全部引用，合入路径清晰
 - `feature/execution-layer-v2`：4 个治理专题全部引用，吸收标准明确
-- `feature/model-3d-5d-10d-head`：已归档标记，遗留配置待补齐
+- `feature/model-3d-5d-10d-head`：已同步收口完成，当前作为历史参考分支保留
 
 **遗留落地尾巴（属功能实现，非治理规则）：**
-- develop 3 个配置补元数据（下一轮 develop 工作）
 - 1d 分支 5 个配置补元数据（1d 对齐 develop 时）
 - reports/ 目录按 model_track 分层（渐进迁移）
 - generate_effective_config() 公用函数（代码层接线阶段）
