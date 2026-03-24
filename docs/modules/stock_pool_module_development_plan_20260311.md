@@ -124,6 +124,13 @@
 - 至少能输出 `symbols_csv + metadata_json`；
 - 股票池 ID 与版本可以进入实验元数据。
 
+### 2026-03-24 进展补充
+
+- `configs/stock_pools/` 已落地；
+- `src/ashare_lab/stock_pool/` 已完成最小 registry / export 接口；
+- `sequence` 与 `market_state` 两条 dataset builder 已能消费 `stock_pool_id`；
+- 已补齐 registry / builder smoke tests，S1 的最小实现已进入可用状态。
+
 ## 5.3 Phase S2：首批池子家族支持（必须）
 
 ### 目标
@@ -143,6 +150,11 @@
 - 至少每个家族能落 1 个样例池；
 - 样例池具有稳定 ID、版本和导出产物；
 - 相关实验可通过 `stock_pool_id` 直接引用这些池子。
+
+### 当前状态
+
+- `S2` 仍未完成；
+- 当前已落地的是 `S1 minimal`，仅覆盖 registry、导出和最小接线，不包含池子家族批量扩展。
 
 ## 5.4 Phase S3：训练/评估链路接线（必须）
 
@@ -173,6 +185,11 @@
 - 不再需要靠文档手工说明“这次用的是哪份股票池”；
 - fixed / latest 双窗口比较时，股票池上下文可追溯；
 - 主模型和 `1d` 的实验结果可以在同一 contract 下比较。
+
+### 当前状态
+
+- 主线实验 metadata / `_effective_config.json` 已开始写入 `stock_pool_id`、`stock_pool_version`、`evaluation_window_id`、`dataset_id`；
+- 但 `1d` 分支的对齐仍未完成，因此 `S3` 只算主线最小闭环，不算全量完成。
 
 ## 5.5 Phase S4：验证与 smoke test（必须）
 

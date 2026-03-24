@@ -88,7 +88,7 @@ develop (当前)
 | `trend_schema.py` | 71 | 主线 3d/5d/10d horizon 常量中心化 |
 | `evaluation/trade_like_panel.py` | 289 | 主线 trade-like 评估面板 |
 | `recommendation/trend_aggregation.py` | 191 | 主线多 horizon 聚合排名 |
-| `stock_pool/__init__.py` | ~空 | 股票池模组预留（S0） |
+| `stock_pool/__init__.py` | 入口包 | 股票池 registry / export 入口（S1 minimal） |
 
 #### 仅 1d 有
 
@@ -116,6 +116,8 @@ develop (当前)
 | `train_mtl.py` | 30 | trend_schema 引用 + 注释措辞 |
 | `build_sequence_dataset_market_state.py` | 46 | trend_schema 引用 |
 | 其余 5 个 run_*.py | 12~24 | 均为 trend_schema 引用 |
+
+> 注：`build_sequence_dataset_market_state.py` 这里的分歧仍以 trend_schema 引用为主；截至 2026-03-24，stock_pool 接线已补齐，不再是空壳入口问题。
 
 ---
 
@@ -367,6 +369,7 @@ G4 已完成，参见 [config_and_artifact_naming_20260311.md](config_and_artifa
   - `config_io.py` 当前完全一致（已确认），是事实公用层
   - 后续两条线都需要输出 G4 规范的 `_effective_config.json`，生成函数可统一
 - **P2 不变：** `trend_schema.py` 参数化仍是中期目标，与 G4 的 `model_track` 区分互不冲突
+- `stock_pool/__init__.py` 已从 S0 预留态推进到 S1 minimal 入口，后续不再按“~空”处理
 
 ---
 

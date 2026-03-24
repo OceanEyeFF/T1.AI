@@ -13,6 +13,8 @@
 - `dataset_id`、`experiment_id` 等核心 ID 尚无正式定义
 - 配置文件在分支间的兼容性无规则可依
 
+> 说明：以上是 2026-03-11 的治理快照。到 2026-03-24，`develop` 已补齐主线实验 metadata / `_effective_config.json` / `output/reports/{model_track}` 最小闭环，且 4 个 mainline 实验 TOML 已补齐统一元数据字段。
+
 ### 1.2 与已有基线的关系
 
 本文档建立在以下已有基线之上，必须对齐而非覆盖：
@@ -34,7 +36,7 @@ configs/
 │   └── 1d_independent/    # 模型线子目录（按需）
 ├── experiments/            # 实验/训练运行配置
 │   └── 1d_independent/    # 模型线子目录（按需）
-├── stock_pools/            # 股票池 registry 配置（待建）
+├── stock_pools/            # 股票池 registry 配置
 ├── evaluations/            # 评估窗口/门禁配置（待建）
 ├── data_source.yaml        # 数据源配置（全局，保留 YAML）
 ├── pipeline.yaml           # 流水线配置（全局，保留 YAML）
@@ -48,6 +50,8 @@ configs/
 3. `model_mtl.yaml` 作为旧版模型配置保留，后续由 TOML 实验配置逐步替代
 4. 按功能分类到子目录：`datasets/`、`experiments/`、`stock_pools/`、`evaluations/`
 5. 模型线可在子目录内再建子目录（如 `1d_independent/`），但**不超过两层**
+
+`configs/stock_pools/` 已在 2026-03-24 落地，用于股票池 registry 配置。
 
 ### 2.2 文件命名规则
 
@@ -158,16 +162,16 @@ output/reports/1d_independent/xgb_direction_no_hist_hl_sector70_20260309.json
 
 ```json
 {
-  "experiment_id": "lstm_baseline_mainline_3510d_20260309",
+  "experiment_id": "lstm_rolling_baseline_mainline_3510d_20260324",
   "model_track": "mainline_3510d",
   "config_profile": "lstm_rolling_baseline",
   "config_status": "baseline",
-  "stock_pool_id": "csi300",
+  "stock_pool_id": "custom_quick8",
   "stock_pool_version": "v1",
   "evaluation_window_id": "fixed_20230101_20250701",
-  "dataset_id": "seq_quick8_52d_20230101_20260120",
+  "dataset_id": "seq_quick8_53d_20230101_20260305",
   "seed": 42,
-  "generated_at": "2026-03-09T14:30:00+08:00",
+  "generated_at": "2026-03-24T14:30:00+08:00",
   "script": "run_lstm_rolling_retrain_dim19_regime",
   "config_file": "configs/experiments/lstm_rolling_baseline.toml"
 }
@@ -268,6 +272,7 @@ output/reports/1d_independent/xgb_direction_no_hist_hl_sector70_20260309.json
 - dataset_id 是逻辑 ID，物理目录名允许更详细但必须可映射
 - 构建脚本在输出 metadata 时必须同时记录 `dataset_id` 和物理 `output_dir`
 - 同一 dataset_id 如果构建参数不同（如特征筛选变化），必须升版本（见 § 6）
+- 截至 2026-03-24，`sequence` 与 `market_state` 两条构建链路都已开始自动写入 `dataset_id`，并同步记录 `stock_pool_id` / `stock_pool_version` / `stock_pool_registry_path`
 
 ### 4.4 `stock_pool_id` — 股票池标识
 
@@ -287,6 +292,7 @@ output/reports/1d_independent/xgb_direction_no_hist_hl_sector70_20260309.json
 - 本规范中 `stock_pool_id` 的取值必须来自 registry 基线定义
 - 配置文件中使用 `stock_pool_id` 时，不得自行发明新的 ID 家族
 - 不写 `stock_pool_id` 的旧配置，默认隐含 `stock_pool_id = "csi300"` 或由 `symbols_csv` 推断
+- 到 2026-03-24，`develop` 的主线实验配置已显式补齐 `stock_pool_id` / `stock_pool_version` / `evaluation_window_id` / `dataset_id`，不再依赖文档手工补注
 
 ### 4.5 `evaluation_window_id` — 评估窗口标识
 
@@ -546,9 +552,9 @@ G3 已完成，参见 [shared_layer_inventory_20260311.md](shared_layer_inventor
 
 ## 11. 下一步建议
 
-1. **立即补齐**：对 develop 分支上缺失元数据字段的 4 个实验配置文件补齐 `model_track`/`config_profile`/`config_status`
+1. **已完成**：对 develop 分支上缺失元数据字段的 4 个实验配置文件补齐 `model_track`/`config_profile`/`config_status`
 2. **1d 分支同步**：在 1d 分支的实验配置文件中补齐元数据字段（须在该分支操作）
-3. **报告目录渐进整理**：下一次实验运行时，脚本默认写入按 model_track 分的子目录
-4. **stock_pools/ 目录**：在股票池模组 S1 阶段创建
+3. **报告目录渐进整理**：脚本已默认写入按 `model_track` 分的子目录，后续仅做增量迁移
+4. **stock_pools/ 目录**：`configs/stock_pools/` 已在股票池模组 S1 阶段创建并启用
 5. **evaluations/ 目录**：在双窗口协议代码化时创建
-6. **effective_config 升级**：在运行脚本中补齐本规范定义的全部必填字段
+6. **effective_config 升级**：主线最小闭环已完成，后续仅在新增字段时扩展
