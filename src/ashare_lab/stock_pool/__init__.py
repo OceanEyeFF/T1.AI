@@ -1,8 +1,19 @@
-"""Reserved package for future stock-pool registry and builders.
+"""Minimal stock-pool registry helpers."""
 
-Current baseline:
-- csi300 may remain a frozen external baseline pool.
-- Non-csi300 research pools should be implemented through this package.
-"""
+from .registry import (
+    export_stock_pool_artifacts,
+    get_stock_pool_record,
+    load_stock_pool_record,
+    load_stock_pool_registry,
+    resolve_stock_pool_symbols,
+)
+from .types import StockPoolRecord
 
-__all__: list[str] = []
+__all__ = [
+    "StockPoolRecord",
+    "export_stock_pool_artifacts",
+    "get_stock_pool_record",
+    "load_stock_pool_record",
+    "load_stock_pool_registry",
+    "resolve_stock_pool_symbols",
+]

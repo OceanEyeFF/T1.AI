@@ -12,27 +12,27 @@
 ## 当前状态
 
 - 2026-03-11 已快进同步 `feature/model-3d-5d-10d-head`
-- 主模型最小回归已通过：
+- 主模型最小回归入口已固定：`scripts/run_develop_min_regression.sh`
+- 2026-03-23 已按统一入口复跑通过：
+- 2026-03-23 已完成主线 `experiment metadata / effective_config / reports/{model_track}` 最小代码闭环
+- 2026-03-23 已完成股票池模组 `S1 minimal`：registry + `sequence/market_state` dataset builder 最小接线
 
 ```bash
-PYTHONPATH=src:. pytest -q \
-  tests/test_trade_like_panel.py \
-  tests/test_trend_aggregation.py \
-  tests/test_trend_schema.py \
-  tests/test_lstm_dynamic_heads.py \
-  tests/test_multilevel_tuning.py
+./scripts/run_develop_min_regression.sh
 ```
 
 ## 当前必须做
 
-- [ ] 固定统一测试入口，消除裸跑 `pytest` 的导入不确定性
-- [ ] 固定 `develop` 主职责为架构基线、集成审核、分支吸收门禁，不把它继续用作细节研究主场
-- [ ] 固定模型输出 / 数据集 / 股票池 / 双窗口评估的统一 contract，并形成审核基线
+- [x] 固定统一测试入口，消除裸跑 `pytest` 的导入不确定性
+  - 已完成：`scripts/run_develop_min_regression.sh`
+- [x] 固定 `develop` 主职责为架构基线、集成审核、分支吸收门禁，不把它继续用作细节研究主场
+- [x] 固定模型输出 / 数据集 / 股票池 / 双窗口评估的统一 contract，并形成审核基线
   - 规范层已完成：[config_and_artifact_naming](../overview/config_and_artifact_naming_20260311.md)（ID 体系 + 配置状态）
   - 基线已冻结：[stock_pool_registry_baseline](../modules/stock_pool_registry_baseline_20260311.md)、[dual_window_evaluation_baseline](../overview/dual_window_evaluation_baseline_20260311.md)
-  - 待推进：代码层接线（运行脚本输出 effective_config、报告目录按 model_track 分层）
-- [ ] 将股票池模组开发提上近期排期，作为后续主模型与 `1d` 研究的 dependency
-- [ ] 推进股票池模组 `S1`：registry 与基础接口，并先完成架构审核
+  - 已完成：运行脚本输出 `_effective_config.json`、报告目录按 `model_track` 分层、dataset builder 写入 `dataset_id / stock_pool_*`
+- [x] 将股票池模组开发提上近期排期，作为后续主模型与 `1d` 研究的 dependency
+- [x] 推进股票池模组 `S1`：registry 与基础接口，并先完成架构审核
+  - 已完成：`configs/stock_pools/` + `src/ashare_lab/stock_pool/` 最小实现；`sequence/market_state` dataset builder 已可消费 `stock_pool_id`
 - [ ] 推进股票池模组 `S2`：首批池子家族支持（单板块 / 高相关板块 / 反板块），并先完成接线审核
 - [ ] 审核 `LSTM` 真实主线数据上的 baseline vs candidate 对照是否闭环
 - [ ] 审核 `XGBoost` 主模型 baseline 是否能与 `LSTM` 做同口径比较
@@ -103,8 +103,8 @@ PYTHONPATH=src:. pytest -q \
 
 **遗留落地尾巴（属功能实现，非治理规则）：**
 - 1d 分支 5 个配置补元数据（1d 对齐 develop 时）
-- reports/ 目录按 model_track 分层（渐进迁移）
-- generate_effective_config() 公用函数（代码层接线阶段）
+- `reports/` 目录按 `model_track` 分层（2026-03-23 已完成 develop 主线）
+- `runtime_metadata.py` / `_effective_config.json` 公用 helper（2026-03-23 已完成 develop 主线）
 
 **详细总清单：** [develop_governance_backlog_20260311.md](develop_governance_backlog_20260311.md)
 
@@ -114,11 +114,11 @@ PYTHONPATH=src:. pytest -q \
 
 ## 退出条件
 
-- [ ] `develop` 的角色边界已经固定，后续研究实现默认回到功能/研究分支推进
+- [x] `develop` 的角色边界已经固定，后续研究实现默认回到功能/研究分支推进
 - [ ] 主模型 `LSTM/XGB` 都具备可复现、可审核的 baseline 对照
 - [ ] 股票池模组至少完成 `S1-S2`，并通过架构/接线审核后进入实验链路排期
-- [ ] 股票池基线和双窗口评估协议已经固定
-- [ ] 测试入口已标准化
+- [x] 股票池基线和双窗口评估协议已经固定
+- [x] 测试入口已标准化
 - [ ] 执行层稳定设计文档已回收
 - [ ] 后续新分支的启动/文档/状态模板已经固定
-- [ ] 跨分支 merge/audit checklist 已固定并进入使用
+- [x] 跨分支 merge/audit checklist 已固定并进入使用

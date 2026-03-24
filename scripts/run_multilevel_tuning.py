@@ -172,6 +172,13 @@ def _snapshot_xgb(config: dict[str, Any]) -> dict[str, Any]:
         "early_stopping_rounds": int(config.get("early_stopping_rounds", 40)),
         "device": str(config.get("device", "cpu")),
         "seed": int(config.get("seed", 42)),
+        "model_track": str(config.get("model_track", "mainline_3510d")),
+        "config_profile": str(config.get("config_profile", "xgb_rolling_baseline")),
+        "config_status": str(config.get("config_status", "baseline")),
+        "stock_pool_id": str(config.get("stock_pool_id", "")),
+        "stock_pool_version": str(config.get("stock_pool_version", "")),
+        "evaluation_window_id": str(config.get("evaluation_window_id", "")),
+        "dataset_id": str(config.get("dataset_id", "")),
     }
 
 
@@ -556,6 +563,13 @@ XGB_ARG_ORDER = [
     ("early_stopping_rounds", "--early-stopping-rounds"),
     ("device", "--device"),
     ("seed", "--seed"),
+    ("model_track", "--model-track"),
+    ("config_profile", "--config-profile"),
+    ("config_status", "--config-status"),
+    ("stock_pool_id", "--stock-pool-id"),
+    ("stock_pool_version", "--stock-pool-version"),
+    ("evaluation_window_id", "--evaluation-window-id"),
+    ("dataset_id", "--dataset-id"),
 ]
 
 MODEL_ALLOWED_KEYS = {

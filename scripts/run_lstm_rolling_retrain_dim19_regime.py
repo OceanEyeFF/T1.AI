@@ -9,6 +9,7 @@ import random
 import re
 import time
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -40,6 +41,22 @@ try:
     from scripts.config_io import dump_json, extract_arg_overrides
 except ModuleNotFoundError:  # pragma: no cover - direct script execution fallback
     from config_io import dump_json, extract_arg_overrides
+try:
+    from scripts.runtime_metadata import (
+        PARSER_CONFIG_STATUS_CHOICES,
+        build_default_report_path,
+        build_effective_config_payload,
+        canonicalize_config_status,
+        resolve_experiment_context,
+    )
+except ModuleNotFoundError:  # pragma: no cover - direct script execution fallback
+    from runtime_metadata import (
+        PARSER_CONFIG_STATUS_CHOICES,
+        build_default_report_path,
+        build_effective_config_payload,
+        canonicalize_config_status,
+        resolve_experiment_context,
+    )
 try:
     from scripts.env_guard import ensure_required_conda_env
 except ModuleNotFoundError:  # pragma: no cover - direct script execution fallback
@@ -77,7 +94,7 @@ OPTIMIZERS = ("adamw", "adam")
 NORM_TYPES = ("layernorm", "rmsnorm")
 GRAD_CLIP_MODES = ("none", "norm", "value")
 CONFIG_SECTION_NAME = "run_lstm_rolling_retrain_dim19_regime"
-CONFIG_STATUS_CHOICES = ("baseline", "candidate-best", "frozen-best")
+CONFIG_STATUS_CHOICES = PARSER_CONFIG_STATUS_CHOICES
 
 
 def _months_to_weeks(months: int) -> int:
@@ -909,20 +926,21 @@ def _build_comparison_panel(
 
 
 def _build_config_status_policy(config_status: str) -> dict[str, object]:
+    canonical_status = canonicalize_config_status(config_status)
     return {
-        "current_status": str(config_status),
+        "current_status": canonical_status,
         "definitions": {
             "baseline": "当前默认工作参数，用于稳定复现与后续对照，不代表最优参数。",
-            "candidate-best": "在统一 OOS 窗口下相对 baseline 展现出更好或更稳结果的候选参数。",
-            "frozen-best": "已通过重复验证并确认冻结为当前主线默认候选的参数档位。",
+            "candidate": "在统一 OOS 窗口下相对 baseline 展现出更好或更稳结果的候选参数。",
+            "frozen": "已通过重复验证并确认冻结为当前主线默认候选的参数档位。",
         },
         "promotion_rules": {
-            "baseline_to_candidate-best": [
+            "baseline_to_candidate": [
                 "必须与 baseline 使用同一 OOS 时间窗、同一评估协议、同一主指标口径",
                 "trade_like comparison_panel 至少通过默认 gate，且不依赖协议漂移制造优势",
                 "相对 baseline 的主目标指标提升应可复述为同窗对照结果",
             ],
-            "candidate-best_to_frozen-best": [
+            "candidate_to_frozen": [
                 "必须完成重复验证，结论不依赖单次随机种子或单个时间窗",
                 "必须保持主线 schema、聚合输出与默认报告口径一致",
                 "必须由显式冻结动作确认，不能把临时领先结果直接写回默认 baseline",
@@ -1067,8 +1085,16 @@ def _build_parser() -> argparse.ArgumentParser:
         "--config-status",
         choices=list(CONFIG_STATUS_CHOICES),
         default="baseline",
-        help="当前配置状态：baseline / candidate-best / frozen-best",
+        help="当前配置状态：baseline / candidate / frozen（兼容 candidate-best / frozen-best）",
     )
+    parser.add_argument("--stock-pool-id", default="", help="股票池 ID，默认由数据集 metadata 推断")
+    parser.add_argument("--stock-pool-version", default="", help="股票池版本，默认由数据集 metadata 或 v1 推断")
+    parser.add_argument(
+        "--evaluation-window-id",
+        default="",
+        help="评估窗口 ID，默认 fixed_20230101_20250701",
+    )
+    parser.add_argument("--dataset-id", default="", help="数据集 ID，默认由数据集 metadata 推断")
     parser.add_argument(
         "--label-mode",
         default="close_to_close",
@@ -1094,7 +1120,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--report",
-        default="output/reports/lstm_dim19_rolling78w_horizoncal_20260303.json",
+        default="",
     )
     return parser
 
@@ -1171,12 +1197,33 @@ def main() -> None:
     if args.comparison_top_n <= 0:
         raise ValueError("comparison_top_n must be > 0")
 
+    resolved_context = resolve_experiment_context(
+        dataset_dir=args.dataset_dir,
+        model_track=str(args.model_track),
+        config_profile=str(args.config_profile),
+        config_status=str(args.config_status),
+        stock_pool_id=str(args.stock_pool_id),
+        stock_pool_version=str(args.stock_pool_version),
+        evaluation_window_id=str(args.evaluation_window_id),
+        dataset_id=str(args.dataset_id),
+    )
+    run_started_at = datetime.now().astimezone()
+    report_path = (
+        Path(args.report)
+        if str(args.report).strip()
+        else build_default_report_path(
+            backbone=str(args.backbone),
+            model_track=resolved_context["model_track"],
+            config_profile=resolved_context["config_profile"],
+            generated_at=run_started_at,
+        )
+    )
+
     effective_config_path = ""
     effective_config_out = str(args.effective_config_out).strip()
     if effective_config_out:
         effective_config_path = effective_config_out
     elif config_file_resolved:
-        report_path = Path(args.report)
         effective_config_path = str(
             report_path.with_name(f"{report_path.stem}_effective_config.json")
         )
@@ -1186,12 +1233,14 @@ def main() -> None:
         effective_args = {k: getattr(args, k) for k in sorted(allowed_effective)}
         saved = dump_json(
             effective_config_path,
-            {
-                "script": CONFIG_SECTION_NAME,
-                "config_file": config_file_resolved or None,
-                "config_section": config_section_used,
-                "args": effective_args,
-            },
+            build_effective_config_payload(
+                context=resolved_context,
+                seed=int(args.seed),
+                script=CONFIG_SECTION_NAME,
+                config_file=config_file_resolved,
+                generated_at=run_started_at,
+                args_mapping=effective_args,
+            ),
         )
         print(f"Saved effective config: {saved}")
 
@@ -1205,9 +1254,9 @@ def main() -> None:
     label_cols = _infer_label_cols(train_df)
     pred_cols = [pred_col_from_label(c) for c in label_cols]
     mainline_model_profile = _build_mainline_model_profile(
-        model_track=str(args.model_track),
-        config_profile=str(args.config_profile),
-        config_status=str(args.config_status),
+        model_track=resolved_context["model_track"],
+        config_profile=resolved_context["config_profile"],
+        config_status=resolved_context["config_status"],
         label_cols=label_cols,
         pred_cols=pred_cols,
     )
@@ -1437,7 +1486,7 @@ def main() -> None:
     raw_metrics = _metrics(raw, y, label_cols=label_cols)
     cal_metrics = _metrics(cal, y, label_cols=label_cols)
     comparison_panel = _build_comparison_panel(oos, top_n=int(args.comparison_top_n))
-    config_status_policy = _build_config_status_policy(str(args.config_status))
+    config_status_policy = _build_config_status_policy(resolved_context["config_status"])
 
     # --- evaluation_protocol ---
     evaluation_protocol = {
@@ -1474,6 +1523,14 @@ def main() -> None:
         }
 
     out = {
+        "experiment_metadata": build_effective_config_payload(
+            context=resolved_context,
+            seed=int(args.seed),
+            script=CONFIG_SECTION_NAME,
+            config_file=config_file_resolved,
+            generated_at=run_started_at,
+            args_mapping={},
+        ),
         "config": {
             "dataset_dir": str(ddir),
             "backbone": str(args.backbone),
@@ -1529,9 +1586,13 @@ def main() -> None:
             "loss_alpha": float(args.loss_alpha),
             "ic_rank_beta": float(args.ic_rank_beta),
             "seed": int(args.seed),
-            "model_track": str(args.model_track),
-            "config_profile": str(args.config_profile),
-            "config_status": str(args.config_status),
+            "model_track": resolved_context["model_track"],
+            "config_profile": resolved_context["config_profile"],
+            "config_status": resolved_context["config_status"],
+            "stock_pool_id": resolved_context["stock_pool_id"],
+            "stock_pool_version": resolved_context["stock_pool_version"],
+            "evaluation_window_id": resolved_context["evaluation_window_id"],
+            "dataset_id": resolved_context["dataset_id"],
             "comparison_top_n": int(args.comparison_top_n),
             "label_mode": str(args.label_mode),
             "maturity_gate_enabled": True,
@@ -1571,7 +1632,7 @@ def main() -> None:
         out["oos_predictions_path"] = str(oos_path)
         print(f"Saved OOS parquet: {oos_path}")
 
-    report = Path(args.report)
+    report = report_path
     report.parent.mkdir(parents=True, exist_ok=True)
     report.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"\nSaved report: {report}")

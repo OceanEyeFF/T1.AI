@@ -43,14 +43,21 @@ from ashare_lab.data.tushare_source import (
 from ashare_lab.dataset.sequence_builder import SequenceDatasetBuilder
 from ashare_lab.features.momentum import Return1D, Return5D, Return10D, Return20D, Return60D
 from ashare_lab.features.price_slope import PriceSlope
+from ashare_lab.stock_pool import (
+    export_stock_pool_artifacts,
+    get_stock_pool_record,
+    resolve_stock_pool_symbols,
+)
 from ashare_lab.features.technical import BollingerDeviation, MACDHist, MACDLine, MACDSignal, RSI
 from ashare_lab.features.volume import AmountChange, RelativeVolume, VolumeChange, VolumeRatio
 from ashare_lab.labels.multi_horizon import MultiHorizonLabel, OneDayHLCLabel
 
 try:
     from scripts.config_io import dump_json, extract_arg_overrides
+    from scripts.runtime_metadata import infer_dataset_id
 except ModuleNotFoundError:  # pragma: no cover - direct script execution fallback
     from config_io import dump_json, extract_arg_overrides
+    from runtime_metadata import infer_dataset_id
 
 SYMBOL_FEATURES_16 = [
     Return1D(),
@@ -171,6 +178,7 @@ PROFILE_DROP_FEATURES: dict[str, set[str]] = {
 }
 FEATURE_PROFILES = tuple(PROFILE_DROP_FEATURES.keys())
 CONFIG_SECTION_NAME = "build_sequence_dataset_market_state"
+DEFAULT_SYMBOLS_CSV = "data/symbols_lstm_sectors_70.csv"
 
 
 def _parse_symbols(path: Path) -> list[str]:
@@ -182,6 +190,45 @@ def _parse_symbols(path: Path) -> list[str]:
     if not out:
         raise ValueError(f"no symbols parsed from {path}")
     return out
+
+
+def _resolve_symbols_input(
+    *,
+    symbols_csv: str | None,
+    stock_pool_id: str,
+    stock_pool_version: str,
+    stock_pool_registry_dir: str,
+    stock_pool_export_dir: str,
+) -> tuple[list[str], dict[str, str]]:
+    symbols_csv_text = str(symbols_csv or "").strip()
+    if str(stock_pool_id).strip():
+        if symbols_csv_text and Path(symbols_csv_text) != Path(DEFAULT_SYMBOLS_CSV):
+            raise ValueError("use either stock_pool_id or symbols_csv, not both")
+        record = get_stock_pool_record(
+            stock_pool_registry_dir,
+            stock_pool_id=str(stock_pool_id).strip(),
+            stock_pool_version=(str(stock_pool_version).strip() or None),
+        )
+        artifacts = export_stock_pool_artifacts(
+            record,
+            output_dir=stock_pool_export_dir,
+            registry_root=Path.cwd(),
+        )
+        resolved_symbols = resolve_stock_pool_symbols(record, registry_root=Path.cwd())
+        return resolved_symbols, {
+            "stock_pool_id": record.stock_pool_id,
+            "stock_pool_version": record.stock_pool_version,
+            "symbols_csv": str(artifacts["symbols_csv"]),
+            "registry_path": record.registry_path,
+        }
+
+    resolved_symbols = _parse_symbols(Path(symbols_csv_text or DEFAULT_SYMBOLS_CSV))
+    return resolved_symbols, {
+        "stock_pool_id": "",
+        "stock_pool_version": "",
+        "symbols_csv": str(symbols_csv_text or DEFAULT_SYMBOLS_CSV),
+        "registry_path": "",
+    }
 
 
 def _to_ts_code(symbol: str) -> str:
@@ -1047,7 +1094,11 @@ def main() -> None:
         default="",
         help="optional: save effective merged config (after CLI overrides) to JSON",
     )
-    parser.add_argument("--symbols-csv", default="data/symbols_lstm_sectors_70.csv")
+    parser.add_argument("--symbols-csv", default=DEFAULT_SYMBOLS_CSV, help="股票列表 CSV，需含 symbol 列")
+    parser.add_argument("--stock-pool-id", default="", help="从 registry 读取股票池成员")
+    parser.add_argument("--stock-pool-version", default="", help="股票池版本，留空则要求 registry 内仅有单版本")
+    parser.add_argument("--stock-pool-registry-dir", default="configs/stock_pools", help="股票池 registry 目录")
+    parser.add_argument("--stock-pool-export-dir", default="output/stock_pools", help="导出的股票池产物目录")
     parser.add_argument("--cache-dir", default="data/cache")
     parser.add_argument(
         "--source",
@@ -1210,7 +1261,13 @@ def main() -> None:
         )
         print(f"Saved effective config: {saved}")
 
-    symbols = _parse_symbols(Path(args.symbols_csv))
+    symbols, stock_pool_context = _resolve_symbols_input(
+        symbols_csv=args.symbols_csv,
+        stock_pool_id=str(args.stock_pool_id),
+        stock_pool_version=str(args.stock_pool_version),
+        stock_pool_registry_dir=str(args.stock_pool_registry_dir),
+        stock_pool_export_dir=str(args.stock_pool_export_dir),
+    )
     horizons = tuple(int(x.strip()) for x in str(args.horizons).split(",") if x.strip())
     cache_dir = Path(args.cache_dir)
 
@@ -1402,10 +1459,13 @@ def main() -> None:
     metadata = {
         "dataset_config": {
             "source": args.source,
-            "symbols_csv": str(args.symbols_csv),
+            "symbols_csv": stock_pool_context["symbols_csv"],
             "num_symbols": len(all_bars),
             "start_date": args.start,
             "end_date": args.end,
+            "stock_pool_id": stock_pool_context["stock_pool_id"],
+            "stock_pool_version": stock_pool_context["stock_pool_version"],
+            "stock_pool_registry_path": stock_pool_context["registry_path"],
             "include_odp_commodity_features": bool(args.include_odp_commodity_features),
             "commodity_source": commodity_source,
             "odp_provider": str(args.odp_provider),
@@ -1431,6 +1491,12 @@ def main() -> None:
         },
         "split_config": split_config,
     }
+    metadata["dataset_id"] = infer_dataset_id(
+        dataset_dir=out_dir,
+        dataset_metadata=metadata,
+        dataset_id="",
+        stock_pool_id=stock_pool_context["stock_pool_id"] or f"custom_symbols{len(symbols)}",
+    )
     metadata_path = out_dir / "metadata.json"
     with open(metadata_path, "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2, ensure_ascii=False)

@@ -11,6 +11,16 @@ try:  # Python 3.11+
 except ModuleNotFoundError:  # pragma: no cover - Python <=3.10 fallback
     import tomli as tomllib
 
+KNOWN_CONFIG_METADATA_KEYS = {
+    "model_track",
+    "config_profile",
+    "config_status",
+    "stock_pool_id",
+    "stock_pool_version",
+    "evaluation_window_id",
+    "dataset_id",
+}
+
 
 def load_mapping_config(path: str | Path) -> dict[str, Any]:
     """Load a JSON/TOML config file as a mapping."""
@@ -43,6 +53,10 @@ def extract_arg_overrides(
     1) flat mapping: { "lr": 1e-4, ... }
     2) with section: { "run_lstm_rolling_retrain_dim19_regime": { ... } }
     3) generic args section: { "args": { ... } }
+
+    Known config metadata keys are tolerated and stripped when the current
+    parser does not own them yet. This keeps shared experiment configs
+    backward-compatible while still rejecting truly unknown business keys.
     """
     raw = load_mapping_config(config_path)
     selected: Mapping[str, Any] = raw
@@ -61,7 +75,9 @@ def extract_arg_overrides(
             selected = args_value
             selected_section = "args"
 
-    unknown = sorted(k for k in selected.keys() if k not in allowed_keys)
+    unknown = sorted(
+        k for k in selected.keys() if k not in allowed_keys and k not in KNOWN_CONFIG_METADATA_KEYS
+    )
     if unknown:
         raise ValueError(
             f"unknown config keys in {config_path}: {unknown}. "

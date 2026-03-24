@@ -9,6 +9,7 @@ import random
 import re
 import time
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -26,6 +27,20 @@ try:
     from scripts.config_io import dump_json, extract_arg_overrides
 except ModuleNotFoundError:  # pragma: no cover - direct script execution fallback
     from config_io import dump_json, extract_arg_overrides
+try:
+    from scripts.runtime_metadata import (
+        PARSER_CONFIG_STATUS_CHOICES,
+        build_default_report_path,
+        build_effective_config_payload,
+        resolve_experiment_context,
+    )
+except ModuleNotFoundError:  # pragma: no cover - direct script execution fallback
+    from runtime_metadata import (
+        PARSER_CONFIG_STATUS_CHOICES,
+        build_default_report_path,
+        build_effective_config_payload,
+        resolve_experiment_context,
+    )
 try:
     from scripts.env_guard import ensure_required_conda_env
 except ModuleNotFoundError:  # pragma: no cover - direct script execution fallback
@@ -391,6 +406,26 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--device", choices=list(XGB_DEVICES), default="cpu")
 
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--model-track", default="mainline_3510d", help="模型线标识，默认 mainline_3510d")
+    parser.add_argument(
+        "--config-profile",
+        default="xgb_rolling_baseline",
+        help="当前配置档位名称，写入报告与 effective_config",
+    )
+    parser.add_argument(
+        "--config-status",
+        choices=list(PARSER_CONFIG_STATUS_CHOICES),
+        default="baseline",
+        help="当前配置状态：baseline / candidate / frozen（兼容 candidate-best / frozen-best）",
+    )
+    parser.add_argument("--stock-pool-id", default="", help="股票池 ID，默认由数据集 metadata 推断")
+    parser.add_argument("--stock-pool-version", default="", help="股票池版本，默认由数据集 metadata 或 v1 推断")
+    parser.add_argument(
+        "--evaluation-window-id",
+        default="",
+        help="评估窗口 ID，默认 fixed_20230101_20250701",
+    )
+    parser.add_argument("--dataset-id", default="", help="数据集 ID，默认由数据集 metadata 推断")
     parser.add_argument(
         "--save-oos-parquet",
         default="",
@@ -398,7 +433,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--report",
-        default="output/reports/xgboost_dim52_auto_window104w_seq20_20260305.json",
+        default="",
     )
     return parser
 
@@ -463,12 +498,33 @@ def main() -> None:
     if args.n_jobs == 0:
         raise ValueError("n_jobs cannot be 0")
 
+    resolved_context = resolve_experiment_context(
+        dataset_dir=args.dataset_dir,
+        model_track=str(args.model_track),
+        config_profile=str(args.config_profile),
+        config_status=str(args.config_status),
+        stock_pool_id=str(args.stock_pool_id),
+        stock_pool_version=str(args.stock_pool_version),
+        evaluation_window_id=str(args.evaluation_window_id),
+        dataset_id=str(args.dataset_id),
+    )
+    run_started_at = datetime.now().astimezone()
+    report_path = (
+        Path(args.report)
+        if str(args.report).strip()
+        else build_default_report_path(
+            backbone="xgb",
+            model_track=resolved_context["model_track"],
+            config_profile=resolved_context["config_profile"],
+            generated_at=run_started_at,
+        )
+    )
+
     effective_config_path = ""
     effective_config_out = str(args.effective_config_out).strip()
     if effective_config_out:
         effective_config_path = effective_config_out
     elif config_file_resolved:
-        report_path = Path(args.report)
         effective_config_path = str(
             report_path.with_name(f"{report_path.stem}_effective_config.json")
         )
@@ -478,12 +534,14 @@ def main() -> None:
         effective_args = {k: getattr(args, k) for k in sorted(allowed_effective)}
         saved = dump_json(
             effective_config_path,
-            {
-                "script": CONFIG_SECTION_NAME,
-                "config_file": config_file_resolved or None,
-                "config_section": config_section_used,
-                "args": effective_args,
-            },
+            build_effective_config_payload(
+                context=resolved_context,
+                seed=int(args.seed),
+                script=CONFIG_SECTION_NAME,
+                config_file=config_file_resolved,
+                generated_at=run_started_at,
+                args_mapping=effective_args,
+            ),
         )
         print(f"Saved effective config: {saved}")
 
@@ -678,6 +736,14 @@ def main() -> None:
     cal_metrics = _metrics(cal, y)
 
     out = {
+        "experiment_metadata": build_effective_config_payload(
+            context=resolved_context,
+            seed=int(args.seed),
+            script=CONFIG_SECTION_NAME,
+            config_file=config_file_resolved,
+            generated_at=run_started_at,
+            args_mapping={},
+        ),
         "config": {
             "dataset_dir": str(ddir),
             "backbone": "xgboost",
@@ -711,6 +777,13 @@ def main() -> None:
             "early_stopping_rounds": int(args.early_stopping_rounds),
             "device": str(args.device),
             "seed": int(args.seed),
+            "model_track": resolved_context["model_track"],
+            "config_profile": resolved_context["config_profile"],
+            "config_status": resolved_context["config_status"],
+            "stock_pool_id": resolved_context["stock_pool_id"],
+            "stock_pool_version": resolved_context["stock_pool_version"],
+            "evaluation_window_id": resolved_context["evaluation_window_id"],
+            "dataset_id": resolved_context["dataset_id"],
             "label_mode": str(label_mode),
             "maturity_gate_enabled": True,
             "maturity_gate_horizon_days": int(maturity_horizon_days),
@@ -742,7 +815,7 @@ def main() -> None:
         out["oos_predictions_path"] = str(oos_path.resolve())
         print(f"Saved OOS parquet: {oos_path}")
 
-    report = Path(args.report)
+    report = report_path
     report.parent.mkdir(parents=True, exist_ok=True)
     report.write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"\nSaved report: {report}")

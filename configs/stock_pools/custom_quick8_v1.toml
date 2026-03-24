@@ -1,0 +1,16 @@
+stock_pool_id = "custom_quick8"
+stock_pool_version = "v1"
+pool_family = "custom"
+pool_label = "Quick8 frozen baseline pool"
+construction_method = "frozen_symbols_csv"
+base_universe = "legacy_quick8"
+symbols_source = "data/symbols_lstm_quick8.csv"
+symbols_csv = "data/symbols_lstm_quick8.csv"
+symbols_count = 8
+rebalance_frequency = "frozen"
+effective_start = "2023-01-01"
+effective_end = ""
+is_default = true
+is_research_only = false
+owner = "develop"
+notes = "S1 frozen registry sample for mainline quick8 baseline."

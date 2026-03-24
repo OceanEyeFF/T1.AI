@@ -122,6 +122,6 @@ def test_build_comparison_panel_contains_monthly_gate_metrics() -> None:
 def test_build_config_status_policy_defines_promotion_rules() -> None:
     policy = _build_config_status_policy("baseline")
     assert policy["current_status"] == "baseline"
-    assert "baseline_to_candidate-best" in policy["promotion_rules"]
-    assert "candidate-best_to_frozen-best" in policy["promotion_rules"]
-    assert "trade_like comparison_panel" in policy["promotion_rules"]["baseline_to_candidate-best"][1]
+    assert "baseline_to_candidate" in policy["promotion_rules"]
+    assert "candidate_to_frozen" in policy["promotion_rules"]
+    assert "trade_like comparison_panel" in policy["promotion_rules"]["baseline_to_candidate"][1]
