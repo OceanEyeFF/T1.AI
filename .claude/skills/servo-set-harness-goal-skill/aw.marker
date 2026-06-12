@@ -1,0 +1,7 @@
+{
+  "marker_version": "aw-managed-skill-marker.v2",
+  "backend": "claude",
+  "skill_id": "set-harness-goal-skill",
+  "payload_version": "claude-skill-payload.v1",
+  "payload_fingerprint": "9c17bd4f3df5dd2634331452daad77dd8df60b18b2c079efcc07b56bb19d1480"
+}

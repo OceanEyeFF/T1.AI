@@ -27,7 +27,7 @@ echo "✅ 检测到 conda: $(conda --version)"
 echo ""
 
 # 检查环境是否已存在
-ENV_NAME="ashare-lab"
+ENV_NAME="py311-private"
 if conda env list | grep -q "^${ENV_NAME} "; then
     echo "⚠️  环境 '$ENV_NAME' 已存在"
     read -p "是否删除并重新创建？(y/N): " -n 1 -r
@@ -57,11 +57,11 @@ conda activate "$ENV_NAME"
 # 统一使用当前解释器的 pip，避免 PATH 中其他 pip（如 ~/.local/bin/pip）被误用
 PIP_CMD=(python -m pip)
 
-# 安装 CUDA 版 PyTorch（pip）
-"${PIP_CMD[@]}" install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# 安装项目所需 PyTorch。CUDA 可见性在后续检查中记录，不作为环境创建硬阻断。
+"${PIP_CMD[@]}" install "torch>=2.0"
 
 # 安装项目（开发模式）
-# --no-deps: 避免重复安装依赖并覆盖已安装的 CUDA 版 PyTorch
+# --no-deps: 避免重复安装依赖并覆盖已安装的 PyTorch
 "${PIP_CMD[@]}" install -e ".[dev]" --no-deps
 
 echo ""

@@ -1,0 +1,7 @@
+{
+  "marker_version": "aw-managed-skill-marker.v2",
+  "backend": "claude",
+  "skill_id": "repo-change-goal-skill",
+  "payload_version": "claude-skill-payload.v1",
+  "payload_fingerprint": "d89ae2f62614245a5a924a0953c633e30bb5c7932d5706a4a6dbfcb072b89e62"
+}

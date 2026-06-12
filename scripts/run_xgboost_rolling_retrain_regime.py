@@ -443,7 +443,7 @@ def _argparse_allowed_keys(parser: argparse.ArgumentParser) -> set[str]:
 
 
 def main() -> None:
-    ensure_required_conda_env("ashare-lab")
+    ensure_required_conda_env("py311-private")
     parser = _build_parser()
     pre_args, _ = parser.parse_known_args()
     config_section_used: str | None = None

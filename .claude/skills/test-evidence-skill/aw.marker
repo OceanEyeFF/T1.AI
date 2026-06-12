@@ -1,0 +1,7 @@
+{
+  "marker_version": "aw-managed-skill-marker.v2",
+  "backend": "claude",
+  "skill_id": "test-evidence-skill",
+  "payload_version": "claude-skill-payload.v1",
+  "payload_fingerprint": "9e2f064ffc32d4f0c00dddaae6b69fa21a0d1a17b80730dbb155efb7a4225622"
+}

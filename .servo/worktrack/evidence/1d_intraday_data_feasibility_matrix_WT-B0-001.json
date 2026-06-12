@@ -1,0 +1,154 @@
+{
+  "schema_version": "1d-intraday-data-feasibility/v1",
+  "worktrack_id": "WT-B0-001",
+  "milestone_id": "MS-S0-001",
+  "generated_at": "2026-06-11T21:01:55+08:00",
+  "provider_calls_executed": false,
+  "credential_accessed": false,
+  "model_training_executed": false,
+  "required_for_1d_modeling": {
+    "fixed_stock_pool_replay": true,
+    "fixed_time_window_replay": true,
+    "frequencies": ["1min", "5min", "15min"],
+    "required_fields": ["time", "open", "high", "low", "close", "volume", "amount"],
+    "must_handle": [
+      "permissions",
+      "coverage_rate",
+      "history_depth",
+      "missing_rate",
+      "abnormal_timestamps",
+      "adjustment_policy",
+      "halts",
+      "limit_up_down",
+      "opening_auction",
+      "lunch_break",
+      "cache_strategy",
+      "incremental_update"
+    ]
+  },
+  "repo_capability": {
+    "minute_loader_exists": false,
+    "minute_replay_tests_exist": false,
+    "formal_minute_contract_exists": false,
+    "daily_contract_path": "docs/interfaces/data_contract.md",
+    "daily_adapters": [
+      "src/ashare_lab/data/akshare_source.py",
+      "src/ashare_lab/data/tushare_source.py",
+      "src/ashare_lab/data/odp_source.py"
+    ],
+    "usable_cache_substrate": [
+      {
+        "path": "src/ashare_lab/data/odp_source.py",
+        "capability": "interval-aware parquet cache",
+        "limitation": "not validated as A-share minute replay source"
+      },
+      {
+        "path": "src/ashare_lab/data/tushare_source.py",
+        "capability": "partitioned parquet daily cache",
+        "limitation": "daily-only and no stk_mins adapter"
+      }
+    ]
+  },
+  "sources": [
+    {
+      "source_id": "tushare_stk_mins",
+      "provider": "TuShare",
+      "candidate_role": "primary_long_history_candidate",
+      "repo_adapter_status": "not_implemented",
+      "public_documentation": "https://tushare.pro/wctapi/documents/370.md",
+      "supports_frequencies": ["1min", "5min", "15min", "30min", "60min"],
+      "required_frequencies_covered": true,
+      "documented_fields": ["ts_code", "trade_time", "open", "close", "high", "low", "vol", "amount"],
+      "field_mapping_complete": true,
+      "documented_limit": "single request max 8000 rows; loop by symbol and time",
+      "documented_history_depth": "more than 10 years",
+      "permission_requirement": "separate minute permission required",
+      "history_replay_suitability": "conditional",
+      "fixed_pool_fixed_window_replay": "conditional_on_permission_rate_limit_and_cache",
+      "known_blockers": [
+        "minute permission not verified",
+        "rate limit/cost not measured",
+        "no local stk_mins adapter",
+        "no local minute cache/replay validator"
+      ],
+      "b0_verdict": "best_candidate_but_not_proven_ready"
+    },
+    {
+      "source_id": "akshare_stock_minute",
+      "provider": "AkShare",
+      "candidate_role": "recent_data_smoke_and_prototype",
+      "repo_adapter_status": "not_implemented_for_minute",
+      "public_documentation": "https://akshare.akfamily.xyz/data/stock/stock.html",
+      "supporting_issue": "https://github.com/akfamily/akshare/issues/5971",
+      "supports_frequencies": ["1min", "5min", "15min", "30min", "60min"],
+      "required_frequencies_covered": true,
+      "documented_fields": ["time_or_day", "open", "close", "high", "low", "volume", "amount"],
+      "field_mapping_complete": true,
+      "documented_history_depth": "recent data; 1 minute commonly near 5 to 9 trading days depending on endpoint",
+      "permission_requirement": "no paid permission assumed, but provider availability can change",
+      "history_replay_suitability": "poor_for_long_oos",
+      "fixed_pool_fixed_window_replay": "not_proven_and_likely_insufficient_for_long_oos",
+      "known_blockers": [
+        "recent-history limitation",
+        "1min no-adjust limitation documented for Eastmoney endpoint",
+        "no local minute adapter",
+        "not enough for long historical OOS as sole source"
+      ],
+      "b0_verdict": "smoke_only"
+    },
+    {
+      "source_id": "odp_openbb_interval",
+      "provider": "ODP/OpenBB",
+      "candidate_role": "generic_cache_substrate_or_cross_market_reference",
+      "repo_adapter_status": "implemented_generic_interval_loader",
+      "local_code_path": "src/ashare_lab/data/odp_source.py",
+      "supports_frequencies": ["provider_dependent"],
+      "required_frequencies_covered": "unknown_for_a_share",
+      "documented_fields": ["open", "high", "low", "close", "volume", "amount"],
+      "field_mapping_complete": "partial_without_time_schema",
+      "documented_history_depth": "provider_dependent",
+      "permission_requirement": "SDK or REST service/provider dependent",
+      "history_replay_suitability": "unknown_for_a_share_minute",
+      "fixed_pool_fixed_window_replay": "not_proven",
+      "known_blockers": [
+        "A-share minute coverage not verified",
+        "provider dependency not fixed",
+        "not current default A-share main data source"
+      ],
+      "b0_verdict": "reuse_cache_pattern_not_data_source_proof"
+    },
+    {
+      "source_id": "professional_vendor_or_broker_data",
+      "provider": "Other professional data vendor/broker",
+      "candidate_role": "fallback_long_history_candidate",
+      "repo_adapter_status": "not_implemented",
+      "supports_frequencies": "vendor_dependent",
+      "required_frequencies_covered": "unknown",
+      "documented_fields": "vendor_dependent",
+      "field_mapping_complete": false,
+      "documented_history_depth": "unknown",
+      "permission_requirement": "contract_or_account_dependent",
+      "history_replay_suitability": "unknown",
+      "fixed_pool_fixed_window_replay": "not_proven",
+      "known_blockers": [
+        "no selected vendor",
+        "no adapter",
+        "no cost/permission/field contract"
+      ],
+      "b0_verdict": "backlog_candidate"
+    }
+  ],
+  "data_gate": {
+    "worktrack_gate_result": "pass_for_read_only_feasibility_report",
+    "one_day_modeling_readiness": "blocked_pending_live_permission_and_replay_proof",
+    "primary_candidate": "tushare_stk_mins",
+    "allow_1d_model_training_next": false,
+    "allow_day_k_negative_control": true,
+    "required_next_before_B1_B2": [
+      "approve live provider smoke if desired",
+      "verify TuShare minute permission or select alternate vendor",
+      "implement formal intraday data contract and adapter only after source decision",
+      "prove fixed-pool fixed-window replay on a small deterministic sample"
+    ]
+  }
+}

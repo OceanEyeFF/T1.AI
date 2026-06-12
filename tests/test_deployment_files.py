@@ -67,8 +67,8 @@ def test_systemd_timer_exists():
 
 def test_production_scheduler_doc_exists():
     """Test that production scheduler documentation exists."""
-    doc_path = Path("docs/production_scheduler.md")
-    assert doc_path.exists(), "docs/production_scheduler.md does not exist"
+    doc_path = Path("docs/modules/production_scheduler.md")
+    assert doc_path.exists(), "docs/modules/production_scheduler.md does not exist"
 
     # Check that documentation covers both deployment options
     content = doc_path.read_text()

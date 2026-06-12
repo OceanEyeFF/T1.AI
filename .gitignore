@@ -18,7 +18,10 @@ runs/
 # 自动化工作流配置（本地）
 .autoworkflow/
 .bmad-core/
-.claude/
+.claude/*
+!.claude/skills/
+!.claude/skills/**
+.serena/
 
 # 环境变量文件（包含敏感信息）
 .env
@@ -39,3 +42,4 @@ backup/
 # 推荐结果
 output/recommendations/
 output/reports/
+.logs/

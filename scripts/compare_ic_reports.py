@@ -204,7 +204,7 @@ def check_protocol_consistency(reports: list[dict[str, Any]]) -> tuple[bool, str
 
     比对 evaluation_protocol 字段中的关键键值：
     signal_time_mode, execution_time_mode, label_mode, return_mode。
-    缺少 evaluation_protocol 的报告会被跳过（不视为不一致）。
+    strict 门禁下，缺少 evaluation_protocol 或关键键值会阻断比较。
 
     Returns:
         (is_consistent, message)
@@ -213,15 +213,18 @@ def check_protocol_consistency(reports: list[dict[str, Any]]) -> tuple[bool, str
     seen_protocols: list[tuple[str, dict[str, str]]] = []
 
     for report in reports:
+        name = report.get("_report_name", "unknown")
         proto = report.get("evaluation_protocol")
         if not isinstance(proto, dict):
-            continue
+            return False, f"报告缺少 evaluation_protocol: {name}"
+        missing_keys = [k for k in protocol_keys if not str(proto.get(k, "")).strip()]
+        if missing_keys:
+            return False, f"报告 evaluation_protocol 缺少关键字段: {name}: {','.join(missing_keys)}"
         extracted = {k: str(proto.get(k, "")) for k in protocol_keys}
-        name = report.get("_report_name", "unknown")
         seen_protocols.append((name, extracted))
 
     if len(seen_protocols) < 2:
-        return True, "协议一致性检查跳过（少于 2 份报告包含 evaluation_protocol）"
+        return True, "协议字段完整；单报告无需跨报告一致性比较"
 
     reference_name, reference = seen_protocols[0]
     for name, proto in seen_protocols[1:]:
@@ -281,7 +284,8 @@ def passes_gate(
 def _common_months(loaded: list[LoadedReport]) -> list[str]:
     common: set[str] | None = None
     for report in loaded:
-        month_set = set(report.monthly_dict.keys())
+        monthly_dict = report[1] if isinstance(report, tuple) else report.monthly_dict
+        month_set = set(monthly_dict.keys())
         common = month_set if common is None else common & month_set
     return sorted(common or [])
 

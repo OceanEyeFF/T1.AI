@@ -1,0 +1,27 @@
+{
+  "payload_version": "claude-skill-payload.v1",
+  "backend": "claude",
+  "skill_id": "dispatch-skills",
+  "canonical_dir": "product/harness/skills/dispatch-skills",
+  "canonical_paths": [
+    "product/harness/skills/dispatch-skills/SKILL.md"
+  ],
+  "target_dir": "dispatch-skills",
+  "target_entry_name": "SKILL.md",
+  "payload_policy": "canonical-copy",
+  "supported_target_scopes": [
+    "local"
+  ],
+  "reference_distribution": "copy-listed-canonical-paths",
+  "required_payload_files": [
+    "SKILL.md",
+    "payload.json",
+    "aw.marker"
+  ],
+  "legacy_target_dirs": [
+    "aw-dispatch-skills"
+  ],
+  "claude_frontmatter": {
+    "disable-model-invocation": true
+  }
+}

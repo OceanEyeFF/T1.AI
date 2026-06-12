@@ -302,7 +302,7 @@ def _write_leaderboard_csv(path: Path, rows: list[dict[str, Any]]) -> None:
 
 
 def main() -> int:
-    ensure_required_conda_env("ashare-lab")
+    ensure_required_conda_env("py311-private")
     args = _parse_args()
 
     try:

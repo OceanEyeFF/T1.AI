@@ -1,0 +1,153 @@
+{
+  "schema_version": "decision-model-io-draft/v0",
+  "worktrack_id": "WT-C0-001",
+  "milestone_id": "MS-S0-001",
+  "generated_at": "2026-06-11T21:01:55+08:00",
+  "implementation_status": "draft_only",
+  "model_training_executed": false,
+  "trading_logic_changed": false,
+  "signal_promotion_changed": false,
+  "input_record": {
+    "required_fields": [
+      "decision_date",
+      "symbol",
+      "alpha_score",
+      "alpha_score_status",
+      "pred_3d",
+      "pred_5d",
+      "pred_10d",
+      "component_weights",
+      "current_position_weight",
+      "current_position_shares",
+      "cash_available",
+      "estimated_cost_rate",
+      "min_commission",
+      "risk_state",
+      "tradability_state",
+      "protocol"
+    ],
+    "optional_fields": [
+      "one_day_signal",
+      "one_day_signal_status",
+      "uncertainty",
+      "signal_version",
+      "model_config_id",
+      "data_snapshot_id",
+      "explain"
+    ],
+    "signal_status_values": [
+      "candidate_research",
+      "continue_research",
+      "approved_for_shadow",
+      "approved_for_decision_eval",
+      "blocked",
+      "disabled"
+    ],
+    "default_signal_status": {
+      "alpha_score": "candidate_research",
+      "one_day_signal": "disabled"
+    },
+    "protocol_fields": [
+      "signal_time_mode",
+      "execution_time_mode",
+      "rebalance_frequency",
+      "min_holding_days",
+      "max_daily_loss",
+      "enable_intraday_trading"
+    ],
+    "tradability_state_fields": [
+      "is_halt",
+      "limit_up",
+      "limit_down",
+      "open_available",
+      "prev_close_available",
+      "tplus1_sellable_shares"
+    ],
+    "risk_state_fields": [
+      "risk_buy_disabled",
+      "max_daily_loss_triggered",
+      "turnover_limit_state",
+      "exposure_limit_state"
+    ]
+  },
+  "output_record": {
+    "required_fields": [
+      "decision_date",
+      "portfolio_id",
+      "target_positions",
+      "orders",
+      "no_trade_decisions",
+      "risk_checks",
+      "action_reason",
+      "blocked_reason",
+      "diagnostics",
+      "replay_refs"
+    ],
+    "target_position_fields": [
+      "symbol",
+      "target_weight",
+      "target_shares",
+      "source_signal",
+      "reason"
+    ],
+    "order_fields": [
+      "symbol",
+      "side",
+      "qty",
+      "target_weight",
+      "estimated_price",
+      "estimated_turnover",
+      "estimated_cost",
+      "urgency",
+      "reason",
+      "blocked_reason"
+    ],
+    "no_trade_reason_values": [
+      "signal_not_approved",
+      "insufficient_score_edge",
+      "cost_not_covered",
+      "rebalance_threshold_blocked",
+      "risk_buy_disabled",
+      "buy_blocked_limit_up",
+      "buy_blocked_halt",
+      "sell_blocked_limit_down",
+      "sell_blocked_tplus1",
+      "cash_insufficient",
+      "missing_tradability_data",
+      "one_day_signal_disabled",
+      "no_valid_candidate"
+    ],
+    "diagnostic_counters": [
+      "target_position_count",
+      "order_count",
+      "no_trade_count",
+      "rebalance_threshold_blocked",
+      "cost_coverage_blocked",
+      "risk_buy_disabled",
+      "buy_blocked_limit_up",
+      "buy_blocked_halt",
+      "sell_blocked_limit_down",
+      "sell_blocked_tplus1",
+      "missing_tradability_data"
+    ]
+  },
+  "replay_requirements": {
+    "fixed_input_format": ["csv", "parquet"],
+    "must_not_execute_model_in_replay": true,
+    "must_record_refs": [
+      "signal_version",
+      "model_config_id",
+      "data_snapshot_id",
+      "protocol_version",
+      "decision_config_id"
+    ],
+    "determinism_requirement": "same input records plus same decision config must produce same output records"
+  },
+  "scope_guards": {
+    "alpha_score_not_promoted_by_c0": true,
+    "one_day_signal_disabled_by_default": true,
+    "c1_rebalance_threshold_out_of_scope": true,
+    "c2_risk_execution_diagnostics_implementation_out_of_scope": true,
+    "c3_learning_or_portfolio_optimization_out_of_scope": true
+  }
+}

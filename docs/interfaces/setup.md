@@ -42,10 +42,10 @@ nvidia-smi
 conda env create -f environment.yml
 
 # 激活环境
-conda activate ashare-lab
+conda activate py311-private
 
-# 使用 pip 安装 CUDA 版 PyTorch
-python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# 使用 pip 安装项目所需 PyTorch
+python -m pip install "torch>=2.0"
 
 # 安装项目（开发模式）
 python -m pip install -e ".[dev]" --no-deps
@@ -54,7 +54,7 @@ python -m pip install -e ".[dev]" --no-deps
 python -c "import torch; print('torch=', torch.__version__); print('cuda_available=', torch.cuda.is_available())"
 ```
 
-默认通过 pip 的 cu121 索引安装 GPU 版本 PyTorch。
+CUDA 可见性通过后续检查记录；只要 CPU 路径能支撑当前开发和测试，CUDA 不作为环境创建硬阻断。
 
 ### 方法B：使用 pip（仅 CPU 或临时调试）
 
@@ -94,7 +94,7 @@ export ODP_BASE_URL="http://127.0.0.1:8000"
 
 ```bash
 conda env config vars set TUSHARE_TOKEN="your_token_here"
-conda deactivate && conda activate ashare-lab
+conda deactivate && conda activate py311-private
 ```
 
 ---
@@ -209,7 +209,7 @@ training:
 
 ```bash
 # 删除并重建
-conda env remove -n ashare-lab
+conda env remove -n py311-private
 conda env create -f environment.yml
 ```
 
@@ -220,7 +220,7 @@ conda env create -f environment.yml
 nvidia-smi
 
 # 2) pip 包检查
-python -m pip show torch torchvision torchaudio
+python -m pip show torch
 
 # 3) Python 内验证
 python -c "import torch; print(torch.cuda.is_available())"
@@ -235,15 +235,15 @@ python -c "import torch; print(torch.cuda.is_available())"
 编辑 `.vscode/settings.json`:
 ```json
 {
-    "python.defaultInterpreterPath": "~/miniconda3/envs/ashare-lab/bin/python"
+    "python.defaultInterpreterPath": "~/miniconda3/envs/py311-private/bin/python"
 }
 ```
 
 ### Jupyter Notebook
 
 ```bash
-conda activate ashare-lab
-python -m ipykernel install --user --name=ashare-lab
+conda activate py311-private
+python -m ipykernel install --user --name=py311-private
 ```
 
 ---

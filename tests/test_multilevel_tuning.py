@@ -12,6 +12,7 @@ from scripts.run_multilevel_tuning import (
     _build_xgb_specs,
     _filter_train_args,
     _levels_from_arg,
+    _run_compare,
     _snapshot_lstm,
 )
 
@@ -160,6 +161,19 @@ def test_filter_train_args_drops_non_parser_keys() -> None:
     assert "dataset_dir" in filtered
 
 
+def test_run_compare_requires_protocol_check(tmp_path: Path) -> None:
+    out = _run_compare(
+        python_exec="python",
+        report_paths=[Path("output/reports/a.json"), Path("output/reports/b.json")],
+        output_dir=tmp_path,
+        tag_prefix="unit",
+        execute=False,
+    )
+    compare_cmds = [row["cmd"] for row in out if row["name"].startswith("compare_")]
+    assert compare_cmds
+    assert all("--check-protocol" in cmd for cmd in compare_cmds)
+
+
 def test_multilevel_tuning_dry_run_works_without_baseline_reports(tmp_path: Path) -> None:
     repo_root = Path(__file__).resolve().parents[1]
     out_dir = tmp_path / "reports"
@@ -167,7 +181,7 @@ def test_multilevel_tuning_dry_run_works_without_baseline_reports(tmp_path: Path
         "conda",
         "run",
         "-n",
-        "ashare-lab",
+        "py311-private",
         "python",
         "scripts/run_multilevel_tuning.py",
         "--model",

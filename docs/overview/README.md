@@ -13,13 +13,14 @@
 1. [../../README.md](../../README.md)
 2. [../../NEXT_STEPS.md](../../NEXT_STEPS.md)
 3. [../../ROADMAP.md](../../ROADMAP.md)
-4. [doc_governance.md](doc_governance.md)
-5. [doc_lifecycle_rules_20260311.md](doc_lifecycle_rules_20260311.md)
-6. [topic_maps.md](topic_maps.md)
-7. [topic_gaps.md](topic_gaps.md)
-8. [future_state_blueprint.md](future_state_blueprint.md)
-9. [project_update_plan_2026Q1.md](project_update_plan_2026Q1.md)
-10. [ai_finance_external_benchmark_2026.md](ai_finance_external_benchmark_2026.md)
+4. [three_track_development_plan_20260609.md](three_track_development_plan_20260609.md)
+5. [doc_governance.md](doc_governance.md)
+6. [doc_lifecycle_rules_20260311.md](doc_lifecycle_rules_20260311.md)
+7. [topic_maps.md](topic_maps.md)
+8. [topic_gaps.md](topic_gaps.md)
+9. [future_state_blueprint.md](future_state_blueprint.md)
+10. [project_update_plan_2026Q1.md](project_update_plan_2026Q1.md)
+11. [ai_finance_external_benchmark_2026.md](ai_finance_external_benchmark_2026.md)
 
 ## 文档分组
 
@@ -36,6 +37,7 @@
 - [future_state_blueprint.md](future_state_blueprint.md)：项目未来蓝图
 - [../../NEXT_STEPS.md](../../NEXT_STEPS.md)：当前执行入口
 - [../../ROADMAP.md](../../ROADMAP.md)：长期路线入口
+- [three_track_development_plan_20260609.md](three_track_development_plan_20260609.md)：`3d/5d/10d`、`1d` 日内数据与决策模型三线开发规划
 - [project_update_plan_2026Q1.md](project_update_plan_2026Q1.md)：阶段性项目更新计划
 - [ai_finance_external_benchmark_2026.md](ai_finance_external_benchmark_2026.md)：外部对标与方向输入
 

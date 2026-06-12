@@ -1,0 +1,29 @@
+{
+  "payload_version": "claude-skill-payload.v1",
+  "backend": "claude",
+  "skill_id": "repo-append-request-skill",
+  "canonical_dir": "product/harness/skills/repo-append-request-skill",
+  "canonical_paths": [
+    "product/harness/skills/repo-append-request-skill/SKILL.md",
+    "product/harness/skills/repo-append-request-skill/templates/append-request.template.md"
+  ],
+  "target_dir": "repo-append-request-skill",
+  "legacy_target_dirs": [
+    "aw-repo-append-request-skill"
+  ],
+  "target_entry_name": "SKILL.md",
+  "payload_policy": "canonical-copy",
+  "supported_target_scopes": [
+    "local"
+  ],
+  "reference_distribution": "copy-listed-canonical-paths",
+  "required_payload_files": [
+    "SKILL.md",
+    "templates/append-request.template.md",
+    "payload.json",
+    "aw.marker"
+  ],
+  "claude_frontmatter": {
+    "disable-model-invocation": true
+  }
+}

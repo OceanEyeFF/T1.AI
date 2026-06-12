@@ -1,0 +1,27 @@
+{
+  "payload_version": "claude-skill-payload.v1",
+  "backend": "claude",
+  "skill_id": "rule-check-skill",
+  "canonical_dir": "product/harness/skills/rule-check-skill",
+  "canonical_paths": [
+    "product/harness/skills/rule-check-skill/SKILL.md"
+  ],
+  "target_dir": "rule-check-skill",
+  "target_entry_name": "SKILL.md",
+  "payload_policy": "canonical-copy",
+  "supported_target_scopes": [
+    "local"
+  ],
+  "reference_distribution": "copy-listed-canonical-paths",
+  "required_payload_files": [
+    "SKILL.md",
+    "payload.json",
+    "aw.marker"
+  ],
+  "legacy_target_dirs": [
+    "aw-rule-check-skill"
+  ],
+  "claude_frontmatter": {
+    "disable-model-invocation": true
+  }
+}

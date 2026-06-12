@@ -1,0 +1,26 @@
+{
+  "payload_version": "agents-skill-payload.v1",
+  "backend": "agents",
+  "skill_id": "harness-skill",
+  "canonical_dir": "product/harness/skills/harness-skill",
+  "canonical_paths": [
+    "product/harness/skills/harness-skill/SKILL.md",
+    "product/harness/skills/harness-skill/VERSION"
+  ],
+  "target_dir": "servo-harness-skill",
+  "target_entry_name": "SKILL.md",
+  "payload_policy": "canonical-copy",
+  "supported_target_scopes": [
+    "local"
+  ],
+  "reference_distribution": "copy-listed-canonical-paths",
+  "required_payload_files": [
+    "SKILL.md",
+    "VERSION",
+    "payload.json",
+    "aw.marker"
+  ],
+  "legacy_target_dirs": [
+    "harness-skill"
+  ]
+}

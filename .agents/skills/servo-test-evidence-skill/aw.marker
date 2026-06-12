@@ -1,0 +1,7 @@
+{
+  "marker_version": "aw-managed-skill-marker.v2",
+  "backend": "agents",
+  "skill_id": "test-evidence-skill",
+  "payload_version": "agents-skill-payload.v1",
+  "payload_fingerprint": "530559f868f59909b4b87c3e5dfbd0ab16b82cfda47574a8080388ae6c9743fc"
+}

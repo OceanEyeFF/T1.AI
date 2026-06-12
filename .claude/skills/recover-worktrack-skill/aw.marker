@@ -1,0 +1,7 @@
+{
+  "marker_version": "aw-managed-skill-marker.v2",
+  "backend": "claude",
+  "skill_id": "recover-worktrack-skill",
+  "payload_version": "claude-skill-payload.v1",
+  "payload_fingerprint": "dd9e650faab14476ec060b8122b4f93b1978447af699cfb8fa1ef92173d7d377"
+}

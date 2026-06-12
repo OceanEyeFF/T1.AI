@@ -1,0 +1,7 @@
+{
+  "marker_version": "aw-managed-skill-marker.v2",
+  "backend": "claude",
+  "skill_id": "rule-check-skill",
+  "payload_version": "claude-skill-payload.v1",
+  "payload_fingerprint": "7a26ef849a48d228c4acb2856e881880407df9a8ce077fd846d3b25079a32ec5"
+}

@@ -1,0 +1,7 @@
+{
+  "marker_version": "aw-managed-skill-marker.v2",
+  "backend": "claude",
+  "skill_id": "gate-skill",
+  "payload_version": "claude-skill-payload.v1",
+  "payload_fingerprint": "a18814c5f2569a798fbf8a154883464de6e38f5a8f9679caed72aef18bcd7b6b"
+}

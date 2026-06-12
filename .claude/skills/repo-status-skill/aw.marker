@@ -1,0 +1,7 @@
+{
+  "marker_version": "aw-managed-skill-marker.v2",
+  "backend": "claude",
+  "skill_id": "repo-status-skill",
+  "payload_version": "claude-skill-payload.v1",
+  "payload_fingerprint": "be379d32c65449d25626efa6e5fa54ccfb148992115965d906e175a4b40f21b4"
+}

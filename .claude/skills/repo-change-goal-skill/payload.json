@@ -1,0 +1,32 @@
+{
+  "payload_version": "claude-skill-payload.v1",
+  "backend": "claude",
+  "skill_id": "repo-change-goal-skill",
+  "canonical_dir": "product/harness/skills/repo-change-goal-skill",
+  "canonical_paths": [
+    "product/harness/skills/repo-change-goal-skill/SKILL.md",
+    "product/harness/skills/repo-change-goal-skill/templates/goal-change-request.template.md"
+  ],
+  "target_dir": "repo-change-goal-skill",
+  "legacy_target_dirs": [
+    "aw-repo-change-goal-skill"
+  ],
+  "legacy_skill_ids": [
+    "goal-change-control-skill"
+  ],
+  "target_entry_name": "SKILL.md",
+  "payload_policy": "canonical-copy",
+  "supported_target_scopes": [
+    "local"
+  ],
+  "reference_distribution": "copy-listed-canonical-paths",
+  "required_payload_files": [
+    "SKILL.md",
+    "templates/goal-change-request.template.md",
+    "payload.json",
+    "aw.marker"
+  ],
+  "claude_frontmatter": {
+    "disable-model-invocation": true
+  }
+}

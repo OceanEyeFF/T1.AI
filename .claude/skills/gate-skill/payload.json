@@ -1,0 +1,29 @@
+{
+  "payload_version": "claude-skill-payload.v1",
+  "backend": "claude",
+  "skill_id": "gate-skill",
+  "canonical_dir": "product/harness/skills/gate-skill",
+  "canonical_paths": [
+    "product/harness/skills/gate-skill/SKILL.md",
+    "product/harness/skills/gate-skill/templates/gate-evidence.template.md"
+  ],
+  "target_dir": "gate-skill",
+  "target_entry_name": "SKILL.md",
+  "payload_policy": "canonical-copy",
+  "supported_target_scopes": [
+    "local"
+  ],
+  "reference_distribution": "copy-listed-canonical-paths",
+  "required_payload_files": [
+    "SKILL.md",
+    "templates/gate-evidence.template.md",
+    "payload.json",
+    "aw.marker"
+  ],
+  "legacy_target_dirs": [
+    "aw-gate-skill"
+  ],
+  "claude_frontmatter": {
+    "disable-model-invocation": true
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "marker_version": "aw-managed-skill-marker.v2",
+  "backend": "claude",
+  "skill_id": "dispatch-skills",
+  "payload_version": "claude-skill-payload.v1",
+  "payload_fingerprint": "2c6c0c0d92bbe7fc55bbe248fde849b56bc6e1e931f17300309b7550d1a5077c"
+}

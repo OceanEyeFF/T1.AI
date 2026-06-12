@@ -1,0 +1,7 @@
+{
+  "marker_version": "aw-managed-skill-marker.v2",
+  "backend": "agents",
+  "skill_id": "generic-worker-skill",
+  "payload_version": "agents-skill-payload.v1",
+  "payload_fingerprint": "cc471ead3028337a7f649bba9612714d6f6c9636c0739b918eb6114bb36ddadc"
+}

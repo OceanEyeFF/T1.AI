@@ -41,8 +41,8 @@
 
 ```bash
 conda env create -f environment.yml
-conda activate ashare-lab
-python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+conda activate py311-private
+python -m pip install "torch>=2.0"
 python -m pip install -e ".[dev]" --no-deps
 python -c "import torch; print('cuda_available=', torch.cuda.is_available())"
 ```

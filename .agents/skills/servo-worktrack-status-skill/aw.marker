@@ -1,0 +1,7 @@
+{
+  "marker_version": "aw-managed-skill-marker.v2",
+  "backend": "agents",
+  "skill_id": "worktrack-status-skill",
+  "payload_version": "agents-skill-payload.v1",
+  "payload_fingerprint": "62d68a9e421b68085e233f325748f6abec5b4595703a491df8c589e1a1ac8ebc"
+}

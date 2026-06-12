@@ -30,7 +30,7 @@
 1) `feat(train)` —— **匹配度：高**
 
 - 新增了可复用配置装载工具（JSON/TOML、key 校验）。
-- 新增 conda 环境守卫，要求脚本在 `ashare-lab` 环境运行。
+- 新增 conda 环境守卫，要求脚本在 `py311-private` 环境运行。
 - 训练脚本显式接入了 `--config-file` / `--effective-config-out` 与 env guard。
 
 2) `feat(tuning)` —— **匹配度：高**

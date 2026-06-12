@@ -102,7 +102,7 @@
 
 在同一评估窗口下补充了 XGBoost 滚动重训对照（与 LSTM 保持同一数据切分口径）：
 
-注：本节新增实验统一在 `conda` 环境 `ashare-lab` 下运行。
+注：本节新增实验统一在 `conda` 环境 `py311-private` 下运行。
 
 - 基线（53 维）：
   - LSTM：`calibrated avg_ic=0.080951`，`avg_rank_ic=0.062236`

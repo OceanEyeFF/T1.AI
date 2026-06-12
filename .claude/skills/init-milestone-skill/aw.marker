@@ -1,0 +1,7 @@
+{
+  "marker_version": "aw-managed-skill-marker.v2",
+  "backend": "claude",
+  "skill_id": "init-milestone-skill",
+  "payload_version": "claude-skill-payload.v1",
+  "payload_fingerprint": "cd37f7a1387b09ac2a719cfa0a1af7a4c8a3caf6e776d6a0a656659cbb8905fa"
+}

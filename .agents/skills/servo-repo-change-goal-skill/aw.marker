@@ -1,0 +1,7 @@
+{
+  "marker_version": "aw-managed-skill-marker.v2",
+  "backend": "agents",
+  "skill_id": "repo-change-goal-skill",
+  "payload_version": "agents-skill-payload.v1",
+  "payload_fingerprint": "7fa7967f0536733a54a504597df0bb318f6129d9b2dced057851de679d3cf9ef"
+}

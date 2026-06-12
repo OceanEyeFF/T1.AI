@@ -1,0 +1,29 @@
+{
+  "payload_version": "claude-skill-payload.v1",
+  "backend": "claude",
+  "skill_id": "pre-milestone-intake-skill",
+  "canonical_dir": "product/harness/skills/pre-milestone-intake-skill",
+  "canonical_paths": [
+    "product/harness/skills/pre-milestone-intake-skill/SKILL.md",
+    "product/harness/skills/pre-milestone-intake-skill/templates/pre-milestone-intake-review.template.md"
+  ],
+  "target_dir": "pre-milestone-intake-skill",
+  "target_entry_name": "SKILL.md",
+  "payload_policy": "canonical-copy",
+  "supported_target_scopes": [
+    "local"
+  ],
+  "reference_distribution": "copy-listed-canonical-paths",
+  "required_payload_files": [
+    "SKILL.md",
+    "templates/pre-milestone-intake-review.template.md",
+    "payload.json",
+    "aw.marker"
+  ],
+  "legacy_target_dirs": [
+    "aw-pre-milestone-intake-skill"
+  ],
+  "claude_frontmatter": {
+    "disable-model-invocation": true
+  }
+}

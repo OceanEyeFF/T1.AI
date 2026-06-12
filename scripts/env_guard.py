@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 
-def ensure_required_conda_env(required_env: str = "ashare-lab") -> None:
+def ensure_required_conda_env(required_env: str = "py311-private") -> None:
     """Raise when current python runtime is not from the expected conda env."""
     exe = str(Path(sys.executable).resolve()).replace("\\", "/")
     expected_token = f"/envs/{required_env}/"
@@ -32,4 +32,3 @@ def ensure_required_conda_env(required_env: str = "ashare-lab") -> None:
             f"环境检查失败: {joined}. "
             f"请使用 `conda run -n {required_env} python ...` 或先执行 `conda activate {required_env}`。"
         )
-

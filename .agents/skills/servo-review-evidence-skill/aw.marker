@@ -1,0 +1,7 @@
+{
+  "marker_version": "aw-managed-skill-marker.v2",
+  "backend": "agents",
+  "skill_id": "review-evidence-skill",
+  "payload_version": "agents-skill-payload.v1",
+  "payload_fingerprint": "97213e9814ec622daf6c6b32853f67ac479017814e129e80100e5d303850ec1a"
+}

@@ -62,8 +62,8 @@
 
 ### 4.-1 运行环境前置（必选）
 
-- 训练与调参脚本已接入环境守卫：必须在 `ashare-lab` conda 环境运行。
-- 推荐统一调用方式：`conda run -n ashare-lab python ...`。
+- 训练与调参脚本已接入环境守卫：必须在 `py311-private` conda 环境运行。
+- 推荐统一调用方式：`conda run -n py311-private python ...`。
 
 ### 4.0 配置文件固化（推荐）
 
@@ -78,46 +78,46 @@
 ### 4.1 查看当前参数与输入特征
 
 ```bash
-conda run -n ashare-lab python "scripts/run_multilevel_tuning.py" --model both --level all --show-current
+conda run -n py311-private python "scripts/run_multilevel_tuning.py" --model both --level all --show-current
 ```
 
 ### 4.2 仅生成执行计划（不训练）
 
 ```bash
-conda run -n ashare-lab python "scripts/run_multilevel_tuning.py" --model both --level all
+conda run -n py311-private python "scripts/run_multilevel_tuning.py" --model both --level all
 ```
 
 ### 4.3 实际执行（示例）
 
 ```bash
 # 单次训练（配置文件驱动）
-conda run -n ashare-lab python "scripts/run_lstm_rolling_retrain_dim19_regime.py" \
+conda run -n py311-private python "scripts/run_lstm_rolling_retrain_dim19_regime.py" \
   --config-file "configs/experiments/lstm_rolling_baseline.toml" \
   --report "output/reports/lstm_cfg_run_20260307.json" \
   --save-oos-parquet "output/reports/lstm_cfg_run_20260307_oos.parquet"
 
 # 数据集构建（市场状态版，配置文件驱动）
-conda run -n ashare-lab python "scripts/build_sequence_dataset_market_state.py" \
+conda run -n py311-private python "scripts/build_sequence_dataset_market_state.py" \
   --config-file "configs/datasets/market_state_dataset_baseline.toml"
 
 # 数据集构建（通用版，配置文件驱动）
-conda run -n ashare-lab python "scripts/build_sequence_dataset.py" \
+conda run -n py311-private python "scripts/build_sequence_dataset.py" \
   --config-file "configs/datasets/sequence_dataset_baseline.toml"
 
 # 单次训练（XGB，配置文件驱动）
-conda run -n ashare-lab python "scripts/run_xgboost_rolling_retrain_regime.py" \
+conda run -n py311-private python "scripts/run_xgboost_rolling_retrain_regime.py" \
   --config-file "configs/experiments/xgb_rolling_baseline.toml" \
   --report "output/reports/xgb_cfg_run_20260307.json" \
   --save-oos-parquet "output/reports/xgb_cfg_run_20260307_oos.parquet"
 
 # 只跑 LSTM 的 L1
-conda run -n ashare-lab python "scripts/run_multilevel_tuning.py" \
+conda run -n py311-private python "scripts/run_multilevel_tuning.py" \
   --model lstm \
   --level L1 \
   --execute
 
 # 跑 XGB 的全部等级，并限制每级最多 16 组
-conda run -n ashare-lab python "scripts/run_multilevel_tuning.py" \
+conda run -n py311-private python "scripts/run_multilevel_tuning.py" \
   --model xgb \
   --level all \
   --max-runs-per-level 16 \
@@ -168,7 +168,7 @@ conda run -n ashare-lab python "scripts/run_multilevel_tuning.py" \
 示例：
 
 ```bash
-conda run -n ashare-lab python "scripts/auto_tune_xgb.py" \
+conda run -n py311-private python "scripts/auto_tune_xgb.py" \
   --base-config-file "configs/experiments/xgb_rolling_baseline.toml" \
   --output-dir "output/reports/auto_tune_xgb_20260308" \
   --study-name "xgb_rolling_auto_tune" \

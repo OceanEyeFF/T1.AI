@@ -1,7 +1,7 @@
 # Conda 环境配置文件
 # 使用方法：conda env create -f environment.yml
 
-name: ashare-lab
+name: py311-private
 
 channels:
   - conda-forge
@@ -9,7 +9,7 @@ channels:
 
 dependencies:
   # Python 版本
-  - python=3.10
+  - python=3.11
 
   # 核心数据科学库
   - numpy>=1.26

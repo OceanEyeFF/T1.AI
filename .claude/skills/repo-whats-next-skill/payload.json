@@ -1,0 +1,31 @@
+{
+  "payload_version": "claude-skill-payload.v1",
+  "backend": "claude",
+  "skill_id": "repo-whats-next-skill",
+  "canonical_dir": "product/harness/skills/repo-whats-next-skill",
+  "canonical_paths": [
+    "product/harness/skills/repo-whats-next-skill/SKILL.md",
+    "product/harness/skills/repo-whats-next-skill/references/overview-fallback-mode.md",
+    "product/harness/skills/repo-whats-next-skill/references/priority-reframe-mode.md"
+  ],
+  "target_dir": "repo-whats-next-skill",
+  "target_entry_name": "SKILL.md",
+  "payload_policy": "canonical-copy",
+  "supported_target_scopes": [
+    "local"
+  ],
+  "reference_distribution": "copy-listed-canonical-paths",
+  "required_payload_files": [
+    "SKILL.md",
+    "references/overview-fallback-mode.md",
+    "references/priority-reframe-mode.md",
+    "payload.json",
+    "aw.marker"
+  ],
+  "legacy_target_dirs": [
+    "aw-repo-whats-next-skill"
+  ],
+  "claude_frontmatter": {
+    "disable-model-invocation": true
+  }
+}

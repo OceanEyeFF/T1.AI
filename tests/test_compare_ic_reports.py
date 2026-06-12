@@ -230,29 +230,54 @@ def test_check_protocol_consistency_all_match() -> None:
 
 def test_check_protocol_consistency_mismatch() -> None:
     """协议不一致应该失败"""
+    close_proto = {
+        "signal_time_mode": "close",
+        "execution_time_mode": "close",
+        "label_mode": "close_to_close",
+        "return_mode": "close_to_close",
+    }
+    next_open_proto = {
+        "signal_time_mode": "close",
+        "execution_time_mode": "next_open",
+        "label_mode": "next_open_to_open",
+        "return_mode": "next_open_to_open",
+    }
     reports = [
-        {
-            "evaluation_protocol": {"label_mode": "close_to_close", "return_mode": "close_to_close"},
-            "_report_name": "r1",
-        },
-        {
-            "evaluation_protocol": {"label_mode": "next_open_to_open", "return_mode": "next_open_to_open"},
-            "_report_name": "r2",
-        },
+        {"evaluation_protocol": close_proto, "_report_name": "r1"},
+        {"evaluation_protocol": next_open_proto, "_report_name": "r2"},
     ]
     ok, msg = check_protocol_consistency(reports)
     assert ok is False
-    assert "label_mode" in msg
+    assert "execution_time_mode" in msg
 
 
 def test_check_protocol_consistency_missing_protocol() -> None:
-    """缺少 evaluation_protocol 的报告被跳过"""
+    """缺少 evaluation_protocol 的报告应该阻断 strict 协议门禁"""
     reports = [
-        {"evaluation_protocol": {"label_mode": "close_to_close"}, "_report_name": "r1"},
+        {
+            "evaluation_protocol": {
+                "signal_time_mode": "close",
+                "execution_time_mode": "next_open",
+                "label_mode": "next_open_to_open",
+                "return_mode": "next_open_to_open",
+            },
+            "_report_name": "r1",
+        },
         {"_report_name": "r2"},  # 无 evaluation_protocol
     ]
     ok, msg = check_protocol_consistency(reports)
-    assert ok is True  # 只有 1 份有协议，跳过检查
+    assert ok is False
+    assert "缺少 evaluation_protocol" in msg
+
+
+def test_check_protocol_consistency_missing_protocol_keys() -> None:
+    """evaluation_protocol 缺少关键字段也应该阻断 strict 协议门禁"""
+    reports = [
+        {"evaluation_protocol": {"label_mode": "close_to_close"}, "_report_name": "r1"},
+    ]
+    ok, msg = check_protocol_consistency(reports)
+    assert ok is False
+    assert "缺少关键字段" in msg
 
 
 def test_check_icir_threshold() -> None:
@@ -307,12 +332,22 @@ def test_cli_protocol_check_raises_on_mismatch(tmp_path) -> None:
     """--check-protocol 应在协议不一致时报错"""
     r1 = {
         "raw_oos_metrics": {"ic_5d": 0.06, "ic_10d": 0.08, "rank_ic_5d": 0.09, "rank_ic_10d": 0.10},
-        "evaluation_protocol": {"label_mode": "close_to_close", "return_mode": "close_to_close"},
+        "evaluation_protocol": {
+            "signal_time_mode": "close",
+            "execution_time_mode": "close",
+            "label_mode": "close_to_close",
+            "return_mode": "close_to_close",
+        },
         "monthly_logs": [{"month": "2025-01", "month_avg_ic_5_10": 0.05}],
     }
     r2 = {
         "raw_oos_metrics": {"ic_5d": 0.06, "ic_10d": 0.08, "rank_ic_5d": 0.09, "rank_ic_10d": 0.10},
-        "evaluation_protocol": {"label_mode": "next_open_to_open", "return_mode": "next_open_to_open"},
+        "evaluation_protocol": {
+            "signal_time_mode": "close",
+            "execution_time_mode": "next_open",
+            "label_mode": "next_open_to_open",
+            "return_mode": "next_open_to_open",
+        },
         "monthly_logs": [{"month": "2025-01", "month_avg_ic_5_10": 0.03}],
     }
     p1 = tmp_path / "r1.json"
@@ -327,4 +362,23 @@ def test_cli_protocol_check_raises_on_mismatch(tmp_path) -> None:
             "--check-protocol",
             "--output-dir", str(tmp_path / "out"),
             "--tag", "proto-test",
+        ])
+
+
+def test_cli_protocol_check_raises_on_missing_protocol(tmp_path) -> None:
+    """--check-protocol 应在协议字段缺失时报错"""
+    report = {
+        "raw_oos_metrics": {"ic_5d": 0.06, "ic_10d": 0.08, "rank_ic_5d": 0.09, "rank_ic_10d": 0.10},
+        "monthly_logs": [{"month": "2025-01", "month_avg_ic_5_10": 0.05}],
+    }
+    p = tmp_path / "r.json"
+    p.write_text(json.dumps(report), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="协议一致性检查失败"):
+        main([
+            "--reports", str(p),
+            "--daily-cs-mode", "off",
+            "--check-protocol",
+            "--output-dir", str(tmp_path / "out"),
+            "--tag", "missing-proto",
         ])

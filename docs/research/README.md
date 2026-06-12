@@ -13,20 +13,22 @@
 
 1. [research_checklist.md](research_checklist.md)
 2. [1d_independent_model_execution_strategy_20260309.md](1d_independent_model_execution_strategy_20260309.md)
-3. [daily_cs_eval_workflow.md](daily_cs_eval_workflow.md)
-4. [数据窗口结构的区别.md](%E6%95%B0%E6%8D%AE%E7%AA%97%E5%8F%A3%E7%BB%93%E6%9E%84%E7%9A%84%E5%8C%BA%E5%88%AB.md)
-5. [多头输出和数据切分.md](%E5%A4%9A%E5%A4%B4%E8%BE%93%E5%87%BA%E5%92%8C%E6%95%B0%E6%8D%AE%E5%88%87%E5%88%86.md)
-6. [警惕伪信号.md](%E8%AD%A6%E6%83%95%E4%BC%AA%E4%BF%A1%E5%8F%B7.md)
-7. [1d_independent_model_research_plan.md](1d_independent_model_research_plan.md)
-8. [future_roadmap_suggestions.md](future_roadmap_suggestions.md)
-9. [multilevel_tuning_plan_20260307.md](multilevel_tuning_plan_20260307.md)
-10. [mainline_3510d_development_retrospective_20260310.md](mainline_3510d_development_retrospective_20260310.md)
+3. [mainline_3510d_evaluation_gate_protocol.md](mainline_3510d_evaluation_gate_protocol.md)
+4. [daily_cs_eval_workflow.md](daily_cs_eval_workflow.md)
+5. [数据窗口结构的区别.md](%E6%95%B0%E6%8D%AE%E7%AA%97%E5%8F%A3%E7%BB%93%E6%9E%84%E7%9A%84%E5%8C%BA%E5%88%AB.md)
+6. [多头输出和数据切分.md](%E5%A4%9A%E5%A4%B4%E8%BE%93%E5%87%BA%E5%92%8C%E6%95%B0%E6%8D%AE%E5%88%87%E5%88%86.md)
+7. [警惕伪信号.md](%E8%AD%A6%E6%83%95%E4%BC%AA%E4%BF%A1%E5%8F%B7.md)
+8. [1d_independent_model_research_plan.md](1d_independent_model_research_plan.md)
+9. [future_roadmap_suggestions.md](future_roadmap_suggestions.md)
+10. [multilevel_tuning_plan_20260307.md](multilevel_tuning_plan_20260307.md)
+11. [mainline_3510d_development_retrospective_20260310.md](mainline_3510d_development_retrospective_20260310.md)
 
 ## 文档分组
 
 - [research_checklist.md](research_checklist.md)：研究主清单与门禁
 - [1d_independent_model_execution_strategy_20260309.md](1d_independent_model_execution_strategy_20260309.md)：`1d` 独立研究线的执行顺序与数据节奏
 - [1d_independent_model_research_plan.md](1d_independent_model_research_plan.md)：`1d` 补充研究提纲
+- [mainline_3510d_evaluation_gate_protocol.md](mainline_3510d_evaluation_gate_protocol.md)：主线 `3d/5d/10d` 可信评估和防伪门禁协议
 - [daily_cs_eval_workflow.md](daily_cs_eval_workflow.md)：Daily-CS 评估流程
 - [数据窗口结构的区别.md](%E6%95%B0%E6%8D%AE%E7%AA%97%E5%8F%A3%E7%BB%93%E6%9E%84%E7%9A%84%E5%8C%BA%E5%88%AB.md)：训练窗口与重训策略
 - [多头输出和数据切分.md](%E5%A4%9A%E5%A4%B4%E8%BE%93%E5%87%BA%E5%92%8C%E6%95%B0%E6%8D%AE%E5%88%87%E5%88%86.md)：默认多头配置与固定切分数值

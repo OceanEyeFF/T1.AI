@@ -1,0 +1,28 @@
+{
+  "baseline": {
+    "mean_ic": 0.0453008351497927,
+    "std_ic": 0.42045037088720727,
+    "icir": 0.10774359659667274,
+    "t_stat": 1.119704300973854,
+    "n_days": 108
+  },
+  "shuffle_labels": {
+    "mean_ic": 0.009092629446630054,
+    "pass": true,
+    "threshold": 0.02,
+    "n_trials": 5
+  },
+  "time_reverse": {
+    "mean_ic": 0.04113966576258914,
+    "pass": false,
+    "threshold": 0.02
+  },
+  "lag_1": {
+    "baseline_mean_ic": 0.0453008351497927,
+    "lag1_mean_ic": 0.03760265887052349,
+    "ic_drop": 0.007698176279269206,
+    "pass": false,
+    "threshold": 0.01
+  },
+  "all_pass": false
+}

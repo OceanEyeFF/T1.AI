@@ -13,6 +13,11 @@
 
 报告至少应包含：
 - `oos_predictions_path`
+- `evaluation_protocol`
+  - `signal_time_mode`
+  - `execution_time_mode`
+  - `label_mode`
+  - `return_mode`
 - parquet 列：`date,symbol,label_5d,label_10d,pred_5d,pred_10d`
 - 若评估 calibrated：还需 `pred_5d_cal,pred_10d_cal`
 
@@ -42,6 +47,7 @@ python "scripts/compare_ic_reports.py" \
   --metric-source raw \
   --monthly-source raw \
   --daily-cs-mode required \
+  --check-protocol \
   --tag 20260304_phase1
 ```
 
@@ -53,6 +59,7 @@ python "scripts/compare_ic_reports.py" \
 - 报错 `missing oos parquet path`：回到训练脚本补跑并带 `--save-oos-parquet`。
 - 报错列缺失：检查 parquet 写出列是否完整，修复后重跑审计。
 - 报错公共月份为空：统一 OOS 时间区间后再比较。
+- 报错协议缺失或协议不一致：报告不能进入 strict 比较；先补齐 `evaluation_protocol` 或回到产物生成链路修正交易时点 / 标签口径。
 
 ## 6. 门禁阈值
 - `mean(IC_5_10) >= 0.05`

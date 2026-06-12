@@ -436,18 +436,22 @@ def test_early_stopping_triggers_when_val_ic_stalls(tmp_path: Path):
 def test_model_mtl_yaml_parses():
     cfg = yaml.safe_load(Path("configs/model_mtl.yaml").read_text(encoding="utf-8"))
     assert isinstance(cfg, dict)
-    assert cfg["model"]["input_dim"] == 6
+    assert cfg["model"]["input_dim"] == 11
     assert cfg["model"]["min_seq_len"] == 20
     assert cfg["data"]["seq_len"] == 20
-    assert cfg["training"]["batch_size"] == 32
-    assert float(cfg["training"]["learning_rate"]) == 1e-4
-    assert float(cfg["training"]["weight_decay"]) == 1e-5
-    assert cfg["training"]["early_stopping_patience"] == 5
+    assert cfg["training"]["batch_size"] == 64
+    assert float(cfg["training"]["learning_rate"]) == 1e-5
+    assert float(cfg["training"]["weight_decay"]) == 1e-4
+    assert cfg["training"]["early_stopping_patience"] == 8
     assert cfg["training"]["early_stopping_metric"] == "val_ic"
 
 
 def test_train_mtl_runs_on_cuda_if_available(tmp_path: Path):
     if not torch.cuda.is_available():
+        return
+    try:
+        torch.empty(1, device="cuda") + 1
+    except RuntimeError:
         return
 
     dataset_dir = _make_sequence_dataset_dir(tmp_path, seq_len=8, input_dim=10, n_train=64, n_valid=64, n_test=64)

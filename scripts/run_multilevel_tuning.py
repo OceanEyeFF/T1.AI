@@ -664,6 +664,7 @@ def _run_compare(
                 "raw",
                 "--daily-cs-mode",
                 "required",
+                "--check-protocol",
                 "--output-dir",
                 str(output_dir),
                 "--tag",
@@ -683,6 +684,7 @@ def _run_compare(
                 "calibrated",
                 "--daily-cs-mode",
                 "required",
+                "--check-protocol",
                 "--output-dir",
                 str(output_dir),
                 "--tag",
@@ -803,7 +805,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
-    ensure_required_conda_env("ashare-lab")
+    ensure_required_conda_env("py311-private")
     args = _parse_args()
     levels = _levels_from_arg(args.level)
     output_dir = Path(args.output_dir)

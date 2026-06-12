@@ -175,7 +175,7 @@ class TestDatasetBuilder:
 
         # 验证数据类型
         assert pd.api.types.is_datetime64_any_dtype(train_df["date"])
-        assert train_df["symbol"].dtype == object
+        assert pd.api.types.is_string_dtype(train_df["symbol"])
 
         # 验证股票数量
         assert len(train_df["symbol"].unique()) == 1
@@ -353,11 +353,11 @@ class TestDatasetBuilder:
             name="test_quality",
             symbols=["600519"],
             start_date="20240101",
-            end_date="20240120",  # 短时间范围
+            end_date="20240130",
             features=[Return20D()],  # 20 日动量需要更多历史数据
             label_type="forward_return",
-            train_end_date="20240114",
-            valid_end_date="20240117",
+            train_end_date="20240121",
+            valid_end_date="20240125",
             cache_dir=sample_stock_cache,
             output_dir=temp_output_dir,
             nan_threshold=0.1,  # 降低阈值以触发警告

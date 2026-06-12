@@ -1,0 +1,29 @@
+{
+  "payload_version": "claude-skill-payload.v1",
+  "backend": "claude",
+  "skill_id": "schedule-worktrack-skill",
+  "canonical_dir": "product/harness/skills/schedule-worktrack-skill",
+  "canonical_paths": [
+    "product/harness/skills/schedule-worktrack-skill/SKILL.md",
+    "product/harness/skills/schedule-worktrack-skill/templates/plan-task-queue.template.md"
+  ],
+  "target_dir": "schedule-worktrack-skill",
+  "target_entry_name": "SKILL.md",
+  "payload_policy": "canonical-copy",
+  "supported_target_scopes": [
+    "local"
+  ],
+  "reference_distribution": "copy-listed-canonical-paths",
+  "required_payload_files": [
+    "SKILL.md",
+    "templates/plan-task-queue.template.md",
+    "payload.json",
+    "aw.marker"
+  ],
+  "legacy_target_dirs": [
+    "aw-schedule-worktrack-skill"
+  ],
+  "claude_frontmatter": {
+    "disable-model-invocation": true
+  }
+}

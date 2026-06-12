@@ -1,0 +1,7 @@
+{
+  "marker_version": "aw-managed-skill-marker.v2",
+  "backend": "agents",
+  "skill_id": "milestone-status-skill",
+  "payload_version": "agents-skill-payload.v1",
+  "payload_fingerprint": "b1f75536d3aeceaaae7e4523980ad21cf1c4c88b354b8be3e2731480d7d16f48"
+}
