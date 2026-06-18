@@ -30,7 +30,7 @@ owner: "OceanEyeFF"
   - business_code_changes: checkpointed MS-S0 focused A2 strict protocol gate in `scripts/compare_ic_reports.py` and tests.
   - research_docs_changes: checkpointed A2 evaluation gate protocol and Daily-CS workflow updates.
   - servo_control_changes: checkpointed `WT-A2-001`, `WT-A3-001`, `WT-B0-001`, and `WT-C0-001` initialized, verified, and closed.
-  - current_ms_s1_changes: uncommitted WT-S1-A1 random-label anti-cheat, WT-S1-A2 neutralization gate, WT-S1-A3 XGBoost report contract, WT-S1-A4 same-window blocked-by-data evidence, WT-S1-A5 final report, and Servo control updates on `milestone/MS-S1-001-three-head-credibility`.
+  - current_ms_s1_changes: checkpointed into `develop` at local commit `13fc2a2`; includes WT-S1-A1 random-label anti-cheat, WT-S1-A2 neutralization gate, WT-S1-A3 XGBoost report contract, WT-S1-A4 same-window blocked-by-data evidence, WT-S1-A5 final report, WT-S1-CLEANUP local checkpoint, and Servo control updates.
 - worktree_state:
   - active_worktree_count: 1
   - active_worktree_path: /home/oceaneye/github/T1.AI
@@ -76,8 +76,8 @@ owner: "OceanEyeFF"
 - local:
   - `milestone/MS-S0-001-prediction-credibility`: completed prediction credibility milestone branch checkpointed into `develop` at `0095699d5610554bb23bbe511d2d2df8ad27abeb`.
   - `milestone/MS-ENV-000-conda-env-validation`: previous milestone branch retained locally.
-  - `develop`: intended single-worktree programmer review branch; ahead of `origin/develop` by the MS-S0 baseline checkpoint.
-  - `milestone/MS-S1-001-three-head-credibility`: current checked-out completed milestone branch with uncommitted MS-S1 closeout and acceptance diff pending programmer-approved checkpoint.
+  - `develop`: current checked-out branch; intended single-worktree programmer review branch; includes local MS-S1 checkpoint `13fc2a2` and is not pushed.
+  - `milestone/MS-S1-001-three-head-credibility`: completed milestone branch fast-forwarded into `develop` at `13fc2a2`; retained locally.
   - `feature/model-3d-5d-10d-head`: local branch retained; not currently checked out.
 - remote_refs_observed:
   - `origin/develop`

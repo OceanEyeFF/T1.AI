@@ -61,17 +61,17 @@ owner: "OceanEyeFF"
 
 ## Branch Environment Guard
 
-- current_branch_context: milestone
-- expected_branch_context: milestone
+- current_branch_context: baseline
+- expected_branch_context: baseline
 - branch_context_guard_status: pass
-- branch_context_required_ref: refs/heads/milestone/MS-S1-001-three-head-credibility
+- branch_context_required_ref: refs/heads/develop
 - active_milestone_branch: milestone/MS-S1-001-three-head-credibility
-- active_milestone_branch_sync_state: created_and_checked_out_at_0095699d5610554bb23bbe511d2d2df8ad27abeb
-- worktrack_branch: milestone/MS-S1-001-three-head-credibility
+- active_milestone_branch_sync_state: merged_to_develop_at_13fc2a2
+- worktrack_branch: none
 
 ## Current Next Action
 
-- `MS-S1-001` was accepted by programmer on 2026-06-17 and locally checkpointed by WT-S1-CLEANUP; next route is RepoScope.Observe / merge decision handback before future Milestone intake.
+- `MS-S1-001` was accepted by programmer on 2026-06-17, locally checkpointed by WT-S1-CLEANUP, and fast-forwarded into `develop`; next route is RepoScope.Observe / future Milestone intake.
 
 ## Linked Formal Documents
 
@@ -186,12 +186,12 @@ owner: "OceanEyeFF"
 > 记录最近一次 worktrack 关闭后的已验证基线，供后续续跑时快速定位。
 
 - last_verified_checkpoint: 0095699d5610554bb23bbe511d2d2df8ad27abeb
-- latest_observed_checkpoint: 0095699d5610554bb23bbe511d2d2df8ad27abeb
+- latest_observed_checkpoint: 13fc2a2
 - last_doc_catch_up_checkpoint: N/A
 - milestone_input_checkpoint: MS-S1-001-active-2026-06-12T14:39:44+08:00
 - checkpoint_type: git_commit
 - checkpoint_ref: HEAD
-- verified_at: 2026-06-17T14:00:13+08:00
+- verified_at: 2026-06-18T10:20:00+08:00
 - if_no_commit_reason: N/A; MS-S0 baseline checkpoint commit 0095699d5610554bb23bbe511d2d2df8ad27abeb was created with programmer approval
 - alternative_traceability:
   - MS-S0 accepted baseline was checkpointed and fast-forwarded into `develop` at 0095699d5610554bb23bbe511d2d2df8ad27abeb with programmer approval.
@@ -230,7 +230,7 @@ owner: "OceanEyeFF"
 - worktrack_intake_review_ref: .servo/worktrack/MS-S1-001-WT-S1-A5-intake-review.md
 - worktrack_gate_evidence_ref: .servo/worktrack/gate-evidence.md
 - environment_validation_report_ref: .servo/worktrack/environment-validation-report.md
-- current_stop_condition: none; awaiting programmer decision on MS-S1 merge to `develop` or next milestone intake
+- current_stop_condition: none; awaiting next programmer-directed milestone intake
 - active_intake_review_ref: .servo/worktrack/MS-S1-001-WT-S1-A5-intake-review.md
 - persistent_work_habits_updated: 2026-06-10
 - default_workflow_policy: develop is programmer review branch; one development branch per confirmed milestone; delegated SubAgent execution retained; commit and push require approval.
