@@ -1,108 +1,59 @@
 ---
-title: "WT-A3-001 Gate Evidence"
+title: "WT-S1-CLEANUP Gate Evidence"
 artifact_type: "worktrack-gate-evidence"
-updated: "2026-06-11T21:00:00+08:00"
+updated: "2026-06-18T10:06:55+08:00"
 owner: "OceanEyeFF"
 ---
 
-# WT-A3-001 Gate Evidence
+# WT-S1-CLEANUP Gate Evidence
 
 ## Metadata
 
-- worktrack_id: WT-A3-001
-- milestone_id: MS-S0-001
-- updated: 2026-06-11T21:00:00+08:00
+- worktrack_id: WT-S1-CLEANUP
+- milestone_id: MS-S1-001
+- updated: 2026-06-18T10:06:55+08:00
 - gate_round: 1
 - required_evidence_lanes: review, validation, policy
-- review_profile: standard
-- gate_status: pass
+- gate_status: ready_for_judgment
 
 ## Review Lane
 
-### Control Signal
-
 - confidence: high
 - ready_for_gate: yes
-- implementation_surface: pass
-- residual_risks: XGB report contract writeout still needs confirmation before actual XGB execution.
-
-### Supporting Detail
-
-- input_refs:
-  - .servo/worktrack/a3-optimization-queue.md
-  - scripts/run_multilevel_tuning.py
-  - tests/test_multilevel_tuning.py
-  - docs/research/mainline_3510d_evaluation_gate_protocol.md
-- semantic_review:
-  - A3 remains planning/dry-run only.
-  - Generated compare commands now include `--check-protocol`, preserving A2 gate dependency.
-  - Queue explicitly blocks model promotion and separates future execution slices.
-- test_review:
-  - `tests/test_multilevel_tuning.py` asserts `_run_compare` includes `--check-protocol`.
-  - Dry-run manifest was regenerated under `.servo/worktrack/evidence`.
-- security_review:
-  - No external calls, secrets, destructive operations, commit, push, dependency changes, release, or model training.
-- quality_review:
-  - Small CLI command generation change with direct regression coverage.
+- review_result: pass
+- decisive_evidence: Cleanup contract is scoped to post-acceptance local checkpoint only; it does not reopen MS-S1 acceptance or change the model verdict.
 
 ## Validation Lane
 
-### Control Signal
-
 - confidence: high
 - ready_for_gate: yes
-- validation_surface: pass
-- decisive_result: A3 planning queue and dry-run command generation are reproducible and A2-protocol-aligned.
-
-### Supporting Detail
-
+- validation_result: pass
 - validation_commands:
-  - `PYTHONPATH="src:." conda run -n "py311-private" python -m pytest -q tests/test_multilevel_tuning.py tests/test_compare_ic_reports.py tests/test_audit_ic_reports.py`
-  - result: `28 passed`
-  - `PYTHONPATH="src:." conda run -n "py311-private" python "scripts/run_multilevel_tuning.py" --model both --level L1 --max-runs-per-level 4 --output-dir ".servo/worktrack/evidence" --tag "WT-A3-001-dryrun"`
-  - result: dry-run only; manifest saved; no `--execute`.
-- evidence_artifacts:
-  - .servo/worktrack/a3-optimization-queue.md
-  - .servo/worktrack/evidence/multilevel_tuning_manifest_WT-A3-001-dryrun.json
+  - `git diff --check` -> pass
+  - `PYTHONPATH="src:." conda run -n "py311-private" python -m pytest -q tests/test_compare_ic_reports.py tests/test_audit_ic_reports.py tests/test_xgboost_report_contract.py tests/test_sanity_checks.py` -> `41 passed`
+  - `rg -n "\\*\\*\\* (Add File|End Patch|Begin Patch|Update File|Delete File)|^@@|<<<<<<<|>>>>>>>|=======" .servo scripts src tests --glob "!**/.servo/worktrack/contract.md" --glob "!**/.servo/worktrack/gate-evidence.md"` -> no matches
 
 ## Policy Lane
 
-### Control Signal
-
-- confidence: high
+- confidence: medium
 - ready_for_gate: yes
-- policy_surface: pass
-- residual_risks: actual training remains approval-gated.
-
-### Supporting Detail
-
+- policy_result: pass-for-local-commit-only
 - policy_checks:
-  - no model retraining
-  - no external provider calls
-  - no dependency install/upgrade
-  - no destructive cleanup
-  - no commit or push
-  - no alpha_score promotion
-  - active branch remains `milestone/MS-S0-001-prediction-credibility`
+  - local git commit: explicitly allowed by programmer for this Worktrack.
+  - git push: not authorized.
+  - merge to `develop`: not authorized.
+  - branch deletion: not authorized.
+  - destructive cleanup: not authorized.
+  - release/version action: not authorized.
+  - provider calls or production/external side effects: not authorized.
+  - model retraining or model promotion: not authorized.
+  - MS-S2 initialization: not authorized in this Worktrack.
 
 ## Gate Judgment
 
-### Control Signal
-
 - worktrack_gate_verdict: pass
-- verdict_reason: WT-A3-001 planning/dry-run scope is satisfied; queue is A2-gated, prioritized, and explicit about future execution boundaries.
-- allowed_next_routes:
-  - WorktrackScope.Close
-  - RepoScope.Refresh on milestone branch
-- recommended_next_route: WorktrackScope.Close
-- needs_programmer_approval: no for Worktrack closeout; yes for actual model training, commit, push, destructive actions, dependency changes, external side effects, and final Milestone acceptance.
-
-### Supporting Detail
-
-- implementation_gate: pass
-- validation_gate: pass
-- policy_gate: pass
-- missing_or_conflicting_evidence: none for planning-only A3 closeout.
+- verdict_reason: cleanup scope is bounded, validation passed, and local commit is explicitly authorized for this Worktrack.
+- recommended_next_route: WorktrackScope.Close local checkpoint
 - residual_risks:
-  - XGB report protocol/panel writeout should be confirmed before actual XGB execution.
-  - Full LSTM/XGB/fusion training remains a later approved execution slice.
+  - MS-S1 diff is large and contains both code/test changes and Servo artifacts.
+  - Merge to `develop` remains a separate approval boundary after local checkpoint.

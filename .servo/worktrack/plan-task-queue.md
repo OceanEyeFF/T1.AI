@@ -1,97 +1,71 @@
 ---
-title: "WT-A3-001 Plan / Task Queue"
+title: "WT-S1-CLEANUP Plan / Task Queue"
 artifact_type: "worktrack-plan-task-queue"
-updated: "2026-06-11T20:45:12+08:00"
+updated: "2026-06-18T10:06:55+08:00"
 owner: "OceanEyeFF"
 ---
 
-# WT-A3-001 Plan / Task Queue
+# WT-S1-CLEANUP Plan / Task Queue
 
 ## Metadata
 
-- worktrack_id: WT-A3-001
-- milestone_id: MS-S0-001
-- updated: 2026-06-11T20:45:12+08:00
-- current_phase: verify
+- worktrack_id: WT-S1-CLEANUP
+- milestone_id: MS-S1-001
+- updated: 2026-06-18T10:06:55+08:00
+- current_phase: closed
 - contract_ref: .servo/worktrack/contract.md
-- queue_status: implementation-complete-pending-gate
+- queue_status: closed
 
 ## Task List
 
-1. [x] A3 candidate source inventory
-   - task_id: A3-T1
+1. [x] Record post-acceptance cleanup contract
+   - task_id: S1-CLEANUP-T1
    - status: completed
+   - priority: P1
+   - assigned: current-carrier
+   - depends_on: none
    - risk_level: low
-   - acceptance: Existing tuning docs/scripts/configs were inventoried against the A2 protocol; no training or external calls.
-   - evidence_ref: .servo/worktrack/a3-optimization-queue.md#A3-T1-Candidate-Source-Inventory
-2. [x] Build prioritized optimization queue
-   - task_id: A3-T2
+   - acceptance: Cleanup Worktrack is explicitly scoped to MS-S1 local checkpoint and does not reopen acceptance.
+   - evidence_ref: .servo/worktrack/contract.md
+   - stop_condition: stop if scope expands to merge, push, branch deletion, release, provider calls, model retraining, MS-S2 creation, or verdict changes.
+2. [x] Run cleanup validation
+   - task_id: S1-CLEANUP-T2
    - status: completed
+   - priority: P1
+   - assigned: current-carrier
+   - depends_on: S1-CLEANUP-T1
    - risk_level: low
-   - acceptance: LSTM, XGBoost, and lightweight fusion candidates are ranked by risk, cost, expected information value, and A2 readiness.
-   - evidence_ref: .servo/worktrack/a3-optimization-queue.md#Prioritized-Queue
-3. [x] Produce dry-run/command manifest
-   - task_id: A3-T3
+   - acceptance: Diff hygiene, focused pytest, and residue checks pass.
+   - evidence_ref: .servo/worktrack/gate-evidence.md
+   - stop_condition: stop if validation fails or exposes conflicting MS-S1 state.
+3. [x] Create local git checkpoint
+   - task_id: S1-CLEANUP-T3
    - status: completed
-   - risk_level: low
-   - acceptance: Safe non-training dry-run commands were recorded with explicit approval boundaries; missing `--check-protocol` was captured as a pre-execution finding.
-   - evidence_ref: .servo/worktrack/a3-optimization-queue.md#Dry-Run-Evidence
-4. [x] Define A3 go/no-go/continue-research handoff
-   - task_id: A3-T4
-   - status: completed
-   - risk_level: low
-   - acceptance: Each candidate has interpretation rules under A2 gates and a later execution-slice recommendation.
-   - evidence_ref: .servo/worktrack/a3-optimization-queue.md#Candidate-Interpretation-Rules
-5. [-] Produce A3 gate evidence
-   - task_id: A3-T5
-   - status: in_progress
-   - risk_level: low
-   - acceptance: Review, validation, and policy evidence supports pass/fail/blocked gate judgment for planning-only A3.
-
-## Current Blockers
-
-- none before verification.
-- actual model training is out of scope until a later approved execution slice.
+   - priority: P1
+   - assigned: current-carrier
+   - depends_on: S1-CLEANUP-T2
+   - risk_level: medium
+   - acceptance: One local commit is created on `milestone/MS-S1-001-three-head-credibility`.
+   - evidence_ref: .servo/worktrack/s1-cleanup-closeout-report.md
+   - stop_condition: stop before push, merge to `develop`, branch deletion, release, provider calls, or MS-S2 initialization.
 
 ## Current Next Action
 
-- selected_next_action_id: A3-T5
-- selected_next_action: Verify planning-only A3 queue and produce gate evidence.
-- selection_reason: Queue and dry-run evidence are complete; remaining step is evidence synthesis.
-- selected_task_acceptance: Gate evidence records queue, dry-run command, missing `--check-protocol` pre-execution finding, and no-training policy compliance.
+- selected_next_action_id: RepoScope.Observe
+- selected_next_action: Return to RepoScope with local checkpoint complete.
+- selection_reason: Local checkpoint was created on the MS-S1 milestone branch.
+- selected_task_acceptance: Worktree is clean and local commit exists.
 - selected_task_risk_level: low
-- selected_task_stop_condition: stop before training execution, external provider calls, dependency changes, destructive cleanup, commit, push, or alpha_score promotion.
-
-## Readiness
-
-- dispatch_packet_ready: false
-- recommended_next_route: WorktrackScope.Verify
-- continuation_ready: true
-- dispatch_package_safety: N/A
+- selected_task_stop_condition: stop before push, merge, branch deletion, release, provider calls, model promotion, or MS-S2 initialization.
 
 ## Dispatch Packet
 
-- task_id: A3-T1
-- task_title: A3 candidate source inventory
-- scope:
-  - inspect A2 protocol and closeout report
-  - inspect multilevel tuning docs
-  - inspect mainline 3510d model plan
-  - inspect safe parser/dry-run surfaces for tuning scripts
-- out_of_scope:
-  - model training
-  - generated artifact regeneration
-  - external/production provider calls
-  - dependency changes
-  - commit or push
-- expected_output:
-  - candidate source inventory
-  - A2 readiness matrix
-  - recommended queue dimensions
-  - safe validation candidates
+- dispatch_packet_ready: false
+- dispatch_mode: current-carrier
+- carrier_decision: current-carrier because this task shares live dirty worktree state and must stage the exact local diff.
+- next_route: RepoScope.Observe / merge decision handback.
 
 ## Acceptance Alignment
 
-- currently_addressed_acceptance: A3 queue discovery
-- remaining_acceptance: prioritized queue, dry-run manifest, candidate interpretation, gate evidence
-- planning_coverage_gap: none before A3-T1
+- currently_addressed_acceptance: S1-CLEANUP-T1 through S1-CLEANUP-T3 completed.
+- remaining_acceptance: merge to `develop` and push remain outside this Worktrack.

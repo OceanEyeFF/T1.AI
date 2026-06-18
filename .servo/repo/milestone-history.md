@@ -1,7 +1,7 @@
 ---
 title: "Milestone History"
 artifact_type: "milestone-history"
-updated: "2026-06-12T01:28:03+08:00"
+updated: "2026-06-17T14:00:13+08:00"
 updated_by: "harness-skill"
 ---
 
@@ -10,6 +10,43 @@ updated_by: "harness-skill"
 > Completed and superseded milestones are moved here from `.servo/repo/milestone-backlog.md`.
 
 ## Completed
+
+### MS-S1-001
+
+- milestone_id: MS-S1-001
+- title: 主线三头预测可信度评估与报告契约
+- purpose: 先判断 `pred_3d` / `pred_5d` / `pred_10d` 三个主线预测头本身是否有稳定预测能力，并把防伪检查与报告契约固化为后续训练优化前的执行门禁。
+- status: completed
+- milestone_kind: goal-driven
+- priority: 2
+- depends_on_milestones: MS-S0-001
+- created_by: programmer-confirmed-harness
+- created_at: 2026-06-12T10:01:18+08:00
+- completed_at: 2026-06-17T14:00:13+08:00
+- accepted_by: OceanEyeFF
+- acceptance_verdict: accepted_with_residual_risk
+- updated: 2026-06-17T14:00:13+08:00
+- updated_by: harness-skill
+- artifact_path: .servo/milestone/MS-S1-001.md
+- final_report: .servo/worktrack/S1-A5-final-three-head-acceptance-report.md
+- post_ms_s1_direction_note: .servo/repo/post-ms-s1-direction-note.md
+- worktrack_list:
+  - WT-S1-A1 (done): random-label 防伪
+    - result: random-label smoke passes 3d/5d/10d on quick8 OOS.
+    - residual_risk: quick8 smoke is not promotion evidence; h5 time-reverse sanity still failed.
+  - WT-S1-A2 (done): 行业 / 市值中性化评估
+    - result: industry-neutral smoke is runnable and turns 5d/10d positive baseline evidence negative/cautionary.
+    - residual_risk: size neutralization remains blocked by missing size input.
+  - WT-S1-A3 (done): XGBoost 报告契约补齐
+    - result: future XGBoost reports can emit `evaluation_protocol` and `comparison_panel`.
+    - residual_risk: historical fastpilot XGB report still lacks OOS parquet path.
+  - WT-S1-A4 (done): 同窗三头评估 smoke
+    - result: same-window strict daily-CS smoke is blocked by missing fastpilot OOS parquet paths.
+    - residual_risk: no accepted same-window model comparison metrics from current artifacts.
+  - WT-S1-A5 (done): 三头预测验收报告
+    - result: final report concludes `continue-research / blocked-by-data`.
+    - residual_risk: no `pred_3d`, `pred_5d`, `pred_10d`, or `alpha_score` signal is promoted.
+- final_note: No model is promoted; next research should split stock-pool stratification and large-cap low-control-probability 3/5/10d revalidation into separate Milestones.
 
 ### MS-S0-001
 

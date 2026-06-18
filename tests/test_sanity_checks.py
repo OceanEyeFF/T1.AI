@@ -12,10 +12,13 @@ import pytest
 from ashare_lab.evaluation.sanity_checks import (
     compute_baseline_ic,
     lag1_test,
+    neutralization_test,
+    random_label_test,
     run_all_checks,
     shuffle_test,
     time_reverse_test,
 )
+from scripts.run_sanity_checks import _neutralization_report_from_oos, _random_label_report_from_oos
 
 
 def _make_strong_signal(n_dates: int = 20, n_symbols: int = 10, seed: int = 42):
@@ -104,6 +107,133 @@ class TestShuffleTest:
         r2 = shuffle_test(preds, labels, seed=123)
 
         assert r1["mean_ic"] == r2["mean_ic"]
+
+
+class TestRandomLabelTest:
+    """测试 random-label 防伪检验"""
+
+    def test_strong_signal_random_labels_destroy_ic(self) -> None:
+        preds, labels = _make_strong_signal(n_dates=30, n_symbols=20)
+        result = random_label_test(preds, labels, n_trials=10, threshold=0.10, seed=7)
+
+        assert result["pass"] is True
+        assert result["abs_mean_ic"] <= 0.10
+        assert result["n_trials"] == 10
+
+    def test_suspicious_constant_date_labels_fail(self) -> None:
+        dates = pd.bdate_range("2024-01-02", periods=8)
+        symbols = [f"S{i:03d}" for i in range(6)]
+        index = pd.MultiIndex.from_product([dates, symbols], names=["date", "symbol"])
+        values = np.tile(np.arange(len(symbols), dtype=float), len(dates))
+        preds = pd.Series(values, index=index)
+        labels = pd.Series(values, index=index)
+
+        result = random_label_test(preds, labels, n_trials=5, threshold=0.01, seed=3)
+
+        assert result["pass"] is False
+        assert result["abs_mean_ic"] > 0.01
+
+    def test_oos_report_marks_missing_horizon_blocked_by_data(self, tmp_path) -> None:
+        df = pd.DataFrame(
+            [
+                {"date": "2025-01-02", "symbol": "A", "pred_5d": 0.1, "label_5d": 0.2},
+                {"date": "2025-01-02", "symbol": "B", "pred_5d": -0.1, "label_5d": -0.2},
+            ]
+        )
+        path = tmp_path / "oos.parquet"
+        df.to_parquet(path, index=False)
+
+        report = _random_label_report_from_oos(
+            str(path),
+            horizons=[3, 5],
+            method="pearson",
+            n_trials=3,
+            threshold=0.10,
+            seed=1,
+        )
+
+        assert report["overall_verdict"] == "blocked_by_data"
+        assert report["promotion_blocked"] is True
+        assert report["horizons"][0]["status"] == "blocked_by_data"
+        assert report["horizons"][1]["status"] in {"pass", "fail"}
+
+
+class TestNeutralizationTest:
+    """测试行业 / 市值中性化防伪检验"""
+
+    def test_group_neutralization_runs_and_missing_size_blocks(self) -> None:
+        dates = pd.bdate_range("2024-01-02", periods=4)
+        symbols = ["A", "B", "C", "D"]
+        index = pd.MultiIndex.from_product([dates, symbols], names=["date", "symbol"])
+        preds = pd.Series(np.tile([0.4, 0.2, -0.2, -0.4], len(dates)), index=index)
+        labels = pd.Series(np.tile([0.3, 0.1, -0.1, -0.3], len(dates)), index=index)
+        groups = pd.Series(np.tile(["g1", "g1", "g2", "g2"], len(dates)), index=index)
+
+        result = neutralization_test(preds, labels, groups=groups)
+
+        assert result["industry_status"] == "pass"
+        assert result["industry_neutral_mean_ic"] is not None
+        assert result["industry_neutral_mean_rank_ic"] is not None
+        assert result["size_status"] == "blocked_by_data"
+        assert result["status"] == "blocked_by_data"
+
+    def test_size_neutralization_runs_when_size_column_available(self) -> None:
+        dates = pd.bdate_range("2024-01-02", periods=4)
+        symbols = ["A", "B", "C", "D"]
+        index = pd.MultiIndex.from_product([dates, symbols], names=["date", "symbol"])
+        base = np.tile([1.0, 2.0, 3.0, 4.0], len(dates))
+        preds = pd.Series(base + np.tile([0.2, -0.1, 0.1, -0.2], len(dates)), index=index)
+        labels = pd.Series(base + np.tile([0.1, -0.2, 0.2, -0.1], len(dates)), index=index)
+        size = pd.Series(base, index=index)
+
+        result = neutralization_test(preds, labels, size=size)
+
+        assert result["size_status"] == "pass"
+        assert result["size_neutral_mean_ic"] is not None
+        assert result["industry_status"] == "blocked_by_data"
+
+    def test_oos_report_uses_group_map_and_blocks_missing_size(self, tmp_path) -> None:
+        rows = []
+        for date in pd.bdate_range("2025-01-02", periods=3):
+            for symbol, sector, value in [
+                ("000001", "bank", 0.3),
+                ("600036", "bank", 0.1),
+                ("600519", "liquor", -0.1),
+                ("000858", "liquor", -0.3),
+            ]:
+                rows.append({
+                    "date": str(date.date()),
+                    "symbol": symbol,
+                    "pred_3d": value,
+                    "label_3d": value * 0.8,
+                    "pred_5d": value,
+                    "label_5d": value * 0.7,
+                    "pred_10d": value,
+                    "label_10d": value * 0.6,
+                    "sector": sector,
+                })
+        oos_path = tmp_path / "oos.parquet"
+        pd.DataFrame(rows).to_parquet(oos_path, index=False)
+        group_path = tmp_path / "group.csv"
+        pd.DataFrame([
+            {"symbol": "000001", "sector_hint": "bank"},
+            {"symbol": "600036", "sector_hint": "bank"},
+            {"symbol": "600519", "sector_hint": "liquor"},
+            {"symbol": "000858", "sector_hint": "liquor"},
+        ]).to_csv(group_path, index=False)
+
+        report = _neutralization_report_from_oos(
+            str(oos_path),
+            horizons=[3, 5, 10],
+            group_map_path=str(group_path),
+            group_col="sector_hint",
+            size_col=None,
+        )
+
+        assert report["overall_verdict"] == "blocked_by_data"
+        assert report["promotion_blocked"] is True
+        assert all(row["industry_status"] == "pass" for row in report["horizons"])
+        assert all(row["size_status"] == "blocked_by_data" for row in report["horizons"])
 
 
 class TestTimeReverseTest:

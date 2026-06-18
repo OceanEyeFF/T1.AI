@@ -21,6 +21,7 @@ from ashare_lab.evaluation.metrics import (
     mean_absolute_error,
     rank_information_coefficient,
 )
+from ashare_lab.evaluation.trade_like_panel import build_primary_trade_like_comparison_panel
 from ashare_lab.trend_schema import PRIMARY_TREND_LABEL_COLS, PRIMARY_TREND_PRED_COLS
 
 try:
@@ -120,6 +121,21 @@ def _metrics(pred: np.ndarray, y: np.ndarray) -> dict[str, float]:
         "mae_10d": float(mae[2]),
         "avg_mae": float(np.mean(mae)),
     }
+
+
+def _build_evaluation_protocol(label_mode: str) -> dict[str, str]:
+    return {
+        "signal_time_mode": "close",
+        "execution_time_mode": "next_open",
+        "label_mode": str(label_mode),
+        "return_mode": str(label_mode),
+        "cost_model": "none",
+        "daily_cs_mode": "required",
+    }
+
+
+def _build_comparison_panel(oos: pd.DataFrame, *, top_n: int) -> dict[str, object]:
+    return build_primary_trade_like_comparison_panel(oos, top_n=top_n)
 
 
 def _infer_feature_bases(df: pd.DataFrame, seq_len: int) -> list[str]:
@@ -432,6 +448,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="可选：保存 OOS 逐样本预测（含 raw/cal）到 parquet，用于 daily-CS 统一评估",
     )
     parser.add_argument(
+        "--comparison-top-n",
+        type=int,
+        default=10,
+        help="主线比较面板按 alpha_score 取前 N 名做等权交易近似评估",
+    )
+    parser.add_argument(
         "--report",
         default="",
     )
@@ -734,6 +756,8 @@ def main() -> None:
 
     raw_metrics = _metrics(raw, y)
     cal_metrics = _metrics(cal, y)
+    evaluation_protocol = _build_evaluation_protocol(label_mode)
+    comparison_panel = _build_comparison_panel(oos, top_n=int(args.comparison_top_n))
 
     out = {
         "experiment_metadata": build_effective_config_payload(
@@ -784,6 +808,7 @@ def main() -> None:
             "stock_pool_version": resolved_context["stock_pool_version"],
             "evaluation_window_id": resolved_context["evaluation_window_id"],
             "dataset_id": resolved_context["dataset_id"],
+            "comparison_top_n": int(args.comparison_top_n),
             "label_mode": str(label_mode),
             "maturity_gate_enabled": True,
             "maturity_gate_horizon_days": int(maturity_horizon_days),
@@ -806,6 +831,8 @@ def main() -> None:
         },
         "weekly_logs": week_logs,
         "monthly_logs": week_logs,
+        "evaluation_protocol": evaluation_protocol,
+        "comparison_panel": comparison_panel,
     }
 
     if args.save_oos_parquet:

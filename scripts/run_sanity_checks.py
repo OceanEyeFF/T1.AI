@@ -19,12 +19,13 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from ashare_lab.evaluation.sanity_checks import run_all_checks
+from ashare_lab.evaluation.sanity_checks import compute_baseline_ic, neutralization_test, random_label_test, run_all_checks
 
 
 def _parse_args() -> argparse.Namespace:
@@ -51,6 +52,15 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--method", default="pearson", choices=["pearson", "spearman"])
     p.add_argument("--shuffle-trials", type=int, default=5)
     p.add_argument("--shuffle-threshold", type=float, default=0.02)
+    p.add_argument("--random-label-trials", type=int, default=20)
+    p.add_argument("--random-label-threshold", type=float, default=0.02)
+    p.add_argument("--random-label-horizons", default="3,5,10", help="逗号分隔 horizon 列表，默认 3,5,10")
+    p.add_argument("--random-label-output", default=None, help="输出独立 random-label 防伪 JSON")
+    p.add_argument("--neutralization-output", default=None, help="输出独立行业/市值中性化 JSON")
+    p.add_argument("--neutralization-horizons", default="3,5,10", help="逗号分隔 horizon 列表，默认 3,5,10")
+    p.add_argument("--group-map", default=None, help="行业/分组映射 CSV，需包含 symbol 和 group-col")
+    p.add_argument("--group-col", default="sector_hint", help="行业/分组列名，默认 sector_hint")
+    p.add_argument("--size-col", default=None, help="OOS parquet 中用于市值/规模中性化的数值列")
     p.add_argument("--reverse-threshold", type=float, default=0.02)
     p.add_argument("--lag1-threshold", type=float, default=0.01)
     p.add_argument("--seed", type=int, default=42)
@@ -85,6 +95,226 @@ def _load_oos_parquet(path: str, horizon: int) -> tuple[pd.Series, pd.Series]:
         pd.Series(df[pred_col].values, index=idx),
         pd.Series(df[label_col].values, index=idx),
     )
+
+
+def _parse_horizons(raw: str) -> list[int]:
+    horizons: list[int] = []
+    for item in raw.split(","):
+        text = item.strip()
+        if not text:
+            continue
+        horizons.append(int(text))
+    if not horizons:
+        raise ValueError("random-label horizons 不能为空")
+    return horizons
+
+
+def _random_label_report_from_oos(
+    path: str,
+    horizons: list[int],
+    method: str,
+    n_trials: int,
+    threshold: float,
+    seed: int,
+) -> dict:
+    df = pd.read_parquet(path)
+    records: list[dict] = []
+    for horizon in horizons:
+        pred_col, label_col = f"pred_{horizon}d", f"label_{horizon}d"
+        base = {
+            "horizon": horizon,
+            "prediction_col": pred_col,
+            "label_col": label_col,
+            "threshold_abs_mean_ic": threshold,
+            "random_trials": n_trials,
+        }
+        missing = [col for col in ["date", "symbol", pred_col, label_col] if col not in df.columns]
+        if missing:
+            records.append({
+                **base,
+                "status": "blocked_by_data",
+                "baseline_mean_ic": None,
+                "baseline_mean_rank_ic": None,
+                "random_label_mean_ic": None,
+                "random_label_abs_mean_ic": None,
+                "random_label_max_abs_ic": None,
+                "n_days": None,
+                "n_rows": None,
+                "reason": f"missing columns: {','.join(missing)}",
+            })
+            continue
+
+        work = df[["date", "symbol", pred_col, label_col]].copy()
+        work["date"] = pd.to_datetime(work["date"], errors="coerce")
+        work = work.dropna(subset=["date", pred_col, label_col])
+        if work.empty:
+            records.append({
+                **base,
+                "status": "blocked_by_data",
+                "baseline_mean_ic": None,
+                "baseline_mean_rank_ic": None,
+                "random_label_mean_ic": None,
+                "random_label_abs_mean_ic": None,
+                "random_label_max_abs_ic": None,
+                "n_days": 0,
+                "n_rows": 0,
+                "reason": "no usable rows after filtering",
+            })
+            continue
+
+        idx = pd.MultiIndex.from_frame(work[["date", "symbol"]])
+        predictions = pd.Series(work[pred_col].values, index=idx)
+        labels = pd.Series(work[label_col].values, index=idx)
+        baseline_ic = compute_baseline_ic(predictions, labels, method="pearson")
+        baseline_rank_ic = compute_baseline_ic(predictions, labels, method="spearman")
+        random_result = random_label_test(
+            predictions,
+            labels,
+            method=method,
+            n_trials=n_trials,
+            threshold=threshold,
+            seed=seed,
+        )
+        status = "pass" if random_result["pass"] else "fail"
+        records.append({
+            **base,
+            "status": status,
+            "baseline_mean_ic": baseline_ic["mean_ic"],
+            "baseline_mean_rank_ic": baseline_rank_ic["mean_ic"],
+            "random_label_mean_ic": random_result["mean_ic"],
+            "random_label_abs_mean_ic": random_result["abs_mean_ic"],
+            "random_label_max_abs_ic": random_result["max_abs_ic"],
+            "n_days": baseline_ic["n_days"],
+            "n_rows": int(len(work)),
+            "reason": "random labels collapse IC" if status == "pass" else "random labels remain too predictive",
+        })
+
+    statuses = {row["status"] for row in records}
+    if "blocked_by_data" in statuses:
+        overall = "blocked_by_data"
+    elif "fail" in statuses:
+        overall = "fail"
+    elif "continue_research" in statuses:
+        overall = "continue_research"
+    else:
+        overall = "pass"
+
+    return {
+        "check_name": "random_label",
+        "input_path": path,
+        "horizons": records,
+        "all_pass": overall == "pass",
+        "overall_verdict": overall,
+        "promotion_blocked": overall != "pass",
+        "seed": seed,
+        "random_trials": n_trials,
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+    }
+
+
+def _normalize_symbol_series(series: pd.Series) -> pd.Series:
+    return series.astype(str).str.replace(r"\.0$", "", regex=True).str.zfill(6)
+
+
+def _neutralization_report_from_oos(
+    path: str,
+    horizons: list[int],
+    group_map_path: str | None,
+    group_col: str,
+    size_col: str | None,
+) -> dict:
+    df = pd.read_parquet(path)
+    group_map: pd.DataFrame | None = None
+    if group_map_path:
+        group_map = pd.read_csv(group_map_path)
+        if "symbol" not in group_map.columns or group_col not in group_map.columns:
+            group_map = None
+
+    if group_map is not None:
+        group_map = group_map[["symbol", group_col]].copy()
+        group_map["symbol"] = _normalize_symbol_series(group_map["symbol"])
+
+    records: list[dict] = []
+    for horizon in horizons:
+        pred_col, label_col = f"pred_{horizon}d", f"label_{horizon}d"
+        base = {
+            "horizon": horizon,
+            "prediction_col": pred_col,
+            "label_col": label_col,
+        }
+        missing = [col for col in ["date", "symbol", pred_col, label_col] if col not in df.columns]
+        if missing:
+            records.append({
+                **base,
+                "status": "blocked_by_data",
+                "industry_status": "blocked_by_data",
+                "size_status": "blocked_by_data",
+                "reason": f"missing columns: {','.join(missing)}",
+                "n_days": None,
+                "n_rows": None,
+            })
+            continue
+
+        work = df[["date", "symbol", pred_col, label_col] + ([size_col] if size_col and size_col in df.columns else [])].copy()
+        work["date"] = pd.to_datetime(work["date"], errors="coerce")
+        work["symbol"] = _normalize_symbol_series(work["symbol"])
+        if group_map is not None:
+            work = work.merge(group_map, on="symbol", how="left")
+        work = work.dropna(subset=["date", pred_col, label_col])
+        if work.empty:
+            records.append({
+                **base,
+                "status": "blocked_by_data",
+                "industry_status": "blocked_by_data",
+                "size_status": "blocked_by_data",
+                "reason": "no usable rows after filtering",
+                "n_days": 0,
+                "n_rows": 0,
+            })
+            continue
+
+        idx = pd.MultiIndex.from_frame(work[["date", "symbol"]])
+        predictions = pd.Series(work[pred_col].values, index=idx)
+        labels = pd.Series(work[label_col].values, index=idx)
+        groups = None
+        if group_map is not None and group_col in work.columns and work[group_col].notna().any():
+            groups = pd.Series(work[group_col].values, index=idx)
+        size = None
+        if size_col and size_col in work.columns:
+            size_values = pd.to_numeric(work[size_col], errors="coerce")
+            if size_values.notna().any():
+                size = pd.Series(size_values.values, index=idx)
+
+        result = neutralization_test(predictions, labels, groups=groups, size=size)
+        records.append({
+            **base,
+            **result,
+            "n_rows": int(len(work)),
+            "reason": "neutralization computed where inputs are available",
+        })
+
+    statuses = {row["status"] for row in records}
+    if "blocked_by_data" in statuses:
+        overall = "blocked_by_data"
+    elif "fail" in statuses:
+        overall = "fail"
+    elif "continue_research" in statuses:
+        overall = "continue_research"
+    else:
+        overall = "pass"
+
+    return {
+        "check_name": "neutralization",
+        "input_path": path,
+        "group_map_path": group_map_path,
+        "group_col": group_col,
+        "size_col": size_col,
+        "horizons": records,
+        "all_pass": overall == "pass",
+        "overall_verdict": overall,
+        "promotion_blocked": overall != "pass",
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+    }
 
 
 def _load_recs_and_prices(
@@ -129,6 +359,31 @@ def main() -> None:
         predictions, labels = _load_aligned(args.aligned_path)
     elif args.oos_parquet:
         predictions, labels = _load_oos_parquet(args.oos_parquet, args.horizon)
+        if args.random_label_output:
+            random_label_report = _random_label_report_from_oos(
+                args.oos_parquet,
+                horizons=_parse_horizons(args.random_label_horizons),
+                method=args.method,
+                n_trials=args.random_label_trials,
+                threshold=args.random_label_threshold,
+                seed=args.seed,
+            )
+            out_path = Path(args.random_label_output)
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(json.dumps(random_label_report, indent=2, ensure_ascii=False), encoding="utf-8")
+            print(f"random-label 报告已保存: {out_path}")
+        if args.neutralization_output:
+            neutralization_report = _neutralization_report_from_oos(
+                args.oos_parquet,
+                horizons=_parse_horizons(args.neutralization_horizons),
+                group_map_path=args.group_map,
+                group_col=args.group_col,
+                size_col=args.size_col,
+            )
+            out_path = Path(args.neutralization_output)
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(json.dumps(neutralization_report, indent=2, ensure_ascii=False), encoding="utf-8")
+            print(f"neutralization 报告已保存: {out_path}")
     else:
         if not args.price_path:
             raise SystemExit("使用 --recs-path 时必须同时指定 --price-path")

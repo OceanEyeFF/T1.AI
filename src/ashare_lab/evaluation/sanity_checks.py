@@ -94,6 +94,194 @@ def shuffle_test(
     }
 
 
+def random_label_test(
+    predictions: pd.Series,
+    labels: pd.Series,
+    method: str = "pearson",
+    n_trials: int = 20,
+    threshold: float = 0.02,
+    seed: int = 42,
+) -> dict:
+    """Random-label 检验。
+
+    在每个日期内随机打乱标签，重复 n_trials 次。与 shuffle prediction
+    不同，本检验把“假标签上也表现很好”作为显式防伪失败信号。
+    """
+    _validate_multi_index(predictions, "predictions")
+    _validate_multi_index(labels, "labels")
+
+    random_ics: list[float] = []
+    for trial in range(n_trials):
+        rng = np.random.RandomState(seed + trial)
+        randomized = labels.copy()
+
+        dates = randomized.index.get_level_values(0).unique()
+        for date in dates:
+            mask = randomized.index.get_level_values(0) == date
+            vals = randomized.loc[mask].values.copy()
+            rng.shuffle(vals)
+            randomized.loc[mask] = vals
+
+        daily_ic = calculate_daily_cs_ic(predictions, randomized, method=method)
+        stats = summarize_daily_cs(daily_ic)
+        random_ics.append(stats["mean_ic"])
+
+    arr = np.array(random_ics, dtype=float)
+    mean_ic = float(np.mean(arr)) if arr.size else 0.0
+    max_abs_ic = float(np.max(np.abs(arr))) if arr.size else 0.0
+    return {
+        "mean_ic": mean_ic,
+        "abs_mean_ic": float(abs(mean_ic)),
+        "std_ic": float(np.std(arr, ddof=1)) if arr.size > 1 else 0.0,
+        "max_abs_ic": max_abs_ic,
+        "pass": bool(abs(mean_ic) <= threshold),
+        "threshold": threshold,
+        "n_trials": n_trials,
+    }
+
+
+def _demean_by_group(values: pd.Series, groups: pd.Series) -> pd.Series:
+    aligned_values, aligned_groups = values.align(groups, join="inner")
+    residual = aligned_values.copy()
+    valid_groups = aligned_groups.dropna().unique()
+    usable = False
+    for group in valid_groups:
+        mask = aligned_groups == group
+        if int(mask.sum()) < 2:
+            residual.loc[mask] = np.nan
+            continue
+        usable = True
+        residual.loc[mask] = aligned_values.loc[mask] - aligned_values.loc[mask].mean()
+    if not usable:
+        return pd.Series(dtype=float, index=aligned_values.index)
+    return residual.dropna()
+
+
+def _residualize_by_size(values: pd.Series, size: pd.Series) -> pd.Series:
+    aligned_values, aligned_size = values.align(size, join="inner")
+    work = pd.DataFrame({"value": aligned_values, "size": aligned_size}).dropna()
+    if len(work) < 3 or work["size"].nunique() < 2:
+        return pd.Series(dtype=float, index=aligned_values.index)
+    x = np.column_stack([np.ones(len(work), dtype=float), work["size"].to_numpy(dtype=float)])
+    y = work["value"].to_numpy(dtype=float)
+    beta, *_ = np.linalg.lstsq(x, y, rcond=None)
+    residual = y - x @ beta
+    return pd.Series(residual, index=work.index)
+
+
+def neutralization_test(
+    predictions: pd.Series,
+    labels: pd.Series,
+    *,
+    groups: pd.Series | None = None,
+    size: pd.Series | None = None,
+) -> dict:
+    """Industry / size neutralization check for Daily-CS IC inputs."""
+    _validate_multi_index(predictions, "predictions")
+    _validate_multi_index(labels, "labels")
+
+    baseline_ic = compute_baseline_ic(predictions, labels, method="pearson")
+    baseline_rank_ic = compute_baseline_ic(predictions, labels, method="spearman")
+    result: dict = {
+        "baseline_mean_ic": baseline_ic["mean_ic"],
+        "baseline_mean_rank_ic": baseline_rank_ic["mean_ic"],
+        "n_days": baseline_ic["n_days"],
+    }
+
+    if groups is None:
+        result.update({
+            "industry_status": "blocked_by_data",
+            "industry_neutral_mean_ic": None,
+            "industry_neutral_mean_rank_ic": None,
+            "industry_reason": "missing group input",
+        })
+    else:
+        _validate_multi_index(groups, "groups")
+        group_pred_parts: list[pd.Series] = []
+        group_label_parts: list[pd.Series] = []
+        for date in sorted(predictions.index.get_level_values(0).unique()):
+            p_day = predictions[predictions.index.get_level_values(0) == date]
+            y_day = labels[labels.index.get_level_values(0) == date]
+            g_day = groups[groups.index.get_level_values(0) == date]
+            p_res = _demean_by_group(p_day, g_day)
+            y_res = _demean_by_group(y_day, g_day)
+            p_res, y_res = p_res.align(y_res, join="inner")
+            if len(p_res) >= 2:
+                group_pred_parts.append(p_res)
+                group_label_parts.append(y_res)
+        if group_pred_parts:
+            group_preds = pd.concat(group_pred_parts).sort_index()
+            group_labels = pd.concat(group_label_parts).sort_index()
+            industry_ic = compute_baseline_ic(group_preds, group_labels, method="pearson")
+            industry_rank_ic = compute_baseline_ic(group_preds, group_labels, method="spearman")
+            result.update({
+                "industry_status": "pass",
+                "industry_neutral_mean_ic": industry_ic["mean_ic"],
+                "industry_neutral_mean_rank_ic": industry_rank_ic["mean_ic"],
+                "industry_n_days": industry_ic["n_days"],
+                "industry_reason": "industry residual IC computed",
+            })
+        else:
+            result.update({
+                "industry_status": "blocked_by_data",
+                "industry_neutral_mean_ic": None,
+                "industry_neutral_mean_rank_ic": None,
+                "industry_reason": "no date/group has enough rows",
+            })
+
+    if size is None:
+        result.update({
+            "size_status": "blocked_by_data",
+            "size_neutral_mean_ic": None,
+            "size_neutral_mean_rank_ic": None,
+            "size_reason": "missing size input",
+        })
+    else:
+        _validate_multi_index(size, "size")
+        size_pred_parts: list[pd.Series] = []
+        size_label_parts: list[pd.Series] = []
+        for date in sorted(predictions.index.get_level_values(0).unique()):
+            p_day = predictions[predictions.index.get_level_values(0) == date]
+            y_day = labels[labels.index.get_level_values(0) == date]
+            s_day = size[size.index.get_level_values(0) == date]
+            p_res = _residualize_by_size(p_day, s_day)
+            y_res = _residualize_by_size(y_day, s_day)
+            p_res, y_res = p_res.align(y_res, join="inner")
+            if len(p_res) >= 2:
+                size_pred_parts.append(p_res)
+                size_label_parts.append(y_res)
+        if size_pred_parts:
+            size_preds = pd.concat(size_pred_parts).sort_index()
+            size_labels = pd.concat(size_label_parts).sort_index()
+            size_ic = compute_baseline_ic(size_preds, size_labels, method="pearson")
+            size_rank_ic = compute_baseline_ic(size_preds, size_labels, method="spearman")
+            result.update({
+                "size_status": "pass",
+                "size_neutral_mean_ic": size_ic["mean_ic"],
+                "size_neutral_mean_rank_ic": size_rank_ic["mean_ic"],
+                "size_n_days": size_ic["n_days"],
+                "size_reason": "size residual IC computed",
+            })
+        else:
+            result.update({
+                "size_status": "blocked_by_data",
+                "size_neutral_mean_ic": None,
+                "size_neutral_mean_rank_ic": None,
+                "size_reason": "no date has enough size variation",
+            })
+
+    statuses = {result["industry_status"], result["size_status"]}
+    if "blocked_by_data" in statuses:
+        result["status"] = "blocked_by_data"
+    elif "fail" in statuses:
+        result["status"] = "fail"
+    elif "continue_research" in statuses:
+        result["status"] = "continue_research"
+    else:
+        result["status"] = "pass"
+    return result
+
+
 def time_reverse_test(
     predictions: pd.Series,
     labels: pd.Series,
