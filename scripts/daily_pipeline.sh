@@ -26,17 +26,17 @@ mkdir -p logs
 TARGET_DATE="${1:-$(date +%Y%m%d)}"
 
 # 记录开始时间
-echo "=== Daily Pipeline Start: $(date) ===" | tee -a logs/pipeline.log
+echo "=== Daily Pipeline Start: $(date) ===" | tee -a workspace/runs/pipeline.log
 
 # 执行流水线
 python scripts/daily_pipeline.py \
     --date "$TARGET_DATE" \
     --config configs/pipeline.yaml \
-    2>&1 | tee -a logs/pipeline.log
+    2>&1 | tee -a workspace/runs/pipeline.log
 
 EXIT_CODE=$?
 
 # 记录结束时间
-echo "=== Daily Pipeline End: $(date), Exit Code: $EXIT_CODE ===" | tee -a logs/pipeline.log
+echo "=== Daily Pipeline End: $(date), Exit Code: $EXIT_CODE ===" | tee -a workspace/runs/pipeline.log
 
 exit $EXIT_CODE

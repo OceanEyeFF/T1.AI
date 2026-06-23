@@ -29,7 +29,7 @@ def test_resolve_experiment_context_infers_dataset_contract_from_metadata(tmp_pa
             {
                 "dataset_config": {
                     "stock_pool_id": "custom_low_manipulation",
-                    "symbols_csv": "configs/stock_pools/custom_low_manipulation_v1_symbols.csv",
+                    "symbols_csv": "inputs/pools/low_manipulation/symbols.csv",
                     "num_symbols": 14,
                     "start_date": "20230101",
                     "end_date": "20260305",
@@ -64,7 +64,7 @@ def test_build_default_report_path_uses_model_track_subdir() -> None:
         config_profile="xgb_rolling_baseline",
         generated_at=generated_at,
     )
-    assert path == Path("output/reports/mainline_3510d/xgb_baseline_20260323.json")
+    assert path == Path("outputs/reports/mainline_3510d/xgb_baseline_20260323.json")
 
 
 def test_build_effective_config_payload_contains_required_contract_fields() -> None:
@@ -81,7 +81,7 @@ def test_build_effective_config_payload_contains_required_contract_fields() -> N
         },
         seed=42,
         script="run_lstm_rolling_retrain_dim19_regime",
-        config_file="configs/experiments/lstm_rolling_baseline.toml",
+        config_file="inputs/configs/experiments/lstm_rolling_baseline.toml",
         generated_at=generated_at,
         args_mapping={"seed": 42},
     )

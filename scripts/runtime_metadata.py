@@ -185,7 +185,7 @@ def build_default_report_path(
     model_track: str,
     config_profile: str,
     generated_at: datetime,
-    reports_root: str | Path = "output/reports",
+    reports_root: str | Path = "outputs/reports",
 ) -> Path:
     date_tag = generated_at.strftime("%Y%m%d")
     profile_tag = _profile_tag_from_config_profile(config_profile, backbone)

@@ -5,10 +5,10 @@
 TUSHARE_TOKEN=your_token_here
 
 # 日频流水线（周一至周五执行）
-15 15 * * 1-5 cd /path/to/T1.AI && ./scripts/daily_pipeline.sh >> logs/cron.log 2>&1
+15 15 * * 1-5 cd /path/to/T1.AI && ./scripts/daily_pipeline.sh >> workspace/runs/cron.log 2>&1
 
 # 周末清理临时文件（可选）
-0 2 * * 6 find /path/to/T1.AI/data/cache -name "*.tmp" -mtime +7 -delete
+0 2 * * 6 find /path/to/T1.AI/inputs/data/cache -name "*.tmp" -mtime +7 -delete
 
 # 示例：手动指定日期运行
-# 15 15 * * 1-5 cd /path/to/T1.AI && ./scripts/daily_pipeline.sh 20250117 >> logs/cron.log 2>&1
+# 15 15 * * 1-5 cd /path/to/T1.AI && ./scripts/daily_pipeline.sh 20250117 >> workspace/runs/cron.log 2>&1

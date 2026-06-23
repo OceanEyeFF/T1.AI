@@ -241,7 +241,7 @@ def _train_one(
     test = _eval_model(model, test_loader, device)
     infer_sec = time.perf_counter() - t1
 
-    ckpt = Path(f"models/best_lstm_sector70_{name}.pt")
+    ckpt = Path(f"workspace/checkpoints/best_lstm_sector70_{name}.pt")
     ckpt.parent.mkdir(parents=True, exist_ok=True)
     torch.save({"model_state_dict": model.state_dict()}, ckpt)
 

@@ -277,7 +277,7 @@ def main() -> None:
     parser.add_argument("--symbols-csv", help="CSV file containing symbols (column: symbol/code/ts_code)")
     parser.add_argument("--stock-pool-id", default="", help="从 registry 读取股票池成员")
     parser.add_argument("--stock-pool-version", default="", help="股票池版本，留空则要求 registry 内仅有单版本")
-    parser.add_argument("--stock-pool-registry-dir", default="configs/stock_pools", help="股票池 registry 目录")
+    parser.add_argument("--stock-pool-registry-dir", default="inputs/pools", help="股票池 registry 目录")
     parser.add_argument("--stock-pool-export-dir", default="output/stock_pools", help="导出的股票池产物目录")
     parser.add_argument(
         "--source",
@@ -285,7 +285,7 @@ def main() -> None:
         choices=["akshare", "tushare", "odp"],
         help="Data source",
     )
-    parser.add_argument("--cache-dir", default="data/cache", help="Cache dir for daily bars")
+    parser.add_argument("--cache-dir", default="inputs/data/cache", help="Cache dir for daily bars")
     parser.add_argument("--output-dir", default="data/datasets", help="Output dir for parquet files")
     parser.add_argument("--seq-len", type=int, default=20, help="Sequence length (default: 20)")
     parser.add_argument("--stride", type=int, default=1, help="Sliding window stride (default: 1)")

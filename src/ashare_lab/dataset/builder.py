@@ -50,8 +50,8 @@ class DatasetConfig:
     train_end_date: str | None = None  # YYYYMMDD
     valid_end_date: str | None = None  # YYYYMMDD
     source: str = "akshare"  # 'akshare' or 'tushare' or 'odp'
-    cache_dir: Path = field(default_factory=lambda: Path("data/cache"))
-    output_dir: Path = field(default_factory=lambda: Path("data/datasets"))
+    cache_dir: Path = field(default_factory=lambda: Path("inputs/data/cache"))
+    output_dir: Path = field(default_factory=lambda: Path("workspace/datasets"))
     nan_threshold: float = 0.2  # 缺失数据阈值（超过警告）
 
 

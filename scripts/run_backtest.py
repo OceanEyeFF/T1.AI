@@ -23,7 +23,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--lookback", type=int, default=20)
     p.add_argument("--cash", type=float, default=100_000.0)
     p.add_argument("--refresh", action="store_true", help="Ignore cache and re-download")
-    p.add_argument("--cache-dir", default="data/cache")
+    p.add_argument("--cache-dir", default="inputs/data/cache")
     p.add_argument("--out-dir", default="runs")
     p.add_argument("--benchmark", default="000300", help="Index symbol, default CSI300=000300")
     return p.parse_args()

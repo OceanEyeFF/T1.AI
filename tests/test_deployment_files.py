@@ -1,6 +1,7 @@
 """
 Smoke tests for deployment files (Task 3.3).
 """
+
 import os
 import stat
 import subprocess
@@ -21,9 +22,7 @@ def test_daily_pipeline_sh_exists():
 def test_daily_pipeline_sh_syntax():
     """Test that daily_pipeline.sh has valid bash syntax."""
     result = subprocess.run(
-        ["bash", "-n", "scripts/daily_pipeline.sh"],
-        capture_output=True,
-        text=True
+        ["bash", "-n", "scripts/daily_pipeline.sh"], capture_output=True, text=True
     )
     assert result.returncode == 0, f"Shell script has syntax errors: {result.stderr}"
 
@@ -67,15 +66,16 @@ def test_systemd_timer_exists():
 
 def test_production_scheduler_doc_exists():
     """Test that production scheduler documentation exists."""
-    doc_path = Path("docs/modules/production_scheduler.md")
-    assert doc_path.exists(), "docs/modules/production_scheduler.md does not exist"
+    doc_path = Path("docs/archive/production_scheduler.md")
+    assert doc_path.exists(), "docs/archive/production_scheduler.md does not exist"
 
     # Check that documentation covers both deployment options
     content = doc_path.read_text()
     assert "Cron" in content, "Documentation missing Cron section"
     assert "Systemd" in content, "Documentation missing Systemd section"
-    assert "错误排查" in content or "troubleshooting" in content.lower(), \
+    assert "错误排查" in content or "troubleshooting" in content.lower(), (
         "Documentation missing troubleshooting section"
+    )
     assert "TUSHARE_TOKEN" in content, "Documentation missing token setup"
 
 
@@ -84,11 +84,7 @@ def test_deployment_directory_structure():
     deployment_dir = Path("deployment")
     assert deployment_dir.exists(), "deployment directory does not exist"
 
-    required_files = [
-        "crontab.example",
-        "daily-pipeline.service",
-        "daily-pipeline.timer"
-    ]
+    required_files = ["crontab.example", "daily-pipeline.service", "daily-pipeline.timer"]
 
     for filename in required_files:
         filepath = deployment_dir / filename

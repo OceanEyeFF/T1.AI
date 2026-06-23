@@ -16,7 +16,7 @@ echo ""
 
 # 检查数据集大小
 DATASETS_DIR="data/datasets"
-CACHE_DIR="data/cache"
+CACHE_DIR="inputs/data/cache"
 
 if [ -d "$DATASETS_DIR" ]; then
     DATASETS_SIZE=$(du -sh "$DATASETS_DIR" 2>/dev/null | cut -f1)

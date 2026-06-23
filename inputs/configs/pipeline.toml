@@ -1,10 +1,10 @@
 pipeline:
   default_top_n: 10
   default_horizons: [3, 5, 10]
-  recommendation_dir: "data/recommendations"
-  report_dir: "data/recommendations/validation"
-  db_path: "data/recommendations.db"
-  run_meta_path: "logs/pipeline_runs.jsonl"
+  recommendation_dir: "outputs/predictions"
+  report_dir: "outputs/reports"
+  db_path: "outputs/recommendations.db"
+  run_meta_path: "workspace/runs/pipeline_runs.jsonl"
 
 error_handling:
   retry_attempts: 3
@@ -16,7 +16,7 @@ error_handling:
 logging:
   level: INFO
   format: "%(asctime)s [%(levelname)s] %(name)s - %(message)s"
-  file: "logs/pipeline.log"
+  file: "workspace/runs/pipeline.log"
 
 monitoring:
   enabled: true

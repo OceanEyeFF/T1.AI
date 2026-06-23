@@ -140,10 +140,10 @@ def test_build_train_command_prefers_config_file() -> None:
         args_dict=base,
         report_path=Path("output/reports/a.json"),
         oos_path=Path("output/reports/a_oos.parquet"),
-        config_file=Path("configs/experiments/lstm_rolling_baseline.toml"),
+        config_file=Path("inputs/configs/experiments/lstm_rolling_baseline.toml"),
     )
     assert "--config-file" in cmd
-    assert "configs/experiments/lstm_rolling_baseline.toml" in " ".join(cmd)
+    assert "inputs/configs/experiments/lstm_rolling_baseline.toml" in " ".join(cmd)
     # 配置文件模式下不需要展开全部参数
     assert "--dataset-dir" not in cmd
 

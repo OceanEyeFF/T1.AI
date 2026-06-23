@@ -9,7 +9,7 @@ symbols = "600519,000333,601318"
 # symbols_csv = "data/symbols_lstm_sectors_70.csv"
 
 source = "akshare"
-cache_dir = "data/cache"
+cache_dir = "inputs/data/cache"
 output_dir = "data/datasets/sequence_baseline_20230101_20260120"
 
 seq_len = 20

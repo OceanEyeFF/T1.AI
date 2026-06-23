@@ -43,7 +43,7 @@ class TrainerConfig:
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
     # 检查点
-    save_dir: Path = Path("runs/checkpoints")
+    save_dir: Path = Path("workspace/checkpoints")
     save_best_only: bool = True
 
 

@@ -11,9 +11,9 @@ htmlcov/
 .venv/
 venv/
 
-data/cache/
-data/datasets/
-runs/
+inputs/data/cache/
+workspace/checkpoints/
+workspace/runs/
 
 # 自动化工作流配置（本地）
 .autoworkflow/
@@ -31,18 +31,9 @@ runs/
 *.pth
 *.ckpt
 
-# 训练日志
-logs/*.log
-logs/*.csv
-
-# 备份文件
-*.bak
-backup/
-
-# 推荐结果
-output/recommendations/
-output/reports/
-.logs/
+# 训练日志 & 产物
+outputs/predictions/
+outputs/reports/
 
 # Skill 部署目录（本地，不从远端同步）
 .agents/skills/

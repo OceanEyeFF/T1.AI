@@ -31,8 +31,8 @@ except ModuleNotFoundError:  # pragma: no cover - direct script execution fallba
 
 DEFAULT_LSTM_BASELINE = ""
 DEFAULT_XGB_BASELINE = ""
-DEFAULT_LSTM_CONFIG = "configs/experiments/lstm_rolling_baseline.toml"
-DEFAULT_XGB_CONFIG = "configs/experiments/xgb_rolling_baseline.toml"
+DEFAULT_LSTM_CONFIG = "inputs/configs/experiments/lstm_rolling_baseline.toml"
+DEFAULT_XGB_CONFIG = "inputs/configs/experiments/xgb_rolling_baseline.toml"
 
 MODEL_CHOICES = ("lstm", "xgb", "both")
 LEVEL_CHOICES = ("L1", "L2", "L3")
@@ -793,7 +793,7 @@ def _parse_args() -> argparse.Namespace:
         default=DEFAULT_XGB_CONFIG,
         help="JSON/TOML config for XGBoost baseline args",
     )
-    p.add_argument("--output-dir", default="output/reports")
+    p.add_argument("--output-dir", default="outputs/reports")
     p.add_argument("--tag", default=datetime.now().strftime("%Y%m%d"))
     p.add_argument("--max-runs-per-level", type=int, default=24)
     p.add_argument("--execute", action="store_true", help="实际执行训练（默认仅输出计划）")

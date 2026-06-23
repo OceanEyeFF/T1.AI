@@ -43,10 +43,10 @@ class PipelineRun:
 class _PipelineSettings:
     default_top_n: int = 10
     default_horizons: tuple[int, ...] = (3, 5, 10)
-    recommendation_dir: Path = Path("data/recommendations")
-    report_dir: Path = Path("data/recommendations/validation")
-    db_path: Path = Path("data/recommendations.db")
-    run_meta_path: Path = Path("logs/pipeline_runs.jsonl")
+    recommendation_dir: Path = Path("outputs/predictions")
+    report_dir: Path = Path("outputs/reports")
+    db_path: Path = Path("outputs/recommendations.db")
+    run_meta_path: Path = Path("workspace/runs/pipeline_runs.jsonl")
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,10 +71,10 @@ def _load_pipeline_settings(config: Mapping[str, Any]) -> tuple[_PipelineSetting
     settings = _PipelineSettings(
         default_top_n=int(pipeline.get("default_top_n", 10)),
         default_horizons=tuple(int(x) for x in (pipeline.get("default_horizons") or [3, 5, 10])),
-        recommendation_dir=_coerce_path(pipeline.get("recommendation_dir"), Path("data/recommendations")),
-        report_dir=_coerce_path(pipeline.get("report_dir"), Path("data/recommendations/validation")),
-        db_path=_coerce_path(pipeline.get("db_path"), Path("data/recommendations.db")),
-        run_meta_path=_coerce_path(pipeline.get("run_meta_path"), Path("logs/pipeline_runs.jsonl")),
+        recommendation_dir=_coerce_path(pipeline.get("recommendation_dir"), Path("outputs/predictions")),
+        report_dir=_coerce_path(pipeline.get("report_dir"), Path("outputs/reports")),
+        db_path=_coerce_path(pipeline.get("db_path"), Path("outputs/recommendations.db")),
+        run_meta_path=_coerce_path(pipeline.get("run_meta_path"), Path("workspace/runs/pipeline_runs.jsonl")),
     )
 
     retry_backoff = error_handling.get("retry_backoff_seconds") or [2, 5, 10]

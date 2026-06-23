@@ -63,8 +63,8 @@ from ashare_lab.universe import is_allowed_a_share_symbol  # noqa: E402
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="生成指定日期的 3×Top-N 股票推荐榜单")
     parser.add_argument("--date", required=True, help="推荐日期（YYYYMMDD）")
-    parser.add_argument("--model", default="models/best_mtl.pt", help="模型 checkpoint 路径")
-    parser.add_argument("--output", default="output/recommendations", help="输出目录")
+    parser.add_argument("--model", default=None, help="模型 checkpoint 路径")
+    parser.add_argument("--output", default="outputs/predictions", help="输出目录")
     parser.add_argument("--top-n", type=int, default=10, help="每个时间跨度推荐数量")
     return parser.parse_args(argv)
 

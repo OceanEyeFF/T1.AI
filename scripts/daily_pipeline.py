@@ -51,10 +51,10 @@ logger = logging.getLogger(__name__)
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="生产级日频流水线（数据刷新→推荐→持久化→验证→记录）")
     p.add_argument("--date", required=True, help="目标交易日 YYYYMMDD")
-    p.add_argument("--config", default="configs/pipeline.yaml", help="流水线配置文件路径")
-    p.add_argument("--data-source-config", default="configs/data_source.yaml", help="数据源配置文件路径")
-    p.add_argument("--model", default="models/latest_mtl.pt", help="模型 checkpoint 路径（生产模式）")
-    p.add_argument("--model-config", default="configs/model_mtl.yaml", help="模型结构配置文件（生产模式）")
+    p.add_argument("--config", default="inputs/configs/pipeline.toml", help="流水线配置文件路径")
+    p.add_argument("--data-source-config", default="inputs/configs/data_source.toml", help="数据源配置文件路径")
+    p.add_argument("--model", default=None, help="模型 checkpoint 路径（生产模式）")
+    p.add_argument("--model-config", default="inputs/configs/profiles/model_mtl.toml", help="模型结构配置文件（生产模式）")
     p.add_argument("--skip-training", action="store_true", help="预留：跳过增量训练（Task 3.2）")
     p.add_argument("--dry-run", action="store_true", help="使用合成数据快速运行（不访问外部数据源）")
     p.add_argument("--symbols", nargs="*", default=None, help="可选：覆盖默认 universe（6位代码或带后缀）")
@@ -178,7 +178,7 @@ def _build_data_source(data_source_config_path: str | Path) -> tuple[Any, Any]:
     default_source = str(cfg.get("default_source") or "akshare")
     sources = cfg.get("sources") or {}
     selected = sources.get(default_source) or {}
-    cache_dir = Path(str(selected.get("cache_dir") or "data/cache"))
+    cache_dir = Path(str(selected.get("cache_dir") or "inputs/data/cache"))
     cache_dir = (PROJECT_ROOT / cache_dir).resolve()
 
     if default_source == "tushare":

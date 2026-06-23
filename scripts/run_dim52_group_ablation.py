@@ -343,7 +343,7 @@ def _parse_args() -> argparse.Namespace:
         help="可选：附加对比报告（例如已有的大组消融报告）",
     )
     parser.add_argument("--workspace", default="")
-    parser.add_argument("--output-dir", default="output/reports")
+    parser.add_argument("--output-dir", default="outputs/reports")
     parser.add_argument("--tag", default=datetime.now().strftime("%Y%m%d"))
     parser.add_argument("--groups", nargs="*", default=[])
     parser.add_argument("--seq-len", type=int, default=20)

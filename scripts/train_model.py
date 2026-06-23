@@ -92,7 +92,7 @@ def main() -> None:
     parser.add_argument(
         "--save-dir",
         type=str,
-        default="runs/checkpoints",
+        default="workspace/checkpoints",
         help="模型保存目录（默认runs/checkpoints）",
     )
 

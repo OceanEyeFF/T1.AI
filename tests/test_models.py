@@ -434,7 +434,7 @@ def test_early_stopping_triggers_when_val_ic_stalls(tmp_path: Path):
 
 
 def test_model_mtl_yaml_parses():
-    cfg = yaml.safe_load(Path("configs/model_mtl.yaml").read_text(encoding="utf-8"))
+    cfg = yaml.safe_load(Path("inputs/configs/profiles/model_mtl.toml").read_text(encoding="utf-8"))
     assert isinstance(cfg, dict)
     assert cfg["model"]["input_dim"] == 11
     assert cfg["model"]["min_seq_len"] == 20

@@ -123,7 +123,7 @@ def main() -> None:
         benchmark_code="000300",  # 沪深300
         train_end_date=train_end_date,
         valid_end_date=valid_end_date,
-        cache_dir=Path("data/cache"),
+        cache_dir=Path("inputs/data/cache"),
         output_dir=Path("data/datasets"),
         nan_threshold=0.2,
     )

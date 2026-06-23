@@ -167,7 +167,7 @@ def main():
     parser.add_argument(
         "--output",
         type=str,
-        default="runs/baseline_models",
+        default="workspace/checkpoints",
         help="输出目录",
     )
     args = parser.parse_args()

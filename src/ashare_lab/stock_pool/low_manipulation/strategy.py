@@ -348,7 +348,7 @@ class LowManipulationStrategy(StockPoolStrategy):
 
     def __init__(
         self,
-        data_root: str | Path = "data/cache",
+        data_root: str | Path = "inputs/data/cache",
         score_threshold: float = DEFAULT_SCORE_THRESHOLD,
     ) -> None:
         self._data_root = Path(data_root)

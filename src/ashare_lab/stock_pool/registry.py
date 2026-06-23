@@ -104,7 +104,7 @@ def load_stock_pool_record(path: str | Path) -> StockPoolRecord:
 def load_stock_pool_registry(registry_dir: str | Path) -> dict[tuple[str, str], StockPoolRecord]:
     root = Path(registry_dir)
     records: dict[tuple[str, str], StockPoolRecord] = {}
-    for file_path in sorted(root.glob("*.toml")):
+    for file_path in sorted(root.rglob("*.toml")):
         record = load_stock_pool_record(file_path)
         key = (record.stock_pool_id, record.stock_pool_version)
         if key in records:

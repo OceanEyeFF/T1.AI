@@ -40,7 +40,7 @@ def _synthetic_daily_bars(symbol: str, periods: int = 120) -> pd.DataFrame:
 
 
 def test_load_stock_pool_record_from_registry_sample() -> None:
-    path = Path("configs/stock_pools/custom_low_manipulation_v1.toml")
+    path = Path("inputs/pools/low_manipulation/config.toml")
     record = load_stock_pool_record(path)
     assert record.stock_pool_id == "custom_low_manipulation"
     assert record.stock_pool_version == "v1"
@@ -48,18 +48,21 @@ def test_load_stock_pool_record_from_registry_sample() -> None:
 
 
 def test_load_stock_pool_registry_and_get_single_record() -> None:
-    registry = load_stock_pool_registry("configs/stock_pools")
+    registry = load_stock_pool_registry("inputs/pools")
     assert ("custom_low_manipulation", "v1") in registry
-    record = get_stock_pool_record("configs/stock_pools", stock_pool_id="custom_low_manipulation")
+    record = get_stock_pool_record("inputs/pools", stock_pool_id="custom_low_manipulation")
     assert record.pool_family == "custom"
 
 
 def test_resolve_stock_pool_symbols_and_export_artifacts(tmp_path: Path) -> None:
-    record = get_stock_pool_record("configs/stock_pools", stock_pool_id="custom_low_manipulation")
-    symbols = resolve_stock_pool_symbols(record, registry_root=Path.cwd())
+    registry_root = Path.cwd() / "inputs/pools"
+    record = get_stock_pool_record(registry_root, stock_pool_id="custom_low_manipulation")
+    symbols = resolve_stock_pool_symbols(record, registry_root=registry_root)
     assert len(symbols) == 14
 
-    artifacts = export_stock_pool_artifacts(record, output_dir=tmp_path, registry_root=Path.cwd())
+    artifacts = export_stock_pool_artifacts(
+        record, output_dir=tmp_path, registry_root=registry_root
+    )
     exported_csv = artifacts["symbols_csv"]
     exported_meta = artifacts["metadata_json"]
     assert exported_csv.exists()
@@ -77,7 +80,7 @@ def test_resolve_symbols_input_supports_stock_pool_registry(tmp_path: Path) -> N
         symbols_csv=None,
         stock_pool_id="custom_low_manipulation",
         stock_pool_version="v1",
-        stock_pool_registry_dir="configs/stock_pools",
+        stock_pool_registry_dir="inputs/pools",
         stock_pool_export_dir=str(tmp_path),
     )
     assert len(symbols) == 14

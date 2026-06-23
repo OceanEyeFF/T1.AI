@@ -1,6 +1,6 @@
 [build_sequence_dataset_market_state]
 symbols_csv = "data/symbols_lstm_sectors_70.csv"
-cache_dir = "data/cache"
+cache_dir = "inputs/data/cache"
 source = "tushare_live"
 request_interval_seconds = 0.8
 

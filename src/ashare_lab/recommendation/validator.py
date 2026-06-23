@@ -150,7 +150,7 @@ class AkshareSourceAdapter:
         adjust: str = "qfq",
         refresh: bool = False,
     ) -> None:
-        self.cache_dir = cache_dir or Path("data/cache")
+        self.cache_dir = cache_dir or Path("inputs/data/cache")
         self.adjust = adjust
         self.refresh = refresh
 
@@ -187,7 +187,7 @@ class TushareSourceAdapter:
         refresh: bool = False,
         token: str | None = None,
     ) -> None:
-        self.cache_dir = cache_dir or Path("data/cache")
+        self.cache_dir = cache_dir or Path("inputs/data/cache")
         self.adjust = adjust
         self.refresh = refresh
         self.token = token
@@ -234,7 +234,7 @@ class ODPSourceAdapter:
         base_url: str | None = None,
         prefer_rest: bool = False,
     ) -> None:
-        self.cache_dir = cache_dir or Path("data/cache")
+        self.cache_dir = cache_dir or Path("inputs/data/cache")
         self.provider = provider
         self.interval = interval
         self.refresh = refresh
@@ -277,7 +277,7 @@ class HS300IndexCalendarSource:
     """基于 HS300（000300）指数日线的交易日历源。"""
 
     def __init__(self, cache_dir: Path | None = None, refresh: bool = False) -> None:
-        self.cache_dir = cache_dir or Path("data/cache")
+        self.cache_dir = cache_dir or Path("inputs/data/cache")
         self.refresh = refresh
 
     def fetch_hs300_daily(self, start_date: str, end_date: str) -> pd.DataFrame:
