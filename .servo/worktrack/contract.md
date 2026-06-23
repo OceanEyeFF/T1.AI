@@ -1,83 +1,91 @@
 ---
-title: "WT-S1-CLEANUP Worktrack Contract"
+title: "WT-S2-A2-next Worktrack Contract"
 artifact_type: "worktrack-contract"
-updated: "2026-06-18T10:06:55+08:00"
+updated: "2026-06-22T11:12:24+08:00"
 owner: "OceanEyeFF"
 ---
 
-# WT-S1-CLEANUP Worktrack Contract
+# WT-S2-A2-next Worktrack Contract
 
-> This contract binds a post-acceptance cleanup/checkpoint Worktrack to completed milestone `MS-S1-001`. It does not reopen MS-S1 acceptance or change the model verdict.
+> This contract binds the narrowing step between A2 and A3. It compresses A1 output into the only A3 input contract.
 
 ## Metadata
 
-- worktrack_id: WT-S1-CLEANUP
-- title: MS-S1 post-acceptance cleanup and local checkpoint
-- branch: milestone/MS-S1-001-three-head-credibility
+- worktrack_id: WT-S2-A2-next
+- title: A1 产出压缩与 A3 输入窄化
+- branch: milestone/MS-S2-001-stock-pool-stratification
 - baseline_branch: develop
-- baseline_ref: 0095699d5610554bb23bbe511d2d2df8ad27abeb
+- baseline_ref: 1204de8e7a685c0624c2d8a13aa1e7a0c9890bed
 - owner: OceanEyeFF
-- updated: 2026-06-18T10:06:55+08:00
+- updated: 2026-06-22T11:12:24+08:00
 - contract_status: initialized
 
 ## Branch Policy
 
 - baseline_branch: develop
-- branch_source_ref: milestone/MS-S1-001-three-head-credibility@0095699d5610554bb23bbe511d2d2df8ad27abeb
-- worktrack_branch: milestone/MS-S1-001-three-head-credibility
-- integration_target_ref: milestone/MS-S1-001-three-head-credibility
-- closeout_target_ref: milestone/MS-S1-001-three-head-credibility
+- branch_source_ref: develop@1204de8e7a685c0624c2d8a13aa1e7a0c9890bed
+- worktrack_branch: milestone/MS-S2-001-stock-pool-stratification
+- integration_target_ref: milestone/MS-S2-001-stock-pool-stratification
+- closeout_target_ref: milestone/MS-S2-001-stock-pool-stratification
 - final_baseline_branch: develop
-- checkpoint_base_ref: 0095699d5610554bb23bbe511d2d2df8ad27abeb
-- branch_policy_note: This cleanup Worktrack reuses the completed MS-S1 milestone branch only to create a local git checkpoint. It does not authorize push, merge to `develop`, branch deletion, release, provider calls, or MS-S2 initialization.
+- checkpoint_base_ref: 1204de8e7a685c0624c2d8a13aa1e7a0c9890bed
+- branch_policy_note: This Worktrack runs on the single active MS-S2 milestone branch. It does not authorize push, merge to `develop`, branch deletion, release, provider calls, model retraining, or A2/A3 execution.
 
 ## Milestone Binding
 
-- milestone_id: MS-S1-001
-- derived_from_milestone: post_acceptance_cleanup
-- milestone_artifact: .servo/milestone/MS-S1-001.md
+- milestone_id: MS-S2-001
+- derived_from_milestone: true
+- milestone_artifact: .servo/milestone/MS-S2-001.md
 - milestone_history: .servo/repo/milestone-history.md
-- programmer_authorization: User requested a cleanup Worktrack belonging to MS-S1 and explicitly allowed local git commit in this Worktrack.
+- worktrack_intake_review: .servo/worktrack/MS-S2-001-WT-S2-A2-next-intake-review.md
+- programmer_authorization: User requested an A2-next step before A3 to compress A1 output because A1 had over-expansion risk.
 
 ## Node Type
 
-- type: docs/test/checkpoint
+- type: design/docs
 - primary_type: docs
 - source_from_goal_charter: .servo/goal-charter.md#Engineering-Node-Map
-- baseline_form: local-commit-on-confirmed-current-milestone-branch
-- merge_required: no for this cleanup Worktrack; merge to `develop` remains separately approval-gated.
-- gate_criteria: diff hygiene + focused validation + policy boundary
-- if_interrupted_strategy: preserve diff and report checkpoint status
+- baseline_form: report-or-doc-artifact-on-confirmed-milestone-branch
+- merge_required: no direct merge in this Worktrack; milestone branch closeout remains separately gated.
+- gate_criteria: compression contract review + no A3 execution + no provider-call policy evidence
+- if_interrupted_strategy: preserve compression artifact and stop with handback notes
 
 ## Task Goal
 
-- goal_summary: Verify the accepted MS-S1 diff is clean, record post-acceptance cleanup evidence, and create a local git commit checkpoint on the MS-S1 milestone branch.
-- full_goal: Close the handoff gap between accepted MS-S1 evidence and the next milestone planning by ensuring the worktree has no patch/conflict residue, focused tests pass, MS-S1 artifacts consistently show completed/accepted state, and the complete MS-S1 diff is captured in one local commit.
+- goal_summary: Compress A1 taxonomy into a narrow A3 input contract.
+- full_goal: Preserve A1 as broad research background, but define the only layers, fields, names, and non-goals that A3 may consume so sample-pool construction cannot expand into small-cap, suspected-control, threshold tuning, or model-revalidation work.
 
 ## Scope
 
-- scope_summary: cleanup artifacts, validation evidence, policy evidence, and local git commit checkpoint for MS-S1.
+- scope_summary: A3 input contract compression only.
 - in_scope:
-  - record this post-acceptance cleanup Worktrack under MS-S1.
-  - validate patch hygiene with `git diff --check`.
-  - validate focused report/checker tests in `py311-private`.
-  - confirm no active/planned milestone remains before MS-S2 intake.
-  - create one local commit on `milestone/MS-S1-001-three-head-credibility`.
+  - create a compressed A3 input contract.
+  - mark full A1 taxonomy as background evidence only.
+  - defer mid/small-cap observation and suspected-control observation out of A3.
+  - preserve quota, cache-first, dry-run-first, and no-signal-promotion boundaries.
 - out_of_scope:
-  - push, merge to `develop`, branch deletion, force reset, destructive cleanup, release/version action, provider calls, model retraining, model promotion, alpha_score promotion, MS-S2 creation, or changing the accepted MS-S1 model verdict.
+  - code implementation, live TuShare provider calls, quota-consuming fetches, sample-pool registration, export smoke, model revalidation, model retraining, signal promotion, push, merge, branch deletion, release/version action, or final milestone acceptance.
 
 ## Acceptance Criteria
 
-- `git diff --check` passes before commit.
-- Focused pytest suite passes before commit.
-- `.servo` patch/conflict residue check passes before commit.
-- MS-S1 remains `completed` and accepted with residual risk.
-- The local commit is created on `milestone/MS-S1-001-three-head-credibility`.
-- No push, merge, branch deletion, release, provider call, or MS-S2 registration occurs.
+- A3 input contract explicitly narrows A1 to base universe, liquid large-cap proxy, and at most one low-control-proxy candidate path.
+- Mid/small-cap observation and suspected-control observation are deferred out of A3.
+- A3 is instructed to consume the compressed contract, not the full A1 taxonomy.
+- No quota-consuming provider call, model revalidation, or A3 sample construction occurs.
 
 ## Verification Requirements
 
-- `git diff --check`
-- `PYTHONPATH="src:." conda run -n "py311-private" python -m pytest -q tests/test_compare_ic_reports.py tests/test_audit_ic_reports.py tests/test_xgboost_report_contract.py tests/test_sanity_checks.py`
-- `rg -n "\\*\\*\\* (Add File|End Patch|Begin Patch|Update File|Delete File)|^@@|<<<<<<<|>>>>>>>|=======" .servo scripts src tests --glob "!**/.servo/worktrack/contract.md" --glob "!**/.servo/worktrack/gate-evidence.md"`
-- `git status --short`
+- `git diff --check -- .servo docs src tests`
+- `git diff --check -- .servo docs`
+- Review compressed A3 input contract against A1/A2 evidence.
+- Policy evidence that no quota-consuming TuShare call was made.
+
+## Execution Policy
+
+> Execution Policy canonical semantics are not repeated here. Runtime defaults are embedded below so installed skill packages do not need source-repo docs. Source-side authoring trace: `docs/harness/artifact/worktrack/contract.md#execution-policy`.
+
+- execution_policy_contract_ref: bundled-runtime-semantics
+- runtime_dispatch_mode: auto
+- dispatch_mode_source: worktrack-contract
+- allowed_values: auto / delegated / current-carrier
+- fallback_reason_required: yes

@@ -1,17 +1,17 @@
 ---
-title: "WT-S1-CLEANUP Gate Evidence"
+title: "WT-S2-A4 Gate Evidence"
 artifact_type: "worktrack-gate-evidence"
-updated: "2026-06-18T10:06:55+08:00"
+updated: "2026-06-22T12:30:00+08:00"
 owner: "OceanEyeFF"
 ---
 
-# WT-S1-CLEANUP Gate Evidence
+# WT-S2-A4 Gate Evidence
 
 ## Metadata
 
-- worktrack_id: WT-S1-CLEANUP
-- milestone_id: MS-S1-001
-- updated: 2026-06-18T10:06:55+08:00
+- worktrack_id: WT-S2-A4
+- milestone_id: MS-S2-001
+- updated: 2026-06-22T12:30:00+08:00
 - gate_round: 1
 - required_evidence_lanes: review, validation, policy
 - gate_status: ready_for_judgment
@@ -21,7 +21,13 @@ owner: "OceanEyeFF"
 - confidence: high
 - ready_for_gate: yes
 - review_result: pass
-- decisive_evidence: Cleanup contract is scoped to post-acceptance local checkpoint only; it does not reopen MS-S1 acceptance or change the model verdict.
+- decisive_evidence: Downstream revalidation input contract and milestone closing report produced. Completion signals 11/11 (100%), acceptance criteria 9/10, non-goals preserved 7/7.
+- review_dimensions:
+  - performance: not applicable; documentation only.
+  - architecture: pass; contract defines clear input surface for downstream milestone.
+  - security: pass; no secrets or provider calls.
+  - quality: pass; all worktracks summarized, signals and criteria individually assessed.
+  - tests: not applicable; documentation only.
 
 ## Validation Lane
 
@@ -29,31 +35,29 @@ owner: "OceanEyeFF"
 - ready_for_gate: yes
 - validation_result: pass
 - validation_commands:
-  - `git diff --check` -> pass
-  - `PYTHONPATH="src:." conda run -n "py311-private" python -m pytest -q tests/test_compare_ic_reports.py tests/test_audit_ic_reports.py tests/test_xgboost_report_contract.py tests/test_sanity_checks.py` -> `41 passed`
-  - `rg -n "\\*\\*\\* (Add File|End Patch|Begin Patch|Update File|Delete File)|^@@|<<<<<<<|>>>>>>>|=======" .servo scripts src tests --glob "!**/.servo/worktrack/contract.md" --glob "!**/.servo/worktrack/gate-evidence.md"` -> no matches
+  - `git diff --check -- docs/modules/downstream_revalidation_input_contract_MS_S2_001.md .servo/worktrack/s2-a4-milestone-closing-report.md` -> pass
 
 ## Policy Lane
 
-- confidence: medium
+- confidence: high
 - ready_for_gate: yes
-- policy_result: pass-for-local-commit-only
+- policy_result: pass
 - policy_checks:
-  - local git commit: explicitly allowed by programmer for this Worktrack.
+  - quota-consuming TuShare call: not authorized and not performed.
+  - model retraining or model promotion: not authorized and not performed.
+  - 3/5/10d revalidation: not performed (deferred to downstream milestone).
+  - signal promotion: not performed.
+  - git commit: not authorized.
   - git push: not authorized.
   - merge to `develop`: not authorized.
   - branch deletion: not authorized.
-  - destructive cleanup: not authorized.
   - release/version action: not authorized.
-  - provider calls or production/external side effects: not authorized.
-  - model retraining or model promotion: not authorized.
-  - MS-S2 initialization: not authorized in this Worktrack.
 
 ## Gate Judgment
 
 - worktrack_gate_verdict: pass
-- verdict_reason: cleanup scope is bounded, validation passed, and local commit is explicitly authorized for this Worktrack.
-- recommended_next_route: WorktrackScope.Close local checkpoint
+- verdict_reason: A4 completes the final planned worktrack: downstream revalidation input contract is defined with pool references, metadata requirements, TuShare budget estimate, and prohibited claims; milestone closing report confirms 5/5 worktracks completed with all gates pass, 11/11 completion signals satisfied.
+- recommended_next_route: WorktrackScope.Close -> Milestone final acceptance (programmer handback).
 - residual_risks:
-  - MS-S1 diff is large and contains both code/test changes and Servo artifacts.
-  - Merge to `develop` remains a separate approval boundary after local checkpoint.
+  - Milestone complete but requires programmer final acceptance.
+  - All residual risks from A1/A2/A3 carry forward to downstream milestone.

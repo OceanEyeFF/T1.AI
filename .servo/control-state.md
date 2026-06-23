@@ -13,71 +13,72 @@ owner: "OceanEyeFF"
 
 ## Metadata
 
-- updated: 2026-06-17T14:00:13+08:00
+- updated: 2026-06-22T14:30:00+08:00
 - owner: OceanEyeFF
 
 ## Current Control Level
 
 - repo_scope: active
-- worktrack_scope: inactive
+- worktrack_scope: active
 
 ## Active Worktrack
 
 - active_worktrack: none
-- worktrack_status: none
-- worktrack_contract: worktrack/contract.md
-- plan_task_queue: worktrack/plan-task-queue.md
-- gate_evidence: worktrack/gate-evidence.md
-- active_task_window: WT-S1-CLEANUP-closeout
-- selected_next_action_id: RepoScope.Observe
+- worktrack_status: all_completed
+- worktrack_contract: N/A
+- plan_task_queue: N/A
+- gate_evidence: N/A
+- active_task_window: none
+- selected_next_action_id: none
 - worktrack_gate_verdict: N/A
 - worktrack_blocker: none
-- worktrack_residual_risk: WT-S1-CLEANUP completed local checkpoint; merge/push remain approval-gated.
+- worktrack_residual_risk: N/A — MS-R0-001 all worktracks completed (A1-A4)
 
 ## Active Milestone
 
-- active_milestone: none
-- milestone_status: completed
+- active_milestone: MS-R1-001
+- milestone_status: active
 - milestone_kind: goal-driven
-- milestone_artifact: milestone/MS-S1-001.md
+- milestone_artifact: milestone/MS-R0-001.md
 - milestone_backlog: repo/milestone-backlog.md
 - milestone_history: repo/milestone-history.md
 - milestone_pipeline_summary:
-  - active_count: 0
+  - active_count: 1
   - planned_count: 0
-  - completed_count: 3
+  - completed_count: 5
   - superseded_count: 0
+  - note: MS-R1-001 模型层提取与统一治理 (8 worktracks planned)
 - milestone_review_gate_ready: yes
 - latest_review_status: effective_pass
 - milestone_review_count: 1
-- latest_review_checkpoint: MS-S1-001-intake-2026-06-12T10:01:18+08:00
+- latest_review_checkpoint: MS-R0-001-intake-2026-06-22T15:15:00+08:00
 - effective_review_pass: true
-- next_milestone_route: observe repo and prepare next Milestone intake when requested.
+- next_milestone_route: MS-R1-001 active; first worktrack is WT-R1-A1 (从 develop 提取 LSTM/XGB 源码并审计差异)
 
 ## Baseline Branch
 
 - baseline_branch: develop
-- baseline_ref: 0095699d5610554bb23bbe511d2d2df8ad27abeb
+- baseline_ref: 1204de8e7a685c0624c2d8a13aa1e7a0c9890bed
 
 ## Branch Environment Guard
 
-- current_branch_context: baseline
-- expected_branch_context: baseline
+- current_branch_context: milestone
+- expected_branch_context: milestone
 - branch_context_guard_status: pass
-- branch_context_required_ref: refs/heads/develop
-- active_milestone_branch: milestone/MS-S1-001-three-head-credibility
-- active_milestone_branch_sync_state: merged_to_develop_at_13fc2a2
-- worktrack_branch: none
+- branch_context_required_ref: refs/heads/milestone/MS-S2-001-stock-pool-stratification
+- active_milestone_branch: milestone/MS-S2-001-stock-pool-stratification
+- active_milestone_branch_sync_state: created_from_develop_at_1204de8e7a685c0624c2d8a13aa1e7a0c9890bed
+- worktrack_branch: milestone/MS-S2-001-stock-pool-stratification
 
 ## Current Next Action
 
-- `MS-S1-001` was accepted by programmer on 2026-06-17, locally checkpointed by WT-S1-CLEANUP, and fast-forwarded into `develop`; next route is RepoScope.Observe / future Milestone intake.
+- MS-R0-001 activated 2026-06-22. First worktrack: WT-R0-A1 (铲平旧选股方法与粘连代码).
 
 ## Linked Formal Documents
 
 - repo_snapshot: repo/snapshot-status.md
 - repo_analysis: repo/analysis.md
-- milestone_artifact: milestone/MS-S1-001.md
+- milestone_artifact: milestone/MS-S2-001.md
 - milestone_backlog: repo/milestone-backlog.md
 - milestone_history: repo/milestone-history.md
 - planned_worktrack_backlog: repo/planned-worktrack-backlog.md
@@ -88,36 +89,51 @@ owner: "OceanEyeFF"
 ## Approval Boundary
 
 - needs_programmer_approval: yes
-- reason: Persistent Servo work habit controls are configured; commit, push, destructive cleanup, production calls, new dependency changes, and Worktrack Init beyond approved intake remain approval-gated.
-- approval_scope: commit, push, destructive operation, production/external side effect, release/version action, final milestone acceptance, and any branch/worktree action outside the configured milestone-branch policy.
+- reason: Persistent Servo work habit controls are configured; commit, push, destructive cleanup, production/external side effects, dependency changes, release/version actions, final milestone acceptance, unapproved scope expansion, and Worktrack Init outside confirmed active milestone/intake remain approval-gated.
+- approval_scope: commit, push, destructive operation, production/external side effect, dependency install/upgrade, release/version action, final milestone acceptance, scope expansion, and any branch/worktree action outside the configured one-development-branch-per-confirmed-milestone policy.
 - approval_persistence: persistent_work_habits_confirmed_on_2026-06-10
 - milestone_brief_confirmation: received for MS-ENV-000 and MS-S0-001 only; does not approve Worktrack Init, code mutation, package installation, environment repair, commit, push, or production actions.
 - one_shot_repair_confirmation: received on 2026-06-11 for WT-ENV-001 py311-private dependency repair and environment-contract migration only; does not approve commit, push, destructive cleanup, production/external side effects, release/version actions, or final milestone acceptance.
 - final_acceptance_MS_ENV_000: received on 2026-06-11T16:40:59+08:00; accepted CPU-first continuation and non-blocking GPU residual risk.
 - final_acceptance_MS_S0_001: received on 2026-06-12T01:28:03+08:00; accepted evaluation/guardrail/planning milestone with residual risk and no model promotion.
+- final_acceptance_MS_S2_001: received on 2026-06-22T12:45:00+08:00; accepted stock-pool stratification milestone with all 5 worktracks pass, 11/11 completion signals, 9/10 acceptance criteria. Commit: 98ef372.
+- final_acceptance_MS_R0_001: received on 2026-06-23T00:00:00+08:00; accepted selection-layer refactor. 4/4 worktracks (A1-A4), 8/8 completion signals, 6/6 acceptance criteria, 402/402 tests pass.
+- milestone_brief_MS_R1_001: received on 2026-06-23T00:00:00+08:00; planned milestone registered for model-layer extraction and governance, 8 worktracks.
 - milestone_brief_MS_S1_001: received on 2026-06-12T10:01:18+08:00; planned milestone registered for three-head prediction credibility and report contract, explicitly excluding alpha_score optimization/promotion.
+- milestone_brief_MS_S2_001: received on 2026-06-22T09:21:03+08:00; planned milestone registered for stock-pool stratification definition and registry contract, explicitly excluding 3/5/10d revalidation, model retraining, and signal promotion.
+- milestone_plan_update_MS_S2_001: received on 2026-06-22T10:15:03+08:00; Worktrack planning updated to use TuShare cache-first, dry-run-first, quota-aware analysis and to keep low-control-probability labels as proxy/candidate boundaries.
+- milestone_plan_update_MS_S2_001_A2_testing: received on 2026-06-22T10:18:40+08:00; A2 must include fetch-strategy tests and explicitly account for TuShare 1H frequency-wall time-waiting / resume behavior before A3 may rely on quota-consuming fetch paths.
+- milestone_activation_MS_S2_001: received on 2026-06-22T10:48:41+08:00; user approved starting MS-S2-001 and requested a programmer mid-review after A2 and before A3.
+- milestone_plan_update_MS_S2_001_A2_next: received on 2026-06-22T11:12:24+08:00; user requested inserting A2-next before A3 to compress A1 output due to over-expansion risk.
 
 ## User-Defined Servo Controls
 
 > 初始化时只记录用户可定义的控制偏好；不要询问或手动维护 Servo 可自动维护的 runtime facts。未确认字段按保守默认解释，不扩大权限。
 
 - continuous_progression_permission: allowed_within_confirmed_milestone
+  - semantics: Harness may continue through planned/approved Worktracks inside a confirmed active milestone until a formal stop condition is hit; this does not authorize new milestone creation, final milestone acceptance, release-sensitive actions, or out-of-scope work.
 - auto_append_worktrack_permission: allowed_within_active_milestone_budget
+  - semantics: Harness may append missing low-risk Worktracks only inside the active milestone, only when they preserve the approved milestone purpose and remain within the automatic Worktrack budget.
 - per_milestone_automatic_worktrack_budget: 6
 - default_servo_work_branch: develop
   - basis: programmer confirmed on 2026-06-09 that future work should focus on the current worktree/current branch instead of multiple worktrees.
+  - semantics: `develop` is the default review/baseline branch for Servo-managed work, not a blanket authorization for direct mutation.
 - protected_branch_policy: develop_as_programmer_review_branch
   - basis: programmer confirmed on 2026-06-10 that `develop` should be the day-to-day programmer review branch under Servo.
+  - semantics: Direct mutation of `develop` remains approval-gated except for explicitly approved checkpoint/acceptance flows.
 - branch_mutation_policy: one_development_branch_per_milestone
   - allowed: create or use one independent development branch per confirmed milestone.
   - forbidden_by_default: per-feature branch proliferation, multiple worktrees, branch deletion, force reset, and branch/worktree expansion outside the active milestone policy.
   - commit_push_policy: git commit and git push require explicit programmer approval.
+  - commit_push_policy: git commit and git push require explicit programmer approval.
   - observed_standing_rule: no git commit, git push, git reset, branch deletion, worktree expansion, or production call unless explicitly requested by the programmer.
+  - semantics: A confirmed active milestone may use one dedicated development branch; feature branch proliferation, extra worktrees, branch deletion, reset/force operations, and branch expansion remain approval-gated.
 - milestone_branch_policy:
   - default_review_branch: develop
   - milestone_development_branch_required: yes
   - branch_naming_hint: milestone/{milestone_id}-{short-slug}
   - branch_creation_authority: allowed for confirmed active milestones; do not create ad hoc feature branches.
+  - semantics: Branch creation authority applies only after a milestone is confirmed active; no ad hoc branch creation for candidate or unapproved milestones.
 - auto_maintained_runtime_facts_not_asked:
   - active_milestone
   - active_worktrack
@@ -144,11 +160,17 @@ owner: "OceanEyeFF"
 > `subagent_dispatch_mode` 是使用 SubAgent 的 repo 级默认开关。`subagent_dispatch_mode_override_scope: worktrack-contract-primary` 表示默认让工作追踪内的 `runtime_dispatch_mode` 优先；只有显式改为 `global-override` 时，control-state 才压过 worktrack 合同。
 
 - post_contract_autonomy: delegated-continuous
+  - semantics: After a Worktrack Contract is established inside a confirmed active milestone, Harness may continue across bounded Worktrack control steps until a formal stop condition is hit.
 - autonomy_scope: active-milestone-only
+  - semantics: No autonomous continuation is allowed when `active_milestone` is none, completed, unconfirmed, or outside the approved milestone purpose.
 - max_auto_new_worktracks: 6
+  - semantics: Mirrors `per_milestone_automatic_worktrack_budget`; budget applies only to missing in-purpose Worktracks inside the active milestone.
 - stop_after_autonomous_slice: no
-- subagent_dispatch_mode: delegated
+  - semantics: Do not stop merely because one bounded slice completed; still stop on approval, evidence, route, runtime, branch, scope, or handback conditions.
+- subagent_dispatch_mode: auto
+  - semantics: Repo-level fallback policy; automatically attempt SubAgent dispatch when runtime support, permissions, dispatch package safety, task coupling, parallel value, risk profile, and context budget make delegation appropriate. If delegation is unsafe or unavailable, record explicit runtime fallback instead of silently claiming SubAgent dispatch.
 - subagent_dispatch_mode_override_scope: worktrack-contract-primary
+  - semantics: Current Worktrack Contract `runtime_dispatch_mode` wins; set to `global-override` only when the repo-level mode must override every Worktrack.
 - subagent_default_model: N/A
 - runtime_dispatch_profile:
   - backend_runtime: codex
@@ -171,6 +193,37 @@ owner: "OceanEyeFF"
   - One-shot execution-cycle authority granted on 2026-06-11 for `MS-S0-001`: up to 30 continuous Worktrack actions, SubAgent delegation, low-risk Worktrack self-approval, strict validation, automatic append/start for missing Worktracks within this milestone. This is not persistent authority for commit, push, install, repair, destructive cleanup, production/external side effects, model retraining, or final milestone acceptance.
   - One-shot repair authority granted on 2026-06-11 by programmer message "批准更改": install missing dependencies into `py311-private` and migrate active environment contract from `ashare-lab` to `py311-private`.
 
+## Low-Risk Default-Flow Autonomy Policy
+
+> 本段把连续执行权限收窄为可校验的默认流规则。它不扩大 Approval Boundary；任一 forbidden 或 stop_condition 命中时必须 handback、审批或 recover。
+
+- policy_status: explicit_control_constraint
+- allowed:
+  - read-only observation and artifact hydration inside the current approved scope.
+  - state consistency checks, route estimation, and Worktrack task queue scheduling inside a confirmed active milestone.
+  - non-destructive docs/template/test edits that match the active Worktrack Contract.
+  - local validation commands that have no external side effect and fit the active Worktrack verification requirements.
+  - repo-refresh writeback after a passed Gate when closeout evidence is complete.
+  - SubAgent dispatch attempts when runtime support, permission, dispatch package safety, context budget, and task risk allow it.
+- forbidden:
+  - goal change, unapproved scope expansion, new milestone creation, or final milestone acceptance.
+  - release, publish, package version, tag, dist-tag, GitHub Release, or publish workflow changes.
+  - protected branch mutation, force push/reset, branch deletion, worktree expansion, or branch action outside one development branch per confirmed milestone.
+  - destructive cleanup, dependency install/upgrade, environment repair, secret/security/privacy-sensitive action, deploy/network/database migration, production/external side effect, external paid/quota-consuming call, model retraining, or model promotion.
+- stop_condition:
+  - missing, stale, or conflicting evidence.
+  - branch context mismatch for a mutating Function.
+  - Gate soft-fail, hard-fail, or blocked verdict.
+  - runtime dispatch gap when the next route requires a safe delegation carrier.
+  - Worktrack Contract scope boundary, approved milestone purpose, or automatic Worktrack budget would be exceeded.
+  - programmer judgment is required, approval boundary is unclear, release-sensitive signal appears, or final milestone acceptance boundary is reached.
+- evidence_required:
+  - hydrated control-state and linked artifacts.
+  - route decision and selected Scope/Function.
+  - Worktrack Contract / scope boundary when in WorktrackScope.
+  - selected task, dispatch packet, and runtime dispatch profile before execution.
+  - validation, governance, policy evidence, Gate verdict, closeout record, and repo-refresh checkpoint before baseline advancement.
+
 ## Handback Guard
 
 - handoff_state: repo_observe_ready
@@ -186,12 +239,12 @@ owner: "OceanEyeFF"
 > 记录最近一次 worktrack 关闭后的已验证基线，供后续续跑时快速定位。
 
 - last_verified_checkpoint: 0095699d5610554bb23bbe511d2d2df8ad27abeb
-- latest_observed_checkpoint: 13fc2a2
+- latest_observed_checkpoint: 98ef372
 - last_doc_catch_up_checkpoint: N/A
-- milestone_input_checkpoint: MS-S1-001-active-2026-06-12T14:39:44+08:00
+- milestone_input_checkpoint: MS-R1-001-active-2026-06-23T00:00:00+08:00
 - checkpoint_type: git_commit
-- checkpoint_ref: HEAD
-- verified_at: 2026-06-18T10:20:00+08:00
+- checkpoint_ref: 98ef372
+- verified_at: 2026-06-23T00:00:00+08:00
 - if_no_commit_reason: N/A; MS-S0 baseline checkpoint commit 0095699d5610554bb23bbe511d2d2df8ad27abeb was created with programmer approval
 - alternative_traceability:
   - MS-S0 accepted baseline was checkpointed and fast-forwarded into `develop` at 0095699d5610554bb23bbe511d2d2df8ad27abeb with programmer approval.
@@ -204,7 +257,9 @@ owner: "OceanEyeFF"
 
 ## Autonomy Ledger
 
-- autonomy_budget_remaining: 26
+- autonomy_budget_remaining: 0
+- active_persistent_autonomy_budget_source: none (no active milestone)
+- historical_one_shot_budget_remaining: 26
 - autonomous_worktracks_opened: 4
 - one_shot_execution_cycle_budget:
   - granted_at: 2026-06-11
@@ -222,15 +277,15 @@ owner: "OceanEyeFF"
 - multi_worktree_cleanup_completed: yes
 - `.servo` bootstrap was generated by the installed Servo deploy helper, then project facts were filled from README, NEXT_STEPS, ROADMAP, pyproject, and git status.
 - three_track_plan_ref: docs/overview/three_track_development_plan_20260609.md
-- completed_milestone_latest: MS-S1-001 mainline three-head prediction credibility and report contract
-- last_active_milestone_initialized: MS-S1-001
-- planned_milestone_waiting: none
+- completed_milestone_latest: MS-S2-001 stock-pool stratification definition and registry contract
+- last_active_milestone_initialized: MS-R0-001
+- planned_milestone_waiting: MS-S3-001 (candidate, pre-milestone intake written but not activated)
 - worktrack_init_blocked_until: N/A
 - active_worktrack_initialized: none
-- worktrack_intake_review_ref: .servo/worktrack/MS-S1-001-WT-S1-A5-intake-review.md
-- worktrack_gate_evidence_ref: .servo/worktrack/gate-evidence.md
+- worktrack_intake_review_ref: N/A
+- worktrack_gate_evidence_ref: N/A
 - environment_validation_report_ref: .servo/worktrack/environment-validation-report.md
-- current_stop_condition: none; awaiting next programmer-directed milestone intake
-- active_intake_review_ref: .servo/worktrack/MS-S1-001-WT-S1-A5-intake-review.md
+- current_stop_condition: none; MS-R1-001 active, WT-R1-A1 ready for intake/init
+- active_intake_review_ref: .servo/repo/MS-S3-001-pre-milestone-intake-review.md
 - persistent_work_habits_updated: 2026-06-10
 - default_workflow_policy: develop is programmer review branch; one development branch per confirmed milestone; delegated SubAgent execution retained; commit and push require approval.

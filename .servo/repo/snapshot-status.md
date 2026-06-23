@@ -2,7 +2,7 @@
 title: "Repo Snapshot / Status"
 artifact_type: "repo-snapshot-status"
 generated_from: "servo-set-harness-goal-skill/assets/repo/snapshot-status.md"
-updated: "2026-06-17T14:00:13+08:00"
+updated: "2026-06-22T14:30:00+08:00"
 owner: "OceanEyeFF"
 ---
 
@@ -15,7 +15,7 @@ owner: "OceanEyeFF"
 - repo: T1.AI
 - baseline_branch: develop
 - updated: 2026-06-17T14:00:13+08:00
-- status: no-active-milestone
+- status: idle (MS-S2-001 completed and accepted; no active milestone)
 
 ## Mainline Status
 
@@ -30,7 +30,8 @@ owner: "OceanEyeFF"
   - business_code_changes: checkpointed MS-S0 focused A2 strict protocol gate in `scripts/compare_ic_reports.py` and tests.
   - research_docs_changes: checkpointed A2 evaluation gate protocol and Daily-CS workflow updates.
   - servo_control_changes: checkpointed `WT-A2-001`, `WT-A3-001`, `WT-B0-001`, and `WT-C0-001` initialized, verified, and closed.
-  - current_ms_s1_changes: checkpointed into `develop` at local commit `13fc2a2`; includes WT-S1-A1 random-label anti-cheat, WT-S1-A2 neutralization gate, WT-S1-A3 XGBoost report contract, WT-S1-A4 same-window blocked-by-data evidence, WT-S1-A5 final report, WT-S1-CLEANUP local checkpoint, and Servo control updates.
+  - current_ms_s1_changes: checkpointed into `develop` at local commit `13fc2a2`; includes WT-S1-A1 through WT-S1-CLEANUP.
+  - current_ms_s2_changes: checkpointed into `milestone/MS-S2-001-stock-pool-stratification` at commit `98ef372`; includes stock-pool stratification contracts, TuShare fetch strategy (14 tests), registry pools (custom_liquid_large_proxy_v1, custom_low_control_proxy_candidate_v1, custom_low_manipulation_v1), pool construction and scoring scripts.
 - worktree_state:
   - active_worktree_count: 1
   - active_worktree_path: /home/oceaneye/github/T1.AI
@@ -110,19 +111,12 @@ owner: "OceanEyeFF"
   - `.servo/` is not ignored and is intended to carry versionable Servo control artifacts unless the programmer later changes that policy.
 - approval_state:
   - persistent Servo work habit variables are configured.
-  - `MS-ENV-000` is completed and accepted by the programmer.
-  - `MS-S0-001` is completed and accepted by the programmer with residual risk and no model promotion.
-  - `WT-A2-001` is closed with pass gate for protocol/audit-only scope.
-  - `WT-A3-001` is closed with pass gate for planning/dry-run optimization queue scope.
-  - `WT-B0-001` is closed with pass gate for read-only intraday data feasibility scope.
-  - `WT-C0-001` is closed with pass gate for decision-model I/O draft scope.
-  - `MS-S1-001` is completed and accepted with residual risk; final report concludes `continue-research / blocked-by-data`, excluding `alpha_score` optimization or promotion.
-  - `WT-S1-A1` is closed with pass gate for local random-label anti-cheat implementation and smoke evidence.
-  - `WT-S1-A2` is closed with pass gate for industry / market-cap neutralization gate implementation and smoke evidence.
-  - `WT-S1-A3` is closed with pass gate for XGBoost shared report protocol and comparison panel output.
-  - `WT-S1-A4` is closed with pass gate for checker-backed same-window blocked-by-data evidence.
-  - `WT-S1-A5` is closed with pass gate for final three-head acceptance synthesis.
-  - no model is promoted; A2 neutralization smoke is cautionary and `alpha_score` remains candidate research signal until later gates.
+  - `MS-ENV-000` is completed and accepted.
+  - `MS-S0-001` is completed and accepted with residual risk.
+  - `MS-S1-001` is completed and accepted with residual risk; final report concludes continue-research / blocked-by-data.
+  - `MS-S2-001` is completed and accepted (2026-06-22); 5/5 worktracks pass, 11/11 completion signals, 9/10 acceptance criteria. Stock-pool stratification registry contract delivered. Post-milestone WT-EXPAND-001 expanded cache to 65+ symbols and registered custom_low_manipulation_v1 (14 stocks).
+  - No model is promoted; `alpha_score` remains candidate research signal.
+  - MS-S3-001 pre-milestone intake written but not activated: low-manipulation pool prediction stability validation.
 - three_track_status:
   - `3d/5d/10d`: main alpha candidate line; A2 froze credibility protocol and A3 froze a planning/dry-run optimization queue under that protocol.
   - `1d`: B0 feasibility report completed; modeling remains blocked until live provider permission and fixed-pool fixed-window minute replay are proven.

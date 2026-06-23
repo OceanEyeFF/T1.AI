@@ -34,6 +34,7 @@ owner: "OceanEyeFF"
 - Current uncommitted business-logic changes: none observed.
 - Current uncommitted environment/control changes: Servo bootstrap/control artifacts and `py311-private` environment-contract updates.
 
+- facts: TODO(facts)
 ## Inferences
 
 - `MS-ENV-000` is completed and accepted; `py311-private` supports CPU development/testing for the repo.
@@ -42,11 +43,13 @@ owner: "OceanEyeFF"
 - Because the programmer works solo and requested a single worktree, branch/worktree proliferation should be treated as governance debt unless explicitly requested.
 - `.servo` control artifacts are currently intended to be visible in project state; `.serena/` and `.logs/` remain local-only.
 
+- inferences: TODO(inferences)
 ## Unknowns
 
 - Whether the three development lines should use physical Git branches now, or remain logical planning tracks on the current branch.
 - Whether local GPU support should become a separate Worktrack later; current decision is CPU-first.
 
+- unknowns: TODO(unknowns)
 ## Main Contradiction
 
 - current_main_contradiction: The project needs decision-ready `3d/5d/10d` signals, but current prediction credibility, false-signal controls, and optimization evaluation discipline are not yet sufficient.

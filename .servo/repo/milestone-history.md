@@ -1,8 +1,8 @@
 ---
 title: "Milestone History"
 artifact_type: "milestone-history"
-updated: "2026-06-17T14:00:13+08:00"
-updated_by: "harness-skill"
+updated: "2026-06-22T12:45:00+08:00"
+updated_by: "codex-with-programmer-acceptance"
 ---
 
 # Milestone History
@@ -10,6 +10,71 @@ updated_by: "harness-skill"
 > Completed and superseded milestones are moved here from `.servo/repo/milestone-backlog.md`.
 
 ## Completed
+
+### MS-S2-001
+
+- milestone_id: MS-S2-001
+- title: 股票池分层定义与注册契约
+- purpose: 把后续研究所需的股票池分层从口头方向固化为可版本化、可导出、可被训练/评估链路引用的 registry contract，为后续大盘低控盘概率池 3/5/10d 复验提供稳定输入。
+- status: completed
+- milestone_kind: goal-driven
+- priority: 3
+- depends_on_milestones: MS-S1-001
+- created_by: programmer-confirmed-codex
+- created_at: 2026-06-22T09:21:03+08:00
+- completed_at: 2026-06-22T12:45:00+08:00
+- accepted_by: OceanEyeFF
+- acceptance_verdict: accepted
+- commit: 98ef372 on milestone/MS-S2-001-stock-pool-stratification
+- updated: 2026-06-22T12:45:00+08:00
+- updated_by: codex-with-programmer-acceptance
+- artifact_path: .servo/milestone/MS-S2-001.md
+- downstream_contract: docs/modules/downstream_revalidation_input_contract_MS_S2_001.md
+- closing_report: .servo/worktrack/s2-a4-milestone-closing-report.md
+- worktrack_list:
+  - WT-S2-A1 (done): 股票池分层 taxonomy 与 proxy 边界冻结
+  - WT-S2-A2 (done): TuShare cache-first 获取策略、限流测试与 registry schema 差距检查
+  - WT-S2-A2-next (done): A1 产出压缩与 A3 输入窄化
+  - WT-S2-A3 (done): 首批样例池构造、注册与导出 smoke
+  - WT-S2-A4 (done): 下游复验输入契约、请求预算与收尾报告
+- completion_signals: 11/11 (100%)
+- acceptance_criteria: 9/10 (90%, 1 N/A)
+- key_artifacts:
+  - custom_liquid_large_proxy_v1 (5 symbols, non-research)
+  - custom_low_control_proxy_candidate_v1 (3 symbols, research-only)
+  - 3 contract docs (taxonomy, A3 input, downstream reval)
+  - 14 TuShare strategy tests
+- final_note: No model was trained or promoted. All work cache-only; no quota-consuming TuShare calls made. Downstream milestone should consume the revalidation input contract for 3/5/10d large-cap low-control-proxy revalidation.
+
+### MS-R0-001
+
+- milestone_id: MS-R0-001
+- title: 选股侧重构
+- purpose: 清除无方法论的旧选股方式，以多维度评分作为唯一选股底座，建立"策略自包含 + 三层独立"的模块架构。
+- status: completed
+- milestone_kind: goal-driven
+- priority: 4
+- depends_on_milestones: MS-S2-001
+- created_by: programmer-confirmed-codex
+- created_at: 2026-06-22T15:15:00+08:00
+- completed_at: 2026-06-23T00:00:00+08:00
+- accepted_by: OceanEyeFF
+- acceptance_verdict: accepted
+- worktracks: WT-R0-A1 (铲平), WT-R0-A2 (架子), WT-R0-A3 (落成), WT-R0-A4 (文档) — 4/4 completed
+- branch: milestone/MS-S2-001-stock-pool-stratification (shared with MS-S2-001; commit 98ef372)
+- acceptance_criteria: 6/6
+- completion_signals: 8/8
+- pytest: 402/402
+- updated: 2026-06-23T00:00:00+08:00
+- updated_by: codex-with-programmer-acceptance
+- artifact_path: .servo/milestone/MS-R0-001.md
+- key_artifacts:
+  - stock_pools/base.py (StockPoolStrategy ABC + PoolCandidate)
+  - stock_pools/low_manipulation/strategy.py (LowManipulationStrategy)
+  - stock_pools/low_manipulation/config.toml
+  - docs/modules/stock_pool_maintenance_guide.md
+  - configs/stock_pools/custom_low_manipulation_v1 (唯一的 registry 池)
+- final_note: 选股层从四套方法收敛为唯一方法论。三层架构建立。Pipeline 层实验配置仍引用旧池，留给下个 milestone 处理。
 
 ### MS-S1-001
 

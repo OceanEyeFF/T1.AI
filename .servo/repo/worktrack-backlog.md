@@ -1,8 +1,8 @@
 ---
 title: "Worktrack Backlog"
 artifact_type: "worktrack-backlog"
-updated: "2026-06-16T18:50:00+08:00"
-updated_by: "harness-skill"
+updated: "2026-06-22T13:20:00+08:00"
+updated_by: "codex"
 ---
 
 # Worktrack Backlog
@@ -10,6 +10,114 @@ updated_by: "harness-skill"
 > Closed and resolved worktracks are tracked here for Milestone progress and RepoScope refresh. Live per-worktrack execution details remain in `.servo/worktrack/*`.
 
 ## Done
+
+### WT-EXPAND-001
+
+- worktrack_id: WT-EXPAND-001
+- milestone_id: MS-S2-001 (post-acceptance append)
+- status: done
+- node_type: fetch/compute/registry
+- scope: Expand TuShare cache to sectors_70 (64 stocks), build 6-dimension composite scoring from 4-agent research, register custom_low_manipulation_v1 (14 stocks, score >= 60).
+- branch: milestone/MS-S2-001-stock-pool-stratification
+- merge_commit: none
+- validation: 177/177 TuShare requests success; 64 stocks scored; registry load + export smoke pass; `git diff --check` pass.
+- intake_route: programmer-requested post-milestone expansion
+- gate_verdict: pass
+- report_ref: .servo/worktrack/WT-EXPAND-001-closeout-report.md
+- gate_evidence_ref: .servo/worktrack/WT-EXPAND-001-gate-evidence.md
+- closeout_ref: .servo/worktrack/WT-EXPAND-001-closeout-report.md
+- closed_at: 2026-06-22T13:20:00+08:00
+- residual_risk: score thresholds uncalibrated; 64-stock universe may not represent full market.
+
+### WT-S2-A4
+
+- worktrack_id: WT-S2-A4
+- milestone_id: MS-S2-001
+- status: done
+- node_type: research/report
+- scope: downstream revalidation input contract, TuShare fetch budget estimate, and milestone closing report.
+- branch: milestone/MS-S2-001-stock-pool-stratification
+- merge_commit: none
+- validation: `git diff --check` -> pass.
+- intake_route: milestone-derived (final planned worktrack)
+- gate_verdict: pass
+- report_ref: docs/modules/downstream_revalidation_input_contract_MS_S2_001.md; .servo/worktrack/s2-a4-milestone-closing-report.md
+- gate_evidence_ref: .servo/worktrack/gate-evidence.md
+- closeout_ref: .servo/worktrack/s2-a4-closeout-report.md
+- closed_at: 2026-06-22T12:30:00+08:00
+- residual_risk: milestone complete; requires programmer final acceptance.
+
+### WT-S2-A3
+
+- worktrack_id: WT-S2-A3
+- milestone_id: MS-S2-001
+- status: done
+- node_type: feature/test
+- scope: cache-only sample pool construction (liquid large-cap proxy + low-control-proxy candidate), registry registration, and export smoke.
+- branch: milestone/MS-S2-001-stock-pool-stratification
+- merge_commit: none
+- validation: `python scripts/build_ms_s2_stratified_pools.py` -> generated 2 TOML + CSV + metadata; registry load + export smoke -> pass; `pytest -q tests/test_tushare_source.py` -> 14 passed; `git diff --check` -> pass.
+- intake_route: milestone-derived; unblocked after mid-review passed 2026-06-22
+- gate_verdict: pass
+- report_ref: .servo/worktrack/s2-a3-closeout-report.md
+- gate_evidence_ref: .servo/worktrack/gate-evidence.md
+- closeout_ref: .servo/worktrack/s2-a3-closeout-report.md
+- closed_at: 2026-06-22T12:15:00+08:00
+- residual_risk: cache coverage limited to 8 symbols; low-control turnover threshold not calibrated.
+
+### WT-S2-A2-next
+
+- worktrack_id: WT-S2-A2-next
+- milestone_id: MS-S2-001
+- status: done
+- node_type: design/docs
+- scope: compress A1 stock-pool taxonomy into the only A3 input contract and defer over-broad observation layers.
+- branch: milestone/MS-S2-001-stock-pool-stratification
+- merge_commit: none
+- validation: scoped `git diff --check` -> pass.
+- intake_route: milestone-derived and programmer-requested after A2
+- gate_verdict: pass
+- report_ref: docs/modules/stock_pool_a3_input_contract_MS_S2_001.md
+- gate_evidence_ref: .servo/worktrack/gate-evidence.md
+- closeout_ref: .servo/worktrack/s2-a2-next-closeout-report.md
+- closed_at: 2026-06-22T11:12:24+08:00
+- residual_risk: A3 remains blocked until programmer review passes; A3 must use compressed contract, not full A1 taxonomy.
+
+### WT-S2-A2
+
+- worktrack_id: WT-S2-A2
+- milestone_id: MS-S2-001
+- status: done
+- node_type: test/design
+- scope: TuShare cache-first dry-run request manifest, quota-wall tests, resume, blocked-by-quota, and registry schema gap review.
+- branch: milestone/MS-S2-001-stock-pool-stratification
+- merge_commit: none
+- validation: `PYTHONPATH="src:." conda run -n "py311-private" python -m pytest -q tests/test_tushare_source.py` -> `14 passed`; `python -m py_compile src/ashare_lab/data/tushare_source.py` -> pass; scoped `git diff --check` -> pass.
+- intake_route: milestone-derived
+- gate_verdict: pass
+- report_ref: .servo/worktrack/s2-a2-closeout-report.md
+- gate_evidence_ref: .servo/worktrack/gate-evidence.md
+- closeout_ref: .servo/worktrack/s2-a2-closeout-report.md
+- closed_at: 2026-06-22T10:48:41+08:00
+- residual_risk: A3 remains blocked until programmer mid-review passes; no quota-consuming TuShare call was approved or made.
+
+### WT-S2-A1
+
+- worktrack_id: WT-S2-A1
+- milestone_id: MS-S2-001
+- status: done
+- node_type: research/docs
+- scope: stock-pool stratification taxonomy and proxy boundary freeze for MS-S2.
+- branch: milestone/MS-S2-001-stock-pool-stratification
+- merge_commit: none
+- validation: scoped `git diff --check` -> pass; new-file trailing whitespace scan -> pass; provider-call pattern scan -> no matches; policy-line scan -> required A2/A3 boundaries present.
+- intake_route: milestone-derived
+- gate_verdict: pass
+- report_ref: docs/modules/stock_pool_stratification_contract_MS_S2_001.md
+- gate_evidence_ref: .servo/worktrack/gate-evidence.md
+- closeout_ref: .servo/worktrack/s2-a1-closeout-report.md
+- closed_at: 2026-06-22T10:48:41+08:00
+- residual_risk: A2 must still implement or design no-network/quota-free tests for request budget dry-run, cache-hit behavior, 1H frequency-wall time-waiting, resume, and blocked-by-quota; A3 is blocked until programmer mid-review after A2.
 
 ### WT-S1-CLEANUP
 
