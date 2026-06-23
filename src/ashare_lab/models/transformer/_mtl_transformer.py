@@ -1,0 +1,403 @@
+"""多任务Transformer模型
+
+该模块提供面向股票多时间跨度收益预测的多任务Transformer实现，
+共享一套Encoder并为3/5/10日三个预测任务提供独立回归头，
+支持缺失标签掩码与加权L1损失。
+"""
+
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass
+from typing import Iterable, Mapping, Sequence
+
+import torch
+import torch.nn as nn
+
+from ashare_lab.trend_schema import (
+    PRIMARY_TREND_LABEL_COLS,
+    PRIMARY_TREND_PRED_COLS,
+    target_name_from_pred,
+)
+
+
+@dataclass
+class TransformerConfig:
+    """多任务Transformer配置"""
+
+    input_dim: int = 6  # 输入特征维度
+    d_model: int = 128  # 隐藏层维度
+    n_heads: int = 4  # 注意力头数
+    n_layers: int = 4  # 编码器层数（限定4-6层）
+    d_ff: int = 512  # 前馈网络维度
+    dropout: float = 0.1  # Dropout比例
+    max_seq_len: int = 512  # 最大可处理序列长度
+    min_seq_len: int = 20  # 最小序列长度约束
+    loss_weights: tuple[float, float, float] = (1.0, 1.0, 1.0)
+    loss_type: str = "l1"  # 损失函数类型："l1" 或 "ic_aware"
+    loss_alpha: float = 0.3  # IC-Aware Loss的α参数（仅在loss_type="ic_aware"时使用）
+
+
+class PositionalEncoding(nn.Module):
+    """标准正弦位置编码"""
+
+    def __init__(self, d_model: int, max_len: int = 5000, dropout: float = 0.1):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0)  # [1, max_len, d_model]
+
+        self.register_buffer("pe", pe)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            x: [batch_size, seq_len, d_model]
+
+        Returns:
+            添加位置编码后的张量
+        """
+        x = x + self.pe[:, : x.size(1), :]
+        return self.dropout(x)
+
+
+def _masked_l1_loss(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    """单任务带缺失掩码的L1损失。
+
+    target中的NaN位置会被忽略；无有效样本时返回0（常数，不影响梯度传播）。
+    """
+    if pred.shape != target.shape:
+        raise ValueError("prediction and target shape must match for masked L1")
+
+    mask = ~torch.isnan(target)
+    if mask.sum() == 0:
+        return torch.zeros((), device=pred.device, dtype=pred.dtype)
+
+    diff = torch.where(mask, torch.abs(pred - target), torch.zeros_like(pred))
+    return diff.sum() / mask.sum()
+
+
+def _pearson_correlation(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    """计算Pearson相关系数（IC）。
+
+    Args:
+        pred: [batch_size] 预测值
+        target: [batch_size] 真实值
+
+    Returns:
+        Pearson correlation coefficient (scalar)
+    """
+    if pred.shape != target.shape:
+        raise ValueError("prediction and target shape must match")
+
+    # 移除NaN
+    mask = ~torch.isnan(target)
+    if mask.sum() < 2:
+        return torch.zeros((), device=pred.device, dtype=pred.dtype)
+
+    pred_clean = pred[mask]
+    target_clean = target[mask]
+
+    # 计算Pearson相关系数
+    pred_centered = pred_clean - pred_clean.mean()
+    target_centered = target_clean - target_clean.mean()
+
+    numerator = (pred_centered * target_centered).sum()
+    denominator = (pred_centered.pow(2).sum() * target_centered.pow(2).sum()).sqrt()
+
+    if denominator < 1e-8:
+        return torch.zeros((), device=pred.device, dtype=pred.dtype)
+
+    correlation = numerator / denominator
+    return correlation
+
+
+def _ic_aware_loss(
+    pred: torch.Tensor,
+    target: torch.Tensor,
+    alpha: float = 0.3,
+) -> torch.Tensor:
+    """IC-Aware混合损失：Loss = α * L1 + (1-α) * (1 - IC)。
+
+    Args:
+        pred: [batch_size] 预测值
+        target: [batch_size] 真实值
+        alpha: L1权重，建议0.3（重IC轻L1）
+
+    Returns:
+        混合损失值
+    """
+    mask = ~torch.isnan(target)
+    if mask.sum() < 2:
+        return torch.zeros((), device=pred.device, dtype=pred.dtype)
+
+    # L1损失部分
+    l1_loss = _masked_l1_loss(pred, target)
+
+    # IC损失部分（1 - IC，使其可最小化）
+    ic = _pearson_correlation(pred, target)
+    ic_loss = 1.0 - ic
+
+    # 混合损失
+    total_loss = alpha * l1_loss + (1.0 - alpha) * ic_loss
+
+    return total_loss
+
+
+def compute_mtl_loss(
+    predictions: Mapping[str, torch.Tensor] | Sequence[torch.Tensor],
+    labels: torch.Tensor,
+    loss_weights: Iterable[float] | torch.Tensor,
+) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+    """计算三头加权L1损失。
+
+    Args:
+        predictions: dict需含主线趋势头预测列，或长度等于主线头数的序列。
+        labels: [batch, 3] 标签张量（列顺序遵循主线趋势头 schema）。
+        loss_weights: 三个头的权重。
+    """
+    num_heads = len(PRIMARY_TREND_LABEL_COLS)
+    if labels.ndim != 2 or labels.size(1) != num_heads:
+        raise ValueError(f"labels must have shape [batch, {num_heads}]")
+
+    if isinstance(predictions, Mapping):
+        preds_tuple = tuple(predictions[pred_col] for pred_col in PRIMARY_TREND_PRED_COLS)
+    else:
+        preds_tuple = tuple(predictions)
+
+    if len(preds_tuple) != num_heads:
+        raise ValueError("predictions must contain three heads")
+
+    weights = torch.as_tensor(loss_weights, device=labels.device, dtype=labels.dtype)
+    if weights.numel() != num_heads:
+        raise ValueError("loss_weights must have three elements")
+
+    head_losses = [_masked_l1_loss(preds_tuple[i], labels[:, i]) for i in range(num_heads)]
+
+    total_loss = torch.stack(head_losses).mul(weights).sum()
+    details = {
+        f"l1_{target_name_from_pred(pred_col)}": head_losses[idx]
+        for idx, pred_col in enumerate(PRIMARY_TREND_PRED_COLS)
+    }
+    return total_loss, details
+
+
+def compute_ic_aware_mtl_loss(
+    predictions: Mapping[str, torch.Tensor] | Sequence[torch.Tensor],
+    labels: torch.Tensor,
+    loss_weights: Iterable[float] | torch.Tensor,
+    alpha: float = 0.3,
+) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+    """计算三头加权IC-Aware损失。
+
+    Args:
+        predictions: dict需含主线趋势头预测列，或长度等于主线头数的序列。
+        labels: [batch, 3] 标签张量（列顺序遵循主线趋势头 schema）。
+        loss_weights: 三个头的权重。
+        alpha: L1权重，建议0.3（重IC轻L1）。
+
+    Returns:
+        total_loss: 总损失
+        head_losses: 各头的详细损失（包含L1、IC、混合损失）
+    """
+    num_heads = len(PRIMARY_TREND_LABEL_COLS)
+    if labels.ndim != 2 or labels.size(1) != num_heads:
+        raise ValueError(f"labels must have shape [batch, {num_heads}]")
+
+    if isinstance(predictions, Mapping):
+        preds_tuple = tuple(predictions[pred_col] for pred_col in PRIMARY_TREND_PRED_COLS)
+    else:
+        preds_tuple = tuple(predictions)
+
+    if len(preds_tuple) != num_heads:
+        raise ValueError("predictions must contain three heads")
+
+    weights = torch.as_tensor(loss_weights, device=labels.device, dtype=labels.dtype)
+    if weights.numel() != num_heads:
+        raise ValueError("loss_weights must have three elements")
+
+    # 计算各头的IC-Aware损失
+    head_losses = [_ic_aware_loss(preds_tuple[i], labels[:, i], alpha) for i in range(num_heads)]
+
+    # 同时计算L1和IC用于监控
+    l1_losses = [_masked_l1_loss(preds_tuple[i], labels[:, i]) for i in range(num_heads)]
+    ic_values = [_pearson_correlation(preds_tuple[i], labels[:, i]) for i in range(num_heads)]
+
+    total_loss = torch.stack(head_losses).mul(weights).sum()
+    details: dict[str, torch.Tensor] = {}
+    for idx, pred_col in enumerate(PRIMARY_TREND_PRED_COLS):
+        target = target_name_from_pred(pred_col)
+        details[f"ic_aware_{target}"] = head_losses[idx]
+        details[f"l1_{target}"] = l1_losses[idx]
+        details[f"ic_{target}"] = ic_values[idx]
+    return total_loss, details
+
+
+def freeze_encoder_layers(model: nn.Module, num_layers: int) -> None:
+    """冻结Transformer Encoder前`num_layers`层参数。"""
+    if not hasattr(model, "transformer_encoder"):
+        raise AttributeError("model must have transformer_encoder attribute to freeze layers")
+
+    encoder: nn.TransformerEncoder = model.transformer_encoder
+    if num_layers < 0 or num_layers > len(encoder.layers):
+        raise ValueError("num_layers must be between 0 and the total encoder layers")
+
+    for idx, layer in enumerate(encoder.layers):
+        requires_grad = idx >= num_layers
+        for param in layer.parameters():
+            param.requires_grad = requires_grad
+
+
+class EarlyStoppingIC:
+    """基于验证集IC的早停逻辑，连续无提升patience轮则停止。"""
+
+    def __init__(self, patience: int = 5, min_delta: float = 0.0):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.best = -float("inf")
+        self.counter = 0
+
+    def step(self, current_ic: float) -> bool:
+        """返回是否需要早停。"""
+        if current_ic > self.best + self.min_delta:
+            self.best = current_ic
+            self.counter = 0
+        else:
+            self.counter += 1
+        return self.counter >= self.patience
+
+
+class MTLTransformer(nn.Module):
+    """共享编码器 + 三任务回归头的Transformer。"""
+
+    def __init__(self, config: TransformerConfig):
+        super().__init__()
+        if not 4 <= config.n_layers <= 6:
+            raise ValueError("n_layers must be between 4 and 6 for MTL Transformer")
+        if config.max_seq_len < config.min_seq_len:
+            raise ValueError("max_seq_len must be >= min_seq_len")
+
+        self.config = config
+        self.register_buffer("loss_weights", torch.tensor(config.loss_weights, dtype=torch.float32))
+
+        self.input_projection = nn.Linear(config.input_dim, config.d_model)
+        self.pos_encoder = PositionalEncoding(config.d_model, config.max_seq_len, config.dropout)
+
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=config.d_model,
+            nhead=config.n_heads,
+            dim_feedforward=config.d_ff,
+            dropout=config.dropout,
+            activation="gelu",
+            batch_first=True,
+            norm_first=True,
+        )
+
+        self.transformer_encoder = nn.TransformerEncoder(
+            encoder_layer,
+            num_layers=config.n_layers,
+            norm=nn.LayerNorm(config.d_model),
+        )
+
+        def _make_head() -> nn.Sequential:
+            return nn.Sequential(
+                nn.Linear(config.d_model, config.d_model // 2),
+                nn.GELU(),
+                nn.Linear(config.d_model // 2, 1),
+            )
+
+        self.heads = nn.ModuleDict({pred_col: _make_head() for pred_col in PRIMARY_TREND_PRED_COLS})
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        labels: torch.Tensor | None = None,
+        loss_weights: Iterable[float] | torch.Tensor | None = None,
+    ) -> Mapping[str, torch.Tensor] | tuple[Mapping[str, torch.Tensor], Mapping[str, torch.Tensor]]:
+        """前向推理。
+
+        Args:
+            x: [batch, seq_len, input_dim] 特征序列。
+            labels: 可选，若提供则返回 (preds, losses)。
+            loss_weights: 可选自定义损失权重。
+        """
+        if x.ndim != 3:
+            raise ValueError("input tensor must be 3D: [batch, seq_len, input_dim]")
+
+        batch_size, seq_len, _ = x.shape
+        if seq_len < self.config.min_seq_len:
+            raise ValueError(
+                f"sequence length {seq_len} shorter than required minimum {self.config.min_seq_len}"
+            )
+
+        x = self.input_projection(x)
+        x = self.pos_encoder(x)
+        x = self.transformer_encoder(x)
+        pooled = x[:, -1, :]
+
+        predictions: dict[str, torch.Tensor] = {
+            pred_col: self.heads[pred_col](pooled).squeeze(-1)
+            for pred_col in PRIMARY_TREND_PRED_COLS
+        }
+
+        if labels is None:
+            return predictions
+
+        weights = loss_weights if loss_weights is not None else self.loss_weights
+
+        # 根据配置选择损失函数
+        if self.config.loss_type == "ic_aware":
+            total_loss, head_losses = compute_ic_aware_mtl_loss(
+                predictions, labels, weights, alpha=self.config.loss_alpha
+            )
+        else:  # "l1" (默认)
+            total_loss, head_losses = compute_mtl_loss(predictions, labels, weights)
+
+        return predictions, {"total": total_loss, **head_losses}
+
+
+def create_mtl_model(
+    input_dim: int = 6,
+    d_model: int = 128,
+    n_layers: int = 4,
+    n_heads: int = 4,
+    d_ff: int = 512,
+    dropout: float = 0.1,
+    max_seq_len: int = 512,
+    min_seq_len: int = 20,
+    loss_weights: tuple[float, float, float] = (1.0, 1.0, 1.0),
+    loss_type: str = "l1",
+    loss_alpha: float = 0.3,
+) -> "MTLTransformer":
+    """便捷创建多任务Transformer模型。
+
+    Args:
+        loss_type: 损失函数类型，"l1"（默认）或 "ic_aware"
+        loss_alpha: IC-Aware Loss的α参数（仅在loss_type="ic_aware"时使用），默认0.3
+    """
+
+    config = TransformerConfig(
+        input_dim=input_dim,
+        d_model=d_model,
+        n_heads=n_heads,
+        n_layers=n_layers,
+        d_ff=d_ff,
+        dropout=dropout,
+        max_seq_len=max_seq_len,
+        min_seq_len=min_seq_len,
+        loss_weights=loss_weights,
+        loss_type=loss_type,
+        loss_alpha=loss_alpha,
+    )
+    return MTLTransformer(config)
+
+
+# 向后兼容：旧接口引用到新的多任务模型
+create_model = create_mtl_model
+StockTransformer = MTLTransformer
