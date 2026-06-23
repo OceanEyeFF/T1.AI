@@ -67,7 +67,7 @@ owner: "OceanEyeFF"
 - branch_context_guard_status: pass
 - branch_context_required_ref: refs/heads/milestone/MS-R2-001-repo-restructure
 - active_milestone_branch: milestone/MS-R2-001-repo-restructure
-- active_milestone_branch_sync_state: created_from_develop_at_13445eb4db73b2d7329202d5dc70266575ccc211
+- active_milestone_branch_sync_state: created_from_develop_at_68e43f9e16ec9de8f3742ebfd527f624fcac8e8a
 - worktrack_branch: N/A (no active worktrack yet)
 
 ## Current Next Action
@@ -240,12 +240,12 @@ owner: "OceanEyeFF"
 > 记录最近一次 worktrack 关闭后的已验证基线，供后续续跑时快速定位。
 
 - last_verified_checkpoint: 0095699d5610554bb23bbe511d2d2df8ad27abeb
-- latest_observed_checkpoint: 13445eb4db73b2d7329202d5dc70266575ccc211
+- latest_observed_checkpoint: 68e43f9e16ec9de8f3742ebfd527f624fcac8e8a
 - last_doc_catch_up_checkpoint: N/A
-- milestone_input_checkpoint: MS-R2-001-active-2026-06-23T02:00:00+08:00
+- milestone_input_checkpoint: MS-R2-001-completed-2026-06-23T04:00:00+08:00
 - checkpoint_type: git_commit
-- checkpoint_ref: 13445eb4db73b2d7329202d5dc70266575ccc211
-- verified_at: 2026-06-23T02:00:00+08:00
+- checkpoint_ref: 68e43f9e16ec9de8f3742ebfd527f624fcac8e8a
+- verified_at: 2026-06-23T04:00:00+08:00
 - if_no_commit_reason: N/A; MS-S0 baseline checkpoint commit 0095699d5610554bb23bbe511d2d2df8ad27abeb was created with programmer approval
 - alternative_traceability:
   - MS-S0 accepted baseline was checkpointed and fast-forwarded into `develop` at 0095699d5610554bb23bbe511d2d2df8ad27abeb with programmer approval.
