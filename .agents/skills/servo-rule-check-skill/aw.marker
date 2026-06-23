@@ -1,7 +1,0 @@
-{
-  "marker_version": "aw-managed-skill-marker.v2",
-  "backend": "agents",
-  "skill_id": "rule-check-skill",
-  "payload_version": "agents-skill-payload.v1",
-  "payload_fingerprint": "66e6a67a60cffed435e14b0e428e6dbb1ad414b858cf7a012ac500d9e9a95ade"
-}

@@ -43,3 +43,7 @@ backup/
 output/recommendations/
 output/reports/
 .logs/
+
+# Skill 部署目录（本地，不从远端同步）
+.agents/skills/
+.claude/skills/

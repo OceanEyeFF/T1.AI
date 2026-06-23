@@ -1,7 +1,0 @@
-{
-  "marker_version": "aw-managed-skill-marker.v2",
-  "backend": "agents",
-  "skill_id": "harness-skill",
-  "payload_version": "agents-skill-payload.v1",
-  "payload_fingerprint": "4c08df1963865df51147d3f54c353b6f1d8da8521fe9de10f5837b0cd00504c8"
-}

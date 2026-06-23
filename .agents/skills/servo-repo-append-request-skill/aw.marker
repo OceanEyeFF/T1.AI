@@ -1,7 +1,0 @@
-{
-  "marker_version": "aw-managed-skill-marker.v2",
-  "backend": "agents",
-  "skill_id": "repo-append-request-skill",
-  "payload_version": "agents-skill-payload.v1",
-  "payload_fingerprint": "d85adb8294aafa1377fc36d6b6dc3edf53c93e737e8e83f4cb2b4916017114ac"
-}

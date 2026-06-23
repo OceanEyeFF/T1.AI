@@ -1,7 +1,0 @@
-{
-  "marker_version": "aw-managed-skill-marker.v2",
-  "backend": "agents",
-  "skill_id": "doc-catch-up-worker-skill",
-  "payload_version": "agents-skill-payload.v1",
-  "payload_fingerprint": "3a4d1704ea99efe4fdd40340d8ecada347c5895fe88db7194ec3493317f6aa23"
-}

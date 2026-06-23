@@ -1,7 +1,0 @@
-{
-  "marker_version": "aw-managed-skill-marker.v2",
-  "backend": "agents",
-  "skill_id": "gate-skill",
-  "payload_version": "agents-skill-payload.v1",
-  "payload_fingerprint": "c559159dcad13bc9b13166b032202ac8b4ad4ea53400de0448dc8fe0d7e6ad94"
-}

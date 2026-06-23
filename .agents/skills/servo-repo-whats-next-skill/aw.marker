@@ -1,7 +1,0 @@
-{
-  "marker_version": "aw-managed-skill-marker.v2",
-  "backend": "agents",
-  "skill_id": "repo-whats-next-skill",
-  "payload_version": "agents-skill-payload.v1",
-  "payload_fingerprint": "e1a6fa228e3cd98a26bc18a12634dbe53340ab1e7c8617f0914723c2ee430317"
-}

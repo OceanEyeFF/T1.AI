@@ -1,7 +1,0 @@
-{
-  "marker_version": "aw-managed-skill-marker.v2",
-  "backend": "agents",
-  "skill_id": "recover-worktrack-skill",
-  "payload_version": "agents-skill-payload.v1",
-  "payload_fingerprint": "00d143d3d3cc04e8f9347f63139ebbc60bda86aba485501cf7108baca5175de3"
-}

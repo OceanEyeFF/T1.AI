@@ -1,7 +1,0 @@
-{
-  "marker_version": "aw-managed-skill-marker.v2",
-  "backend": "agents",
-  "skill_id": "dispatch-skills",
-  "payload_version": "agents-skill-payload.v1",
-  "payload_fingerprint": "d9b24f82c94729df274b5a9675d3e4d35969b93e15662466982aa788bb089f84"
-}

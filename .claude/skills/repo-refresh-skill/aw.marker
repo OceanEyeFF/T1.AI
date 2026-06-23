@@ -1,7 +1,0 @@
-{
-  "marker_version": "aw-managed-skill-marker.v2",
-  "backend": "claude",
-  "skill_id": "repo-refresh-skill",
-  "payload_version": "claude-skill-payload.v1",
-  "payload_fingerprint": "b3def0b4d96c63abe5f42bb8ec52c17e65ccadfd969d4853bb736cc0f95dae7a"
-}

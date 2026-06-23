@@ -1,7 +1,0 @@
-{
-  "marker_version": "aw-managed-skill-marker.v2",
-  "backend": "claude",
-  "skill_id": "init-worktrack-skill",
-  "payload_version": "claude-skill-payload.v1",
-  "payload_fingerprint": "136ae4b9cea1dbf0be91fedac609190417a13d2bad26d2ef69f5e78a9638a6f7"
-}

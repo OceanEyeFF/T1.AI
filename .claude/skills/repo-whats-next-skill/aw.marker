@@ -1,7 +1,0 @@
-{
-  "marker_version": "aw-managed-skill-marker.v2",
-  "backend": "claude",
-  "skill_id": "repo-whats-next-skill",
-  "payload_version": "claude-skill-payload.v1",
-  "payload_fingerprint": "eec59f80acd6afd4f0085e320d916b5a92977077eb753a59ca3ee72696eafd9c"
-}

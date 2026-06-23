@@ -1,7 +1,0 @@
-{
-  "marker_version": "aw-managed-skill-marker.v2",
-  "backend": "claude",
-  "skill_id": "generic-worker-skill",
-  "payload_version": "claude-skill-payload.v1",
-  "payload_fingerprint": "2f3f899e1e089ee3214f00e714c3553519d39f9e81de125234c6269b0a7e237c"
-}
