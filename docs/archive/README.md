@@ -1,31 +1,46 @@
-# Archive 文档
+# Modules 文档
 
-这一层只保留历史材料和清理说明，不作为当前开发入口。
+这一层放系统分层、模块边界与模块协同方式。
 
-## 当前内容
+适合在这里回答的问题：
 
-- [long_term/README.md](long_term/README.md)：仍有参考价值的历史资料
-- [short_term/README.md](short_term/README.md)：已删除或已下线的短期材料说明
+- 系统有哪些层
+- 数据、训练、执行、调度这些模块怎么连接
+- 哪些代码应该共用，哪些必须按模型线拆开
 
-### 专项归档
+## 推荐阅读顺序
 
-- `g1_validation_20260311/` — G1 Merge/Audit Checklist 验证过程产物
-  - `g1_validation_plan_20260311.md` — 验证方案
-  - `g1_validation_exec_guide.md` — 验证执行指引
-  - `g1_validation_findings.md` — 验证发现
-  - `develop_reviewer_notes.md` — develop 复核记录
-  - `execution_layer_v2_self_check.md` — execution-layer-v2 自查记录
+1. [model_line_boundaries_1d_vs_3510d_20260309.md](model_line_boundaries_1d_vs_3510d_20260309.md)
+2. [system_io_and_architecture_spec.md](system_io_and_architecture_spec.md)
+3. [stock_pool_module_baseline_20260311.md](stock_pool_module_baseline_20260311.md)
+4. [stock_pool_registry_baseline_20260311.md](stock_pool_registry_baseline_20260311.md)
+5. [stock_pool_module_development_plan_20260311.md](stock_pool_module_development_plan_20260311.md)
+6. [production_scheduler.md](production_scheduler.md)
+7. [data_sources.md](data_sources.md)
+8. [news_sources.md](news_sources.md)
 
-- `ic_reform_completed_20260305/` — IC 评估体系改造完成后归档
-  - `IC评估体系最小改造清单与计划.md` — 改造清单（已全部完成）
-  - `IC评估体系改造Prompt包.md` — 改造执行辅助材料
+## 文档分组
 
-### 长期归档
+### 模型线边界
 
-- `long_term/future_roadmap_suggestions_20260307.md` — 旧版路线建议（已被 `research/future_roadmap_suggestions.md` 取代）
+- [model_line_boundaries_1d_vs_3510d_20260309.md](model_line_boundaries_1d_vs_3510d_20260309.md)：`1d` 独立线与 `3d/5d/10d` 主线的代码边界
+- [system_io_and_architecture_spec.md](system_io_and_architecture_spec.md)：系统 I/O、主线 `alpha_score` 聚合输出与架构分层
 
-## 使用边界
+### 股票池模组
 
-- 需要历史细节时，从版本历史检索。
-- 不要把已清理的短期文档重新放回主导航。
-- 归档规则详见 [../overview/doc_lifecycle_rules_20260311.md](../overview/doc_lifecycle_rules_20260311.md)。
+- [stock_pool_module_baseline_20260311.md](stock_pool_module_baseline_20260311.md)：股票池模组基线与预留位置
+- [stock_pool_registry_baseline_20260311.md](stock_pool_registry_baseline_20260311.md)：股票池 Registry 基线
+- [stock_pool_module_development_plan_20260311.md](stock_pool_module_development_plan_20260311.md)：股票池模组开发计划
+
+### 基础设施
+
+- [production_scheduler.md](production_scheduler.md)：生产调度与运维流程
+- [data_sources.md](data_sources.md)：主数据模块的来源与接入策略
+- [news_sources.md](news_sources.md)：新闻/公告模块的数据来源与时间对齐要求
+
+## 当前使用边界
+
+- 任何涉及模型开发的改动，先判断是“共用基础设施”还是“模型线专用逻辑”。
+- 当前主线开发默认服务 `3d/5d/10d`，`1d` 变更不得顺手改写主线默认入口。
+- 主线推荐默认消费聚合后的 `alpha_score`，若要改写聚合逻辑，应同步更新模块规范与研究口径。
+- 需要字段、时间边界和协议定义时，转到 [../interfaces/README.md](../interfaces/README.md)。
