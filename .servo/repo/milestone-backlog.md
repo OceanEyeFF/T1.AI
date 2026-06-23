@@ -1,7 +1,7 @@
 ---
 title: "Milestone Backlog"
 artifact_type: "milestone-backlog"
-updated: "2026-06-22T12:45:00+08:00"
+updated: "2026-06-23T04:00:00+08:00"
 updated_by: "codex-with-programmer-acceptance"
 ---
 
@@ -11,39 +11,37 @@ updated_by: "codex-with-programmer-acceptance"
 
 ## Pipeline Summary
 
-- active_count: 1
-- planned_count: 0
-- completed_count: 5
+- active_count: 0
+- planned_count: 2
+- completed_count: 7
 - superseded_count: 0
-- active_milestone: MS-R1-001
-
-## Active
-
-### MS-R1-001
-
-- milestone_id: MS-R1-001
-- title: 模型层提取与统一治理
-- purpose: 将散落在脚本和 monolithic 文件中的模型代码提取为统一 ModelABC 接口的自包含实现
-- status: active
-- milestone_kind: goal-driven
-- priority: 4
-- depends_on_milestones: MS-R0-001
-- created_by: codex-with-programmer-confirmation
-- created_at: 2026-06-23T00:00:00+08:00
-- updated: 2026-06-23T00:00:00+08:00
-- updated_by: codex
-- artifact_path: .servo/milestone/MS-R1-001.md
-- pre_milestone_intake_review: .servo/repo/MS-R1-001-pre-milestone-intake-review.md
-- worktrack_list:
-  - WT-R1-A1 (planned): 从 develop 提取 LSTM/XGB 源码并审计差异
-  - WT-R1-A2 (planned): 定义 ModelABC 接口 + 模型 registry
-  - WT-R1-A3 (planned): Transformer 重构
-  - WT-R1-A4 (planned): LSTM 统一实现
-  - WT-R1-A5 (planned): XGBoost 封装实现
-  - WT-R1-A6 (planned): 下游脚本解耦
-  - WT-R1-A7 (planned): 维护文档
-  - WT-R1-A8 (planned): 铲平旧实现
+- active_milestone: none
 
 ## Planned
 
-- none
+### MS-R3-001
+
+- milestone_id: MS-R3-001
+- title: 旧文件深度清理
+- purpose: 删除 docs/archive/ 中已过期的历史文档、旧实验 TOML、旧脚本、旧 checkpoint，瘦身 Repo
+- status: planned
+- milestone_kind: goal-driven
+- priority: 2
+- depends_on_milestones: MS-R2-001
+- created_by: programmer
+- created_at: 2026-06-23T03:00:00+08:00
+- note: 待 pre-milestone intake
+
+### MS-R4-001
+
+- milestone_id: MS-R4-001
+- title: TuShare 数据湖构建
+- purpose: 以 TuShare 替代 AkShare 作为主数据源，从 2023 年起构建干净数据底座
+- status: planned
+- milestone_kind: goal-driven
+- priority: 5
+- depends_on_milestones: MS-R3-001
+- created_by: programmer
+- created_at: 2026-06-23T03:00:00+08:00
+- note: 记录但不激活；需先完成 R2-001 和 R3-001
+- pre_milestone_intake: .servo/repo/MS-R4-001-pre-milestone-intake-review.md

@@ -76,6 +76,93 @@ updated_by: "codex-with-programmer-acceptance"
   - configs/stock_pools/custom_low_manipulation_v1 (唯一的 registry 池)
 - final_note: 选股层从四套方法收敛为唯一方法论。三层架构建立。Pipeline 层实验配置仍引用旧池，留给下个 milestone 处理。
 
+### MS-R1-001
+
+- milestone_id: MS-R1-001
+- title: 模型层提取与统一治理
+- purpose: 将散落在脚本和 monolithic 文件中的模型代码提取为统一 ModelABC 接口的自包含实现
+- status: completed
+- milestone_kind: goal-driven
+- priority: 4
+- depends_on_milestones: MS-R0-001
+- created_by: codex-with-programmer-confirmation
+- created_at: 2026-06-23T00:00:00+08:00
+- completed_at: 2026-06-23T02:00:00+08:00
+- accepted_by: OceanEyeFF
+- acceptance_verdict: accepted
+- updated: 2026-06-23T02:00:00+08:00
+- updated_by: codex-with-programmer-acceptance
+- artifact_path: .servo/milestone/MS-R1-001.md
+- pre_milestone_intake_review: .servo/repo/MS-R1-001-pre-milestone-intake-review.md
+- worktrack_list:
+  - WT-R1-A1 (done): 从 develop 提取 LSTM/XGB 源码并审计差异
+  - WT-R1-A2 (done): 定义 ModelABC 接口 + 模型 registry
+  - WT-R1-A3 (done): Transformer 重构
+  - WT-R1-A4 (done): LSTM 统一实现
+  - WT-R1-A5 (done): XGBoost 封装实现
+  - WT-R1-A6 (done): 下游脚本解耦
+  - WT-R1-A7 (done): 维护文档
+  - WT-R1-A8 (done): 铲平旧实现
+- completion_signals: 10/10 (100%)
+- acceptance_criteria: 6/6 (100%)
+- pytest: 397/397
+- branch: milestone/MS-R0-R1-stock-model-governance
+- commit: 5da7cde
+- key_artifacts:
+  - models/base.py (ModelABC + TrainingData/PredictionData/Result)
+  - models/registry.py (register_model/create_model/create_model_from_toml)
+  - models/transformer/ (ModelABC wrapper + _mtl_transformer backend + config.toml)
+  - models/lstm/ (MtlLSTM + LSTMModel + config.toml)
+  - models/xgboost/ (XGBoostModel + XgbConfig + config.toml)
+  - models/transformer.py (backward-compat re-export layer)
+  - docs/guides/models_maintenance_guide.md
+- final_note: 3 models unified under ModelABC interface with registry. Backward-compat preserved. No model retrained.
+
+### MS-R2-001
+
+- milestone_id: MS-R2-001
+- title: Repo 目录排布重构 — inputs/workspace/outputs 三区模型
+- purpose: 将一级目录从 21 收敛到 8，建立三区模型，推倒重建 docs/，固化 WORK_RULES
+- status: completed
+- milestone_kind: goal-driven
+- priority: 3
+- depends_on_milestones: MS-R1-001
+- created_by: codex-with-programmer-confirmation
+- created_at: 2026-06-23T02:00:00+08:00
+- completed_at: 2026-06-23T04:00:00+08:00
+- accepted_by: OceanEyeFF
+- acceptance_verdict: accepted
+- updated: 2026-06-23T04:00:00+08:00
+- updated_by: codex-with-programmer-acceptance
+- artifact_path: .servo/milestone/MS-R2-001.md
+- pre_milestone_intake_review: .servo/repo/MS-R2-001-pre-milestone-intake-review.md
+- worktrack_list:
+  - WT-R2-A1 (done): 全量路径引用审计 → change-impact map
+  - WT-R2-A2 (done): inputs/ 区落成
+  - WT-R2-A3 (done): workspace/ 区落成
+  - WT-R2-A4 (done): outputs/ 区落成
+  - WT-R2-A5 (done): 历史残留清理
+  - WT-R2-A6 (done): 路径引用全量修复 (~60 files)
+  - WT-R2-A7 (done): .gitignore + __pycache__
+  - WT-R2-A8 (done): pytest 回归 (395/397)
+  - WT-R2-A9 (done): 文档跟进 — README/CLAUDE
+  - WT-R2-A10 (done): docs/ 推倒重建 + 空壳 README + WORK_RULES
+  - WT-R2-A11 (done): 根 README 重写 + CLAUDE.md 移除
+- completion_signals: 11/11 (100%)
+- pytest: 395/397 (2 fail = 旧数据集路径, 后续 Milestone 修复)
+- branch: milestone/MS-R2-001-repo-restructure
+- key_artifacts:
+  - 一级目录: 21 → 8
+  - docs/ 重建为 architecture/ reference/ guides/ research/ archive/
+  - docs/WORK_RULES.md (9 章全局工作规则)
+  - docs/architecture/ (4 docs: pipeline_flow, xyz_test_matrix, model_registry, repo_structure_guide)
+  - docs/reference/ (2 docs: data_contract, stock_pool_schema)
+  - docs/guides/ (3 docs: daily_pipeline_ops, stock_pool_maintenance, models_maintenance)
+  - 7 空壳目录 README.md
+  - CLAUDE.md 已删除
+  - README.md 重写
+- final_note: 三区模型已落成。experiments/ models/ logs/ output/ data/ configs/ 不再作为一级目录。激进清理删除了所有旧 AkShare 产物。2 个测试失败依赖旧数据集路径，待 MS-R3-001 / MS-R4-001 解决。
+
 ### MS-S1-001
 
 - milestone_id: MS-S1-001

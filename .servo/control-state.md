@@ -13,7 +13,7 @@ owner: "OceanEyeFF"
 
 ## Metadata
 
-- updated: 2026-06-22T14:30:00+08:00
+- updated: 2026-06-23T02:00:00+08:00
 - owner: OceanEyeFF
 
 ## Current Control Level
@@ -36,24 +36,24 @@ owner: "OceanEyeFF"
 
 ## Active Milestone
 
-- active_milestone: MS-R1-001
-- milestone_status: active
-- milestone_kind: goal-driven
-- milestone_artifact: milestone/MS-R0-001.md
+- active_milestone: none
+- milestone_status: none
+- milestone_kind: N/A
+- milestone_artifact: N/A (completed: MS-R2-001)
 - milestone_backlog: repo/milestone-backlog.md
 - milestone_history: repo/milestone-history.md
 - milestone_pipeline_summary:
-  - active_count: 1
-  - planned_count: 0
-  - completed_count: 5
+  - active_count: 0
+  - planned_count: 2
+  - completed_count: 7
   - superseded_count: 0
-  - note: MS-R1-001 模型层提取与统一治理 (8 worktracks planned)
-- milestone_review_gate_ready: yes
-- latest_review_status: effective_pass
-- milestone_review_count: 1
-- latest_review_checkpoint: MS-R0-001-intake-2026-06-22T15:15:00+08:00
-- effective_review_pass: true
-- next_milestone_route: MS-R1-001 active; first worktrack is WT-R1-A1 (从 develop 提取 LSTM/XGB 源码并审计差异)
+  - note: MS-R2-001 completed. MS-R3-001 (深度清理) MS-R4-001 (数据湖) planned.
+- milestone_review_gate_ready: no
+- latest_review_status: N/A
+- milestone_review_count: 0
+- latest_review_checkpoint: N/A
+- effective_review_pass: false
+- next_milestone_route: handback — MS-R2-001 accepted, MS-R3-001 needs pre-milestone intake
 
 ## Baseline Branch
 
@@ -65,26 +65,26 @@ owner: "OceanEyeFF"
 - current_branch_context: milestone
 - expected_branch_context: milestone
 - branch_context_guard_status: pass
-- branch_context_required_ref: refs/heads/milestone/MS-S2-001-stock-pool-stratification
-- active_milestone_branch: milestone/MS-S2-001-stock-pool-stratification
-- active_milestone_branch_sync_state: created_from_develop_at_1204de8e7a685c0624c2d8a13aa1e7a0c9890bed
-- worktrack_branch: milestone/MS-S2-001-stock-pool-stratification
+- branch_context_required_ref: refs/heads/milestone/MS-R2-001-repo-restructure
+- active_milestone_branch: milestone/MS-R2-001-repo-restructure
+- active_milestone_branch_sync_state: created_from_develop_at_13445eb4db73b2d7329202d5dc70266575ccc211
+- worktrack_branch: N/A (no active worktrack yet)
 
 ## Current Next Action
 
-- MS-R0-001 activated 2026-06-22. First worktrack: WT-R0-A1 (铲平旧选股方法与粘连代码).
+- MS-R2-001 activated 2026-06-23. Pre-milestone intake complete. Next: Init first worktrack (WT-R2-A1 全量路径引用审计).
 
 ## Linked Formal Documents
 
 - repo_snapshot: repo/snapshot-status.md
 - repo_analysis: repo/analysis.md
-- milestone_artifact: milestone/MS-S2-001.md
+- milestone_artifact: milestone/MS-R2-001.md
 - milestone_backlog: repo/milestone-backlog.md
 - milestone_history: repo/milestone-history.md
-- planned_worktrack_backlog: repo/planned-worktrack-backlog.md
-- worktrack_contract: worktrack/contract.md
-- plan_task_queue: worktrack/plan-task-queue.md
-- gate_evidence: worktrack/gate-evidence.md
+- planned_worktrack_backlog: repo/worktrack-backlog.md
+- worktrack_contract: N/A (no active worktrack)
+- plan_task_queue: N/A (no active worktrack)
+- gate_evidence: N/A (no active worktrack)
 
 ## Approval Boundary
 
@@ -98,7 +98,8 @@ owner: "OceanEyeFF"
 - final_acceptance_MS_S0_001: received on 2026-06-12T01:28:03+08:00; accepted evaluation/guardrail/planning milestone with residual risk and no model promotion.
 - final_acceptance_MS_S2_001: received on 2026-06-22T12:45:00+08:00; accepted stock-pool stratification milestone with all 5 worktracks pass, 11/11 completion signals, 9/10 acceptance criteria. Commit: 98ef372.
 - final_acceptance_MS_R0_001: received on 2026-06-23T00:00:00+08:00; accepted selection-layer refactor. 4/4 worktracks (A1-A4), 8/8 completion signals, 6/6 acceptance criteria, 402/402 tests pass.
-- milestone_brief_MS_R1_001: received on 2026-06-23T00:00:00+08:00; planned milestone registered for model-layer extraction and governance, 8 worktracks.
+- final_acceptance_MS_R1_001: received on 2026-06-23T02:00:00+08:00; accepted model-layer extraction and governance. 8/8 worktracks (A1-A8), 10/10 completion signals, 6/6 acceptance criteria, 397/397 tests pass. Commit: 5da7cde.
+- milestone_brief_MS_R2_001: received on 2026-06-23T01:00:00+08:00; planned milestone registered for repo directory restructuring with 3-zone model, 8 worktracks.
 - milestone_brief_MS_S1_001: received on 2026-06-12T10:01:18+08:00; planned milestone registered for three-head prediction credibility and report contract, explicitly excluding alpha_score optimization/promotion.
 - milestone_brief_MS_S2_001: received on 2026-06-22T09:21:03+08:00; planned milestone registered for stock-pool stratification definition and registry contract, explicitly excluding 3/5/10d revalidation, model retraining, and signal promotion.
 - milestone_plan_update_MS_S2_001: received on 2026-06-22T10:15:03+08:00; Worktrack planning updated to use TuShare cache-first, dry-run-first, quota-aware analysis and to keep low-control-probability labels as proxy/candidate boundaries.
@@ -227,24 +228,24 @@ owner: "OceanEyeFF"
 ## Handback Guard
 
 - handoff_state: repo_observe_ready
-- last_stop_reason: MS-S1-001 accepted with residual risk; no active milestone
-- last_handback_signature: MS-S1-001/local-checkpoint/WT-S1-CLEANUP/2026-06-18T10:06:55+08:00
+- last_stop_reason: MS-R2-001 accepted; pipeline complete; no active milestone
+- last_handback_signature: MS-R2-001/programmer-acceptance/2026-06-23T04:00:00+08:00
 - handback_reaffirmed_rounds: 0
 - stable_handback_threshold: 2
 - handback_lock_active: false
-- last_unlock_signal: N/A
+- last_unlock_signal: programmer accepted MS-R2-001
 
 ## Baseline Traceability
 
 > 记录最近一次 worktrack 关闭后的已验证基线，供后续续跑时快速定位。
 
 - last_verified_checkpoint: 0095699d5610554bb23bbe511d2d2df8ad27abeb
-- latest_observed_checkpoint: 98ef372
+- latest_observed_checkpoint: 13445eb4db73b2d7329202d5dc70266575ccc211
 - last_doc_catch_up_checkpoint: N/A
-- milestone_input_checkpoint: MS-R1-001-active-2026-06-23T00:00:00+08:00
+- milestone_input_checkpoint: MS-R2-001-active-2026-06-23T02:00:00+08:00
 - checkpoint_type: git_commit
-- checkpoint_ref: 98ef372
-- verified_at: 2026-06-23T00:00:00+08:00
+- checkpoint_ref: 13445eb4db73b2d7329202d5dc70266575ccc211
+- verified_at: 2026-06-23T02:00:00+08:00
 - if_no_commit_reason: N/A; MS-S0 baseline checkpoint commit 0095699d5610554bb23bbe511d2d2df8ad27abeb was created with programmer approval
 - alternative_traceability:
   - MS-S0 accepted baseline was checkpointed and fast-forwarded into `develop` at 0095699d5610554bb23bbe511d2d2df8ad27abeb with programmer approval.
@@ -277,15 +278,15 @@ owner: "OceanEyeFF"
 - multi_worktree_cleanup_completed: yes
 - `.servo` bootstrap was generated by the installed Servo deploy helper, then project facts were filled from README, NEXT_STEPS, ROADMAP, pyproject, and git status.
 - three_track_plan_ref: docs/overview/three_track_development_plan_20260609.md
-- completed_milestone_latest: MS-S2-001 stock-pool stratification definition and registry contract
-- last_active_milestone_initialized: MS-R0-001
-- planned_milestone_waiting: MS-S3-001 (candidate, pre-milestone intake written but not activated)
+- completed_milestone_latest: MS-R1-001 model-layer extraction and governance
+- last_active_milestone_initialized: MS-R2-001
+- planned_milestone_waiting: none
 - worktrack_init_blocked_until: N/A
 - active_worktrack_initialized: none
 - worktrack_intake_review_ref: N/A
 - worktrack_gate_evidence_ref: N/A
 - environment_validation_report_ref: .servo/worktrack/environment-validation-report.md
-- current_stop_condition: none; MS-R1-001 active, WT-R1-A1 ready for intake/init
-- active_intake_review_ref: .servo/repo/MS-S3-001-pre-milestone-intake-review.md
+- current_stop_condition: none; MS-R2-001 active, WT-R2-A1 ready for intake/init
+- active_intake_review_ref: .servo/repo/MS-R2-001-pre-milestone-intake-review.md
 - persistent_work_habits_updated: 2026-06-10
 - default_workflow_policy: develop is programmer review branch; one development branch per confirmed milestone; delegated SubAgent execution retained; commit and push require approval.
