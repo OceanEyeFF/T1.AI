@@ -178,7 +178,8 @@ PROFILE_DROP_FEATURES: dict[str, set[str]] = {
 }
 FEATURE_PROFILES = tuple(PROFILE_DROP_FEATURES.keys())
 CONFIG_SECTION_NAME = "build_sequence_dataset_market_state"
-DEFAULT_SYMBOLS_CSV = "data/symbols_lstm_sectors_70.csv"
+# No default symbols CSV — use --stock-pool-id to specify a pool instead
+DEFAULT_SYMBOLS_CSV = None
 
 
 def _parse_symbols(path: Path) -> list[str]:
@@ -312,7 +313,9 @@ def _write_partitioned(df: pd.DataFrame, symbol_dir: Path) -> None:
         part.drop(columns=["year"]).to_parquet(year_dir / "part.parquet", index=False)
 
 
-def _fetch_tushare_fund_daily(ts_code: str, start: str, end: str, token: str | None = None) -> pd.DataFrame:
+def _fetch_tushare_fund_daily(
+    ts_code: str, start: str, end: str, token: str | None = None
+) -> pd.DataFrame:
     import tushare as ts  # lazy import
 
     tk = token or os.environ.get("TUSHARE_TOKEN")
@@ -347,7 +350,11 @@ def _load_tushare_fund_daily_cache_or_live(
     if source == "tushare_cache":
         return cached
 
-    need_fetch = cached.empty or cached.index.min() > pd.to_datetime(start) or cached.index.max() < pd.to_datetime(end)
+    need_fetch = (
+        cached.empty
+        or cached.index.min() > pd.to_datetime(start)
+        or cached.index.max() < pd.to_datetime(end)
+    )
     if not need_fetch:
         return cached
 
@@ -361,14 +368,18 @@ def _load_tushare_fund_daily_cache_or_live(
             last_err = e
             time.sleep(1.0 + float(i))
     if fetched.empty and last_err is not None:
-        print(f"[warn] ETF {ts_code} fund_daily fetch failed: {type(last_err).__name__}: {last_err}")
+        print(
+            f"[warn] ETF {ts_code} fund_daily fetch failed: {type(last_err).__name__}: {last_err}"
+        )
 
     frames = [df for df in [cached, fetched] if not df.empty]
     merged = pd.concat(frames).sort_index() if frames else cached.copy()
     merged = merged[~merged.index.duplicated(keep="last")]
     merged.index.name = "date"
     _write_partitioned(merged, cache_dir / cache_ds / ts_code)
-    return merged.loc[(merged.index >= pd.to_datetime(start)) & (merged.index <= pd.to_datetime(end))].copy()
+    return merged.loc[
+        (merged.index >= pd.to_datetime(start)) & (merged.index <= pd.to_datetime(end))
+    ].copy()
 
 
 def _parse_sector_etf_map(path: Path, symbols: list[str]) -> dict[str, str]:
@@ -378,7 +389,13 @@ def _parse_sector_etf_map(path: Path, symbols: list[str]) -> dict[str, str]:
     df = pd.read_csv(path, dtype=str)
     if "symbol" not in df.columns:
         raise ValueError(f"{path} must contain `symbol` column")
-    etf_col = "etf_ts_code" if "etf_ts_code" in df.columns else "etf_symbol" if "etf_symbol" in df.columns else None
+    etf_col = (
+        "etf_ts_code"
+        if "etf_ts_code" in df.columns
+        else "etf_symbol"
+        if "etf_symbol" in df.columns
+        else None
+    )
     if etf_col is None:
         raise ValueError(f"{path} must contain `etf_ts_code` or `etf_symbol` column")
 
@@ -395,7 +412,9 @@ def _parse_sector_etf_map(path: Path, symbols: list[str]) -> dict[str, str]:
     return out
 
 
-def _load_akshare(symbol: str, start: str, end: str, cache_dir: Path, retries: int = 3) -> pd.DataFrame:
+def _load_akshare(
+    symbol: str, start: str, end: str, cache_dir: Path, retries: int = 3
+) -> pd.DataFrame:
     req = AkshareDailyBarsRequest(symbol=symbol, start_date=start, end_date=end, adjust="qfq")
     last_err: Exception | None = None
     for i in range(retries):
@@ -404,7 +423,9 @@ def _load_akshare(symbol: str, start: str, end: str, cache_dir: Path, retries: i
         except Exception as e:  # noqa: BLE001
             last_err = e
             wait_s = 1.0 + float(i)
-            print(f"[warn] {symbol} akshare attempt={i + 1}/{retries} failed: {type(e).__name__}: {e}; sleep={wait_s}s")
+            print(
+                f"[warn] {symbol} akshare attempt={i + 1}/{retries} failed: {type(e).__name__}: {e}; sleep={wait_s}s"
+            )
             time.sleep(wait_s)
     if last_err is not None:
         print(f"[warn] {symbol} akshare all retries failed: {type(last_err).__name__}: {last_err}")
@@ -423,7 +444,9 @@ def _load_tushare_live(symbol: str, start: str, end: str, cache_dir: Path) -> pd
     moneyflow_req = TushareMoneyflowRequest(symbol=ts_code, start_date=start, end_date=end)
 
     bars = load_tushare_daily_bars(bars_req, cache_dir, refresh=False, retries=5, backoff_base=1.0)
-    basic = load_tushare_daily_basic(basic_req, cache_dir, refresh=False, retries=5, backoff_base=1.0)
+    basic = load_tushare_daily_basic(
+        basic_req, cache_dir, refresh=False, retries=5, backoff_base=1.0
+    )
     moneyflow = load_tushare_moneyflow(
         moneyflow_req,
         cache_dir,
@@ -434,7 +457,9 @@ def _load_tushare_live(symbol: str, start: str, end: str, cache_dir: Path) -> pd
     return bars.join(basic, how="left").join(moneyflow, how="left")
 
 
-def _load_tushare_cache_with_extras(symbol: str, start: str, end: str, cache_dir: Path) -> pd.DataFrame:
+def _load_tushare_cache_with_extras(
+    symbol: str, start: str, end: str, cache_dir: Path
+) -> pd.DataFrame:
     ts_code = _to_ts_code(symbol)
     bars = pd.DataFrame(columns=["open", "high", "low", "close", "volume", "amount"])
     for dataset_name in ("tushare_qfq", "tushare", "tushare_hfq", "tushare_raw"):
@@ -527,11 +552,19 @@ def _compute_short_term_features(data: pd.DataFrame) -> pd.DataFrame:
     out["turnover_rate_f"] = turnover_rate_f.shift(1)
     out["turnover_spread"] = turnover_spread.shift(1)
     out["turnover_rate_z20"] = _rolling_zscore(turnover_rate, window=20, min_periods=10).shift(1)
-    out["turnover_rate_f_z20"] = _rolling_zscore(turnover_rate_f, window=20, min_periods=10).shift(1)
-    out["turnover_spread_z20"] = _rolling_zscore(turnover_spread, window=20, min_periods=10).shift(1)
+    out["turnover_rate_f_z20"] = _rolling_zscore(turnover_rate_f, window=20, min_periods=10).shift(
+        1
+    )
+    out["turnover_spread_z20"] = _rolling_zscore(turnover_spread, window=20, min_periods=10).shift(
+        1
+    )
     out["db_volume_ratio"] = db_volume_ratio.shift(1)
-    out["db_volume_ratio_z20"] = _rolling_zscore(db_volume_ratio, window=20, min_periods=10).shift(1)
-    out["volume_volatility_10d"] = volume.pct_change(fill_method=None).rolling(window=10, min_periods=5).std().shift(1)
+    out["db_volume_ratio_z20"] = _rolling_zscore(db_volume_ratio, window=20, min_periods=10).shift(
+        1
+    )
+    out["volume_volatility_10d"] = (
+        volume.pct_change(fill_method=None).rolling(window=10, min_periods=5).std().shift(1)
+    )
     out["pe_ttm_z20"] = _rolling_zscore(pe_ttm, window=20, min_periods=10).shift(1)
     out["pb_z20"] = _rolling_zscore(pb, window=20, min_periods=10).shift(1)
     out["ps_ttm_z20"] = _rolling_zscore(ps_ttm, window=20, min_periods=10).shift(1)
@@ -539,7 +572,9 @@ def _compute_short_term_features(data: pd.DataFrame) -> pd.DataFrame:
     out["total_mv_log"] = np.log1p(total_mv.clip(lower=0.0)).shift(1)
     out["circ_mv_log"] = np.log1p(circ_mv.clip(lower=0.0)).shift(1)
     out["float_share_ratio"] = float_share_ratio.shift(1)
-    out["float_share_ratio_z20"] = _rolling_zscore(float_share_ratio, window=20, min_periods=10).shift(1)
+    out["float_share_ratio_z20"] = _rolling_zscore(
+        float_share_ratio, window=20, min_periods=10
+    ).shift(1)
 
     buy_sm_amount = _num_col(data, "buy_sm_amount")
     buy_md_amount = _num_col(data, "buy_md_amount")
@@ -594,11 +629,15 @@ def _compute_short_term_features(data: pd.DataFrame) -> pd.DataFrame:
     out["mf_buy_pressure_amount"] = buy_pressure_amount.shift(1)
     out["mf_buy_pressure_vol"] = _safe_div(buy_vol_total, total_vol).shift(1)
 
-    net_abs_sum_amount = (net_sm_amount.abs() + net_md_amount.abs() + net_lg_amount.abs() + net_elg_amount.abs()).replace(
+    net_abs_sum_amount = (
+        net_sm_amount.abs() + net_md_amount.abs() + net_lg_amount.abs() + net_elg_amount.abs()
+    ).replace(
         0.0,
         np.nan,
     )
-    out["mf_flow_concentration"] = _safe_div(net_lg_amount.abs() + net_elg_amount.abs(), net_abs_sum_amount).shift(1)
+    out["mf_flow_concentration"] = _safe_div(
+        net_lg_amount.abs() + net_elg_amount.abs(), net_abs_sum_amount
+    ).shift(1)
     out["mf_net_amount_z20"] = _rolling_zscore(net_amount, window=20, min_periods=10).shift(1)
     out["mf_net_vol_z20"] = _rolling_zscore(net_vol, window=20, min_periods=10).shift(1)
 
@@ -613,19 +652,35 @@ def _compute_short_term_features(data: pd.DataFrame) -> pd.DataFrame:
     retail_amount_ratio = _safe_div(retail_net_amount, total_amount)
     out["mf_large_amount_ratio"] = large_amount_ratio.shift(1)
     out["mf_retail_amount_ratio"] = retail_amount_ratio.shift(1)
-    out["mf_large_retail_spread"] = _safe_div(large_net_amount - retail_net_amount, total_amount).shift(1)
+    out["mf_large_retail_spread"] = _safe_div(
+        large_net_amount - retail_net_amount, total_amount
+    ).shift(1)
 
-    out["mf_net_amount_ratio_ma5"] = net_amount_ratio.rolling(window=5, min_periods=3).mean().shift(1)
-    out["mf_net_amount_ratio_ma10"] = net_amount_ratio.rolling(window=10, min_periods=5).mean().shift(1)
+    out["mf_net_amount_ratio_ma5"] = (
+        net_amount_ratio.rolling(window=5, min_periods=3).mean().shift(1)
+    )
+    out["mf_net_amount_ratio_ma10"] = (
+        net_amount_ratio.rolling(window=10, min_periods=5).mean().shift(1)
+    )
     out["mf_net_amount_ratio_mom5"] = net_amount_ratio.diff(5).shift(1)
     out["mf_net_amount_ratio_mom10"] = net_amount_ratio.diff(10).shift(1)
-    out["mf_large_amount_ratio_ma5"] = large_amount_ratio.rolling(window=5, min_periods=3).mean().shift(1)
+    out["mf_large_amount_ratio_ma5"] = (
+        large_amount_ratio.rolling(window=5, min_periods=3).mean().shift(1)
+    )
     out["mf_large_amount_ratio_mom5"] = large_amount_ratio.diff(5).shift(1)
-    out["mf_retail_amount_ratio_ma5"] = retail_amount_ratio.rolling(window=5, min_periods=3).mean().shift(1)
-    out["mf_buy_pressure_amount_ma5"] = buy_pressure_amount.rolling(window=5, min_periods=3).mean().shift(1)
+    out["mf_retail_amount_ratio_ma5"] = (
+        retail_amount_ratio.rolling(window=5, min_periods=3).mean().shift(1)
+    )
+    out["mf_buy_pressure_amount_ma5"] = (
+        buy_pressure_amount.rolling(window=5, min_periods=3).mean().shift(1)
+    )
 
-    out["mf_activity_ratio_5d"] = _safe_div(total_amount, total_amount.rolling(5, min_periods=3).mean()).shift(1)
-    out["mf_activity_ratio_20d"] = _safe_div(total_amount, total_amount.rolling(20, min_periods=10).mean()).shift(1)
+    out["mf_activity_ratio_5d"] = _safe_div(
+        total_amount, total_amount.rolling(5, min_periods=3).mean()
+    ).shift(1)
+    out["mf_activity_ratio_20d"] = _safe_div(
+        total_amount, total_amount.rolling(20, min_periods=10).mean()
+    ).shift(1)
     return out
 
 
@@ -638,7 +693,9 @@ def _compute_etf_features(data: pd.DataFrame) -> pd.DataFrame:
     out["etf_ret_1d_ma5"] = ret_1d.rolling(window=5, min_periods=3).mean().shift(1)
     out["etf_ret_1d_ma10"] = ret_1d.rolling(window=10, min_periods=5).mean().shift(1)
     out["etf_mom_5d"] = close.pct_change(5, fill_method=None).shift(1)
-    out["etf_slope_10d"] = PriceSlope(window=10).compute(pd.DataFrame({"close": close}, index=data.index))
+    out["etf_slope_10d"] = PriceSlope(window=10).compute(
+        pd.DataFrame({"close": close}, index=data.index)
+    )
     return out
 
 
@@ -663,7 +720,13 @@ def _compute_symbol_features(
     drop_features = PROFILE_DROP_FEATURES.get(feature_profile, set())
     has_short_term_inputs = any(
         c in bars.columns and pd.to_numeric(bars[c], errors="coerce").notna().any()
-        for c in ["turnover_rate", "turnover_rate_f", "buy_sm_amount", "sell_sm_amount", "net_mf_amount"]
+        for c in [
+            "turnover_rate",
+            "turnover_rate_f",
+            "buy_sm_amount",
+            "sell_sm_amount",
+            "net_mf_amount",
+        ]
     )
     if include_short_term_features and has_short_term_inputs:
         short_df = _drop_all_nan_columns(_compute_short_term_features(bars))
@@ -705,7 +768,9 @@ def _compute_market_state_features(all_bars: dict[str, pd.DataFrame]) -> pd.Data
     market["mkt_ret1d"] = by_date["ret1d"].mean()
     market["mkt_amount_total"] = by_date["amount"].sum()
 
-    mom5 = ((1.0 + market["mkt_ret1d"]).rolling(window=5, min_periods=5).apply(np.prod, raw=True) - 1.0).shift(1)
+    mom5 = (
+        (1.0 + market["mkt_ret1d"]).rolling(window=5, min_periods=5).apply(np.prod, raw=True) - 1.0
+    ).shift(1)
     vol20 = market["mkt_ret1d"].rolling(window=20, min_periods=20).std().shift(1)
     amt_mean20 = market["mkt_amount_total"].rolling(window=20, min_periods=20).mean()
     amt_std20 = market["mkt_amount_total"].rolling(window=20, min_periods=20).std()
@@ -849,7 +914,11 @@ def _fetch_tushare_fut_daily_by_exchange(
         return pd.DataFrame(columns=["date", "ts_code", *TUSHARE_FUT_BARS_FIELDS])
 
     out = pd.concat(frames, ignore_index=True)
-    out = out.sort_values(["date", "ts_code"]).drop_duplicates(subset=["date", "ts_code"], keep="last").reset_index(drop=True)
+    out = (
+        out.sort_values(["date", "ts_code"])
+        .drop_duplicates(subset=["date", "ts_code"], keep="last")
+        .reset_index(drop=True)
+    )
     return out
 
 
@@ -935,7 +1004,11 @@ def _load_tushare_commodity_bars(
         return {}
 
     all_df = pd.concat(frames, ignore_index=True)
-    all_df = all_df.sort_values(["date", "ts_code"]).drop_duplicates(subset=["date", "ts_code"], keep="last").reset_index(drop=True)
+    all_df = (
+        all_df.sort_values(["date", "ts_code"])
+        .drop_duplicates(subset=["date", "ts_code"], keep="last")
+        .reset_index(drop=True)
+    )
     out = _build_tushare_fut_bars_map(
         all_df,
         symbol_filters=set(symbols),
@@ -976,7 +1049,9 @@ def _compute_commodity_features(commodity_bars: dict[str, pd.DataFrame]) -> pd.D
         rows.append(tmp.reset_index())
 
     if not rows:
-        return pd.DataFrame(index=pd.DatetimeIndex([], name="date"), columns=ODP_COMMODITY_FEATURE_NAMES)
+        return pd.DataFrame(
+            index=pd.DatetimeIndex([], name="date"), columns=ODP_COMMODITY_FEATURE_NAMES
+        )
 
     all_df = pd.concat(rows, ignore_index=True)
     all_df["date"] = pd.to_datetime(all_df["date"])
@@ -1008,7 +1083,9 @@ def _compute_commodity_features(commodity_bars: dict[str, pd.DataFrame]) -> pd.D
     return out
 
 
-def _flatten_sequences(X: np.ndarray, feature_names: list[str], seq_len: int) -> tuple[np.ndarray, list[str]]:
+def _flatten_sequences(
+    X: np.ndarray, feature_names: list[str], seq_len: int
+) -> tuple[np.ndarray, list[str]]:
     flat = X.reshape(X.shape[0], seq_len * len(feature_names))
     cols: list[str] = []
     for t in range(seq_len):
@@ -1035,7 +1112,9 @@ def _split_by_ratio(
     train_cut = max(1, int(n_dates * train_ratio))
     valid_cut = max(train_cut, int(n_dates * (train_ratio + valid_ratio)))
     train_dates = set(pd.to_datetime(unique_dates[: min(train_cut, n_dates)]))
-    valid_dates = set(pd.to_datetime(unique_dates[min(train_cut, n_dates) : min(valid_cut, n_dates)]))
+    valid_dates = set(
+        pd.to_datetime(unique_dates[min(train_cut, n_dates) : min(valid_cut, n_dates)])
+    )
 
     m_train = dates.isin(train_dates).to_numpy()
     m_valid = dates.isin(valid_dates).to_numpy()
@@ -1087,18 +1166,30 @@ def _argparse_allowed_keys(parser: argparse.ArgumentParser) -> set[str]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build sequence parquet dataset with market state features.")
-    parser.add_argument("--config-file", default="", help="JSON/TOML config file path (args mapping)")
+    parser = argparse.ArgumentParser(
+        description="Build sequence parquet dataset with market state features."
+    )
+    parser.add_argument(
+        "--config-file", default="", help="JSON/TOML config file path (args mapping)"
+    )
     parser.add_argument(
         "--effective-config-out",
         default="",
         help="optional: save effective merged config (after CLI overrides) to JSON",
     )
-    parser.add_argument("--symbols-csv", default=DEFAULT_SYMBOLS_CSV, help="股票列表 CSV，需含 symbol 列")
+    parser.add_argument(
+        "--symbols-csv", default=DEFAULT_SYMBOLS_CSV, help="股票列表 CSV，需含 symbol 列"
+    )
     parser.add_argument("--stock-pool-id", default="", help="从 registry 读取股票池成员")
-    parser.add_argument("--stock-pool-version", default="", help="股票池版本，留空则要求 registry 内仅有单版本")
-    parser.add_argument("--stock-pool-registry-dir", default="configs/stock_pools", help="股票池 registry 目录")
-    parser.add_argument("--stock-pool-export-dir", default="output/stock_pools", help="导出的股票池产物目录")
+    parser.add_argument(
+        "--stock-pool-version", default="", help="股票池版本，留空则要求 registry 内仅有单版本"
+    )
+    parser.add_argument(
+        "--stock-pool-registry-dir", default="configs/stock_pools", help="股票池 registry 目录"
+    )
+    parser.add_argument(
+        "--stock-pool-export-dir", default="output/stock_pools", help="导出的股票池产物目录"
+    )
     parser.add_argument("--cache-dir", default="data/cache")
     parser.add_argument(
         "--source",
@@ -1118,8 +1209,12 @@ def main() -> None:
     parser.add_argument("--stride", type=int, default=1)
     parser.add_argument("--valid-weeks", type=int, default=26)
     parser.add_argument("--test-weeks", type=int, default=26)
-    parser.add_argument("--train-ratio", type=float, default=None, help="Deprecated: ratio split mode")
-    parser.add_argument("--valid-ratio", type=float, default=None, help="Deprecated: ratio split mode")
+    parser.add_argument(
+        "--train-ratio", type=float, default=None, help="Deprecated: ratio split mode"
+    )
+    parser.add_argument(
+        "--valid-ratio", type=float, default=None, help="Deprecated: ratio split mode"
+    )
     parser.add_argument("--horizons", default="3,5,10")
     parser.add_argument(
         "--label-mode",
@@ -1133,7 +1228,9 @@ def main() -> None:
         default=False,
         help="是否追加 1 日 high/low/close 标签（label_1d_high/low/close）",
     )
-    parser.add_argument("--output-dir", default="data/datasets/lstm_sector70_19d_mkt_20210101_20260120")
+    parser.add_argument(
+        "--output-dir", default="data/datasets/lstm_sector70_19d_mkt_20210101_20260120"
+    )
     parser.add_argument(
         "--feature-profile",
         default="compact44",
@@ -1284,7 +1381,11 @@ def main() -> None:
         all_bars[s] = bars
 
         # TuShare 存在分钟级限流，按 symbol 级别节流。
-        if args.source.startswith("tushare") and idx < len(symbols) - 1 and args.request_interval_seconds > 0:
+        if (
+            args.source.startswith("tushare")
+            and idx < len(symbols) - 1
+            and args.request_interval_seconds > 0
+        ):
             time.sleep(float(args.request_interval_seconds))
 
     if not all_bars:
@@ -1307,7 +1408,9 @@ def main() -> None:
                     retries=5,
                 )
             except Exception as e:  # noqa: BLE001
-                print(f"[warn] ETF {etf_code} source={args.source} fetch error: {type(e).__name__}: {e}")
+                print(
+                    f"[warn] ETF {etf_code} source={args.source} fetch error: {type(e).__name__}: {e}"
+                )
                 continue
             if etf_bars.empty:
                 print(f"[warn] ETF {etf_code} has no fund_daily data from source={args.source}")
@@ -1316,7 +1419,11 @@ def main() -> None:
             if not etf_feat.empty:
                 etf_feature_by_code[etf_code] = etf_feat
 
-            if args.source.startswith("tushare") and idx < len(unique_etf_codes) - 1 and args.request_interval_seconds > 0:
+            if (
+                args.source.startswith("tushare")
+                and idx < len(unique_etf_codes) - 1
+                and args.request_interval_seconds > 0
+            ):
                 time.sleep(float(args.request_interval_seconds))
 
         for s, etf_code in etf_map.items():
@@ -1365,7 +1472,9 @@ def main() -> None:
         commodity_market_state = _compute_commodity_features(commodity_bars)
         commodity_market_state = commodity_market_state.reindex(market_state.index)
         if commodity_market_state.empty:
-            print(f"[warn] commodity features are enabled but no valid data loaded (source={commodity_source})")
+            print(
+                f"[warn] commodity features are enabled but no valid data loaded (source={commodity_source})"
+            )
 
     market_state = market_state.join(commodity_market_state, how="left")
 
@@ -1381,7 +1490,9 @@ def main() -> None:
         feats = feats.join(market_state, how="left")
         labs = MultiHorizonLabel(horizons=horizons, label_mode=args.label_mode).compute(bars)
         if bool(args.include_1d_hlc_labels):
-            labs = pd.concat([labs, OneDayHLCLabel(label_mode=args.label_mode).compute(bars)], axis=1)
+            labs = pd.concat(
+                [labs, OneDayHLCLabel(label_mode=args.label_mode).compute(bars)], axis=1
+            )
 
         feats = feats.assign(symbol=symbol).reset_index().set_index(["date", "symbol"]).sort_index()
         labs = labs.assign(symbol=symbol).reset_index().set_index(["date", "symbol"]).sort_index()
@@ -1470,7 +1581,9 @@ def main() -> None:
             "commodity_source": commodity_source,
             "odp_provider": str(args.odp_provider),
             "odp_commodity_symbols": odp_symbols if commodity_source == "odp" else [],
-            "tushare_fut_exchanges": tushare_fut_exchanges if commodity_source == "tushare_fut" else [],
+            "tushare_fut_exchanges": tushare_fut_exchanges
+            if commodity_source == "tushare_fut"
+            else [],
             "tushare_fut_symbols": tushare_fut_symbols if commodity_source == "tushare_fut" else [],
             "tushare_fut_main_only": bool(args.tushare_fut_main_only),
             "config_file": config_file_resolved,

@@ -40,24 +40,24 @@ def _synthetic_daily_bars(symbol: str, periods: int = 120) -> pd.DataFrame:
 
 
 def test_load_stock_pool_record_from_registry_sample() -> None:
-    path = Path("configs/stock_pools/custom_quick8_v1.toml")
+    path = Path("configs/stock_pools/custom_low_manipulation_v1.toml")
     record = load_stock_pool_record(path)
-    assert record.stock_pool_id == "custom_quick8"
+    assert record.stock_pool_id == "custom_low_manipulation"
     assert record.stock_pool_version == "v1"
-    assert record.symbols_count == 8
+    assert record.symbols_count == 14
 
 
 def test_load_stock_pool_registry_and_get_single_record() -> None:
     registry = load_stock_pool_registry("configs/stock_pools")
-    assert ("custom_quick8", "v1") in registry
-    record = get_stock_pool_record("configs/stock_pools", stock_pool_id="custom_quick8")
+    assert ("custom_low_manipulation", "v1") in registry
+    record = get_stock_pool_record("configs/stock_pools", stock_pool_id="custom_low_manipulation")
     assert record.pool_family == "custom"
 
 
 def test_resolve_stock_pool_symbols_and_export_artifacts(tmp_path: Path) -> None:
-    record = get_stock_pool_record("configs/stock_pools", stock_pool_id="custom_quick8")
+    record = get_stock_pool_record("configs/stock_pools", stock_pool_id="custom_low_manipulation")
     symbols = resolve_stock_pool_symbols(record, registry_root=Path.cwd())
-    assert len(symbols) == 8
+    assert len(symbols) == 14
 
     artifacts = export_stock_pool_artifacts(record, output_dir=tmp_path, registry_root=Path.cwd())
     exported_csv = artifacts["symbols_csv"]
@@ -66,24 +66,24 @@ def test_resolve_stock_pool_symbols_and_export_artifacts(tmp_path: Path) -> None
     assert exported_meta.exists()
 
     payload = json.loads(exported_meta.read_text(encoding="utf-8"))
-    assert payload["stock_pool_id"] == "custom_quick8"
+    assert payload["stock_pool_id"] == "custom_low_manipulation"
     assert payload["stock_pool_version"] == "v1"
-    assert int(payload["symbols_count"]) == 8
+    assert int(payload["symbols_count"]) == 14
 
 
 def test_resolve_symbols_input_supports_stock_pool_registry(tmp_path: Path) -> None:
     symbols, context = _resolve_symbols_input(
         symbols=None,
         symbols_csv=None,
-        stock_pool_id="custom_quick8",
+        stock_pool_id="custom_low_manipulation",
         stock_pool_version="v1",
         stock_pool_registry_dir="configs/stock_pools",
         stock_pool_export_dir=str(tmp_path),
     )
-    assert len(symbols) == 8
-    assert context["stock_pool_id"] == "custom_quick8"
+    assert len(symbols) == 14
+    assert context["stock_pool_id"] == "custom_low_manipulation"
     assert context["stock_pool_version"] == "v1"
-    assert context["symbols_csv"].endswith("custom_quick8/v1/symbols.csv")
+    assert context["symbols_csv"].endswith("custom_low_manipulation/v1/symbols.csv")
 
 
 def test_invalid_stock_pool_record_missing_required_fields(tmp_path: Path) -> None:
@@ -114,7 +114,9 @@ def test_build_sequence_dataset_cli_smoke_supports_stock_pool_registry(
 
     repo_root = Path(__file__).resolve().parents[1]
     monkeypatch.chdir(repo_root)
-    monkeypatch.setattr(dataset_script, "_load_bars", lambda *_args, **_kwargs: _synthetic_daily_bars("000001"))
+    monkeypatch.setattr(
+        dataset_script, "_load_bars", lambda *_args, **_kwargs: _synthetic_daily_bars("000001")
+    )
 
     output_dir = tmp_path / "seq_quick8_dataset"
     export_dir = tmp_path / "stock_pool_exports"
@@ -138,7 +140,7 @@ def test_build_sequence_dataset_cli_smoke_supports_stock_pool_registry(
             "--output-dir",
             str(output_dir),
             "--stock-pool-id",
-            "custom_quick8",
+            "custom_low_manipulation",
             "--stock-pool-version",
             "v1",
             "--stock-pool-export-dir",
@@ -152,10 +154,12 @@ def test_build_sequence_dataset_cli_smoke_supports_stock_pool_registry(
     assert (output_dir / "train.parquet").exists()
     assert (output_dir / "valid.parquet").exists()
     assert (output_dir / "test.parquet").exists()
-    assert metadata["dataset_config"]["stock_pool_id"] == "custom_quick8"
+    assert metadata["dataset_config"]["stock_pool_id"] == "custom_low_manipulation"
     assert metadata["dataset_config"]["stock_pool_version"] == "v1"
-    assert metadata["dataset_config"]["symbols_csv"].endswith("custom_quick8/v1/symbols.csv")
-    assert metadata["dataset_id"].startswith("seq_quick8_")
+    assert metadata["dataset_config"]["symbols_csv"].endswith(
+        "custom_low_manipulation/v1/symbols.csv"
+    )
+    assert metadata["dataset_id"].startswith("seq_low_manipulation_")
 
 
 def test_build_sequence_dataset_market_state_cli_smoke_supports_stock_pool_registry(
@@ -194,7 +198,7 @@ def test_build_sequence_dataset_market_state_cli_smoke_supports_stock_pool_regis
             "--output-dir",
             str(output_dir),
             "--stock-pool-id",
-            "custom_quick8",
+            "custom_low_manipulation",
             "--stock-pool-version",
             "v1",
             "--stock-pool-export-dir",
@@ -213,7 +217,9 @@ def test_build_sequence_dataset_market_state_cli_smoke_supports_stock_pool_regis
     assert (output_dir / "train.parquet").exists()
     assert (output_dir / "valid.parquet").exists()
     assert (output_dir / "test.parquet").exists()
-    assert metadata["dataset_config"]["stock_pool_id"] == "custom_quick8"
+    assert metadata["dataset_config"]["stock_pool_id"] == "custom_low_manipulation"
     assert metadata["dataset_config"]["stock_pool_version"] == "v1"
-    assert metadata["dataset_config"]["symbols_csv"].endswith("custom_quick8/v1/symbols.csv")
-    assert metadata["dataset_id"].startswith("mkt_quick8_")
+    assert metadata["dataset_config"]["symbols_csv"].endswith(
+        "custom_low_manipulation/v1/symbols.csv"
+    )
+    assert metadata["dataset_id"].startswith("mkt_low_manipulation_")

@@ -1,0 +1,23 @@
+{
+  "generated_at": "2026-06-22T15:54:58+08:00",
+  "score_threshold": 60,
+  "pool_size": 14,
+  "total_universe": 64,
+  "scoring_script": "scripts/score_low_manipulation.py",
+  "dimensions": {
+    "scale_barrier": "35%",
+    "turnover_health": "20%",
+    "market_synchronicity": "20%",
+    "extreme_behavior": "15%",
+    "volume_price_naturalness": "5%",
+    "moneyflow_stability": "5%"
+  },
+  "source_endpoints": [
+    "daily",
+    "daily_basic",
+    "moneyflow"
+  ],
+  "fetch_manifest": "cache-first; 177 TuShare requests completed 2026-06-22",
+  "data_end_date": "2026-03-05",
+  "proxy_note": "Composite score is a proxy for low manipulation probability; does not measure true control probability"
+}

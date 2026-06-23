@@ -1,0 +1,16 @@
+stock_pool_id = "custom_low_manipulation"
+stock_pool_version = "v1"
+pool_family = "custom"
+pool_label = "Low-Manipulation-Probability Pool (score >= 60)"
+construction_method = "multi-indicator composite score from 6 dimensions (scale, turnover health, market synchronicity, extreme behavior, volume-price naturalness, moneyflow stability) across 64 A-share mainboard stocks; score >= 60 threshold; data from TuShare daily_basic + daily qfq + moneyflow cache"
+base_universe = "sectors_70 + existing quick8 cache, A-share mainboard only (excl. 688/300/301/8/4)"
+symbols_source = "configs/stock_pools/custom_low_manipulation_v1_symbols.csv"
+symbols_csv = "configs/stock_pools/custom_low_manipulation_v1_symbols.csv"
+symbols_count = 14
+rebalance_frequency = "frozen"
+effective_start = "2023-01-01"
+effective_end = ""
+is_default = false
+is_research_only = false
+owner = "WT-EXPAND-001"
+notes = "Low-manipulation-probability stock pool. Constructed via 6-dimension composite scoring (scale 35%, turnover health 20%, market sync 20%, extreme behavior 15%, volume-price naturalness 5%, moneyflow stability 5%). Threshold: score >= 60 (top 14 of 64). Based on TuShare cached data as of 2026-03. No model training or signal promotion."

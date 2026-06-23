@@ -28,8 +28,9 @@ def test_resolve_experiment_context_infers_dataset_contract_from_metadata(tmp_pa
         json.dumps(
             {
                 "dataset_config": {
-                    "symbols_csv": "data/symbols_lstm_quick8.csv",
-                    "num_symbols": 8,
+                    "stock_pool_id": "custom_low_manipulation",
+                    "symbols_csv": "configs/stock_pools/custom_low_manipulation_v1_symbols.csv",
+                    "num_symbols": 14,
                     "start_date": "20230101",
                     "end_date": "20260305",
                 },
@@ -49,10 +50,10 @@ def test_resolve_experiment_context_infers_dataset_contract_from_metadata(tmp_pa
     )
 
     assert ctx["config_status"] == "candidate"
-    assert ctx["stock_pool_id"] == "custom_quick8"
+    assert ctx["stock_pool_id"] == "custom_low_manipulation"
     assert ctx["stock_pool_version"] == "v1"
     assert ctx["evaluation_window_id"] == "fixed_20230101_20250701"
-    assert ctx["dataset_id"] == "seq_quick8_53d_20230101_20260305"
+    assert ctx["dataset_id"] == "seq_low_manipulation_53d_20230101_20260305"
 
 
 def test_build_default_report_path_uses_model_track_subdir() -> None:
@@ -73,10 +74,10 @@ def test_build_effective_config_payload_contains_required_contract_fields() -> N
             "model_track": "mainline_3510d",
             "config_profile": "lstm_rolling_baseline",
             "config_status": "baseline",
-            "stock_pool_id": "custom_quick8",
+            "stock_pool_id": "custom_low_manipulation",
             "stock_pool_version": "v1",
             "evaluation_window_id": "fixed_20230101_20250701",
-            "dataset_id": "seq_quick8_53d_20230101_20260305",
+            "dataset_id": "seq_low_manipulation_53d_20230101_20260305",
         },
         seed=42,
         script="run_lstm_rolling_retrain_dim19_regime",
@@ -86,7 +87,7 @@ def test_build_effective_config_payload_contains_required_contract_fields() -> N
     )
 
     assert payload["experiment_id"] == "lstm_rolling_baseline_mainline_3510d_20260323"
-    assert payload["stock_pool_id"] == "custom_quick8"
+    assert payload["stock_pool_id"] == "custom_low_manipulation"
     assert payload["evaluation_window_id"] == "fixed_20230101_20250701"
-    assert payload["dataset_id"] == "seq_quick8_53d_20230101_20260305"
+    assert payload["dataset_id"] == "seq_low_manipulation_53d_20230101_20260305"
     assert payload["args"] == {"seed": 42}

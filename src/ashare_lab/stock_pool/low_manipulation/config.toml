@@ -1,0 +1,22 @@
+# 低控盘概率策略配置
+
+[strategy]
+score_threshold = 60.0
+lookback_days = 60
+min_data_days = 120
+
+[weights]
+scale = 0.35     # 规模壁垒：流通市值 + 成交额 + ILLIQ + 自由流通比
+turnover = 0.20  # 换手率健康：甜蜜区间 + 稳定性
+sync = 0.20      # 市场同步：R² + 异质波动
+extreme = 0.15   # 极端行为：涨跌停 + MAX + 自相关
+behavior = 0.05  # 量价自然：量价相关性 + 隔夜/日内比
+moneyflow = 0.05 # 资金流向：大单离散度
+
+[turnover_sweet_spot]
+low = 0.8  # 换手率下限（%，低于此值 = 僵尸股风险）
+high = 6.0 # 换手率上限（%，高于此值 = 游资炒作风险）
+
+[overnight_sweet_spot]
+low = 0.3
+high = 1.5
