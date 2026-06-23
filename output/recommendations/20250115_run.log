@@ -1,6 +1,0 @@
-✅ 推荐榜单生成成功
-  - JSON: output/recommendations/20250115.json
-  - CSV(3d): output/recommendations/20250115_3d.csv
-  - CSV(5d): output/recommendations/20250115_5d.csv
-  - CSV(10d): output/recommendations/20250115_10d.csv
-  - Markdown: output/recommendations/20250115.md
