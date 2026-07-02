@@ -12,6 +12,7 @@ htmlcov/
 venv/
 
 inputs/data/cache/
+data/cache/
 workspace/checkpoints/
 workspace/runs/
 
@@ -22,6 +23,12 @@ workspace/runs/
 !.claude/skills/
 !.claude/skills/**
 .serena/
+.spec-workflow/
+
+# 旧运行产物目录（已清理，防止再生）
+runs/
+logs/
+backup/
 
 # 环境变量文件（包含敏感信息）
 .env
@@ -34,6 +41,10 @@ workspace/runs/
 # 训练日志 & 产物
 outputs/predictions/
 outputs/reports/
+
+# 数据集（本地构建产物，不跟踪）
+data/datasets/
+models/
 
 # Skill 部署目录（本地，不从远端同步）
 .agents/skills/
