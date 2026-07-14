@@ -1,14 +1,6 @@
 #!/usr/bin/env bash
+# Develop min regression — aliases to Arch-v1 fast lane (unit + contract).
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "${repo_root}"
-
-export PYTHONPATH="src:."
-
-pytest -q \
-  tests/unit/evaluation/test_trade_like_panel.py \
-  tests/unit/recommendation/test_trend_aggregation.py \
-  tests/unit/recommendation/test_trend_schema.py \
-  tests/integration/training/test_lstm_dynamic_heads.py \
-  tests/integration/training/test_multilevel_tuning.py
+exec "${repo_root}/scripts/run_tests_fast.sh" "$@"

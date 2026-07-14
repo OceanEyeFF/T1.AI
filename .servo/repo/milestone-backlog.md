@@ -41,9 +41,9 @@ updated_by: "cursor-close-r3-init-t1-with-programmer-confirmation"
   - WT-T1-A1 (completed): inventory + Arch-v1 + Del-A1 approval
   - WT-T1-A2 (completed): Del-A1 executed
   - WT-T1-A3 (completed): Arch-v1 migration; pytest 396 passed
-  - WT-T1-A4 (planned): markers + CI 分层 + cov 门禁（数值 A4 实测）+ 文档 + R4 延后交接
-- updated: 2026-07-14T18:45:00+08:00
-- updated_by: cursor-WT-T1-A3-arch-v1
+  - WT-T1-A4 (completed): markers + fast/full/cov76 + testing guide + R4 handoff
+- updated: 2026-07-14T18:58:00+08:00
+- updated_by: cursor-WT-T1-A4
 
 ## Planned
 

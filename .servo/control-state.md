@@ -13,9 +13,9 @@ owner: "OceanEyeFF"
 
 ## Metadata
 
-- updated: 2026-07-14T18:45:00+08:00
+- updated: 2026-07-14T18:58:00+08:00
 - owner: OceanEyeFF
-- refresh_note: WT-T1-A3 Arch-v1 migration complete; pytest 396 passed; next Init A4 (markers/cov)
+- refresh_note: WT-T1-A4 complete — markers/fast-full/cov76/R4 handoff; MS-T1 4/4 pending final acceptance
 
 ## Current Control Level
 
@@ -25,17 +25,17 @@ owner: "OceanEyeFF"
 ## Active Worktrack
 
 - active_worktrack: none
-- worktrack_status: A1_A2_A3_completed
-- worktrack_contract: worktrack/WT-T1-A3-contract.md
-- plan_task_queue: N/A
+- worktrack_status: all_completed (A1-A4)
+- worktrack_contract: worktrack/WT-T1-A4-contract.md
+- plan_task_queue: worktrack/WT-T1-A4-plan-task-queue.md
 - gate_evidence: N/A
 - active_task_window: none
-- selected_next_action_id: WT-T1-A4-init-on-request
+- selected_next_action_id: MS-T1-001-final-acceptance-or-commit
 - worktrack_gate_verdict: N/A
 - worktrack_blocker: none
-- worktrack_residual_risk: Cov-detail + CI marker wiring deferred to A4
-- worktrack_intake_review: worktrack/MS-T1-001-WT-T1-A3-intake-review.md
-- closeout_ref: worktrack/WT-T1-A3-closeout.md
+- worktrack_residual_risk: none material; final milestone acceptance programmer-gated
+- worktrack_intake_review: worktrack/MS-T1-001-WT-T1-A4-intake-review.md
+- closeout_ref: worktrack/WT-T1-A4-closeout.md
 
 ## Active Milestone
 
@@ -76,7 +76,7 @@ owner: "OceanEyeFF"
 
 ## Current Next Action
 
-- WT-T1-A3 Arch-v1 complete (pytest 396 passed). Next: programmer Init WT-T1-A4 for markers/CI/cov.
+- MS-T1-001 worktracks 4/4 complete. Next: local commit A4 (if desired) and/or programmer final acceptance + merge to develop.
 
 ## Linked Formal Documents
 
@@ -239,13 +239,13 @@ owner: "OceanEyeFF"
 
 ## Handback Guard
 
-- handoff_state: awaiting_worktrack_init
-- last_stop_reason: A3 Arch-v1 complete; awaiting Init WT-T1-A4
-- last_handback_signature: WT-T1-A3/arch-v1/2026-07-14T18:45:00+08:00
+- handoff_state: milestone_ready_for_acceptance
+- last_stop_reason: WT-T1-A4 complete; awaiting programmer final acceptance
+- last_handback_signature: WT-T1-A4/close/2026-07-14T18:58:00+08:00
 - handback_reaffirmed_rounds: 0
 - stable_handback_threshold: 2
 - handback_lock_active: false
-- last_unlock_signal: programmer commit then start A3
+- last_unlock_signal: programmer Init WT-T1-A4
 
 ## Baseline Traceability
 
