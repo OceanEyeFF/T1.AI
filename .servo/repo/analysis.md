@@ -2,7 +2,7 @@
 title: "Repo Analysis"
 artifact_type: "repo-analysis"
 generated_from: "servo-set-harness-goal-skill/assets/repo/analysis.md"
-updated: "2026-06-11T16:40:59+08:00"
+updated: "2026-07-14T10:50:00+08:00"
 owner: "OceanEyeFF"
 ---
 
@@ -14,83 +14,76 @@ owner: "OceanEyeFF"
 
 - repo: T1.AI
 - baseline_branch: develop
-- baseline_ref: b1c1f82bb87ae2ce32223ad2edb69ca501296c5b
-- updated: 2026-06-11T16:40:59+08:00
-- analysis_status: refreshed-after-MS-ENV-000-acceptance
+- baseline_ref: 1f7eab1ccc9a065c6eff330b4b2c588e5fbb24cc
+- updated: 2026-07-14T10:50:00+08:00
+- analysis_status: refreshed-after-control-plane-realignment-2026-07-14
+- analysis_stale: false
 
 ## Facts
 
-- The repo is a Python A-share low-frequency research and execution framework.
-- The project documents now define three development lines:
-  - `3d/5d/10d` short-term prediction
-  - `1d` ultra-fast prediction with intraday/minute data as prerequisite
-  - decision model
-- The current worktree is `/home/oceaneye/github/T1.AI` on `milestone/MS-ENV-000-conda-env-validation` after accepted environment milestone closeout.
-- Multi-worktree local development has been consolidated back to a single worktree.
-- Servo framework was installed through `npx servo-installer@next`; observed installer version is `0.6.1-rc.2`.
-- Installed Servo backends:
-  - `.agents/skills`
-  - `.claude/skills`
-- Current uncommitted business-logic changes: none observed.
-- Current uncommitted environment/control changes: Servo bootstrap/control artifacts and `py311-private` environment-contract updates.
+- The repo is a Python A-share low-frequency research and execution framework (`ashare-lab`).
+- Three development lines remain in charter: `3d/5d/10d`, independent `1d`, and decision model.
+- Current checkout is `/home/oceaneye/github/T1.AI` on `develop` @ `1f7eab1`, clean and synced with `origin/develop`.
+- Repo root now follows MS-R2 three-zone layout: `inputs/` → `workspace/` → `outputs/`, with `src/` as code core.
+- Completed/accepted Servo milestones include MS-ENV-000, MS-S0-001, MS-S1-001, MS-S2-001, MS-R0-001, MS-R1-001, MS-R2-001.
+- Live milestone backlog has `active_count: 0` and planned `MS-R3-001` then `MS-R4-001`.
+- No active worktrack; continuous milestone autonomy is inactive while `active_milestone: none`.
+- Persistent approval gates remain: commit, push, destructive cleanup, dependency changes, production/external side effects, final milestone acceptance.
 
-- facts: TODO(facts)
 ## Inferences
 
-- `MS-ENV-000` is completed and accepted; `py311-private` supports CPU development/testing for the repo.
-- The active Servo-managed milestone is now `MS-S0-001`, focused on `3d/5d/10d` prediction credibility and optimization discipline.
-- Decision-model work should remain at I/O draft level until the mainline `alpha_score` passes a credible prediction gate.
-- Because the programmer works solo and requested a single worktree, branch/worktree proliferation should be treated as governance debt unless explicitly requested.
-- `.servo` control artifacts are currently intended to be visible in project state; `.serena/` and `.logs/` remain local-only.
+- Immediate repo-level work is governance/pipeline routing, not coding under an active milestone.
+- Highest near-term pipeline candidate is `MS-R3-001` (deep cleanup of archived/stale artifacts), which unblocks `MS-R4-001` (TuShare data lake).
+- Residual MS-R2 pytest path failures are better treated as cleanup/data-contract follow-through under R3/R4 than as reopen of R2.
+- Research credibility of mainline `3d/5d/10d` remains a standing product gap, but it is not the current control-plane idle-state blocker; the idle blocker is missing confirmed active milestone + intake.
+- Decision-model implementation should stay deferred until mainline signals pass credibility gates.
 
-- inferences: TODO(inferences)
 ## Unknowns
 
-- Whether the three development lines should use physical Git branches now, or remain logical planning tracks on the current branch.
-- Whether local GPU support should become a separate Worktrack later; current decision is CPU-first.
+- Exact scope and aggressiveness of MS-R3-001 deletion set (docs/archive, old TOML, old scripts, checkpoints) pending pre-milestone intake.
+- Whether MS-R4-001 should start from a narrow lake bootstrap or a broader provider-cutover once R3 completes.
+- Whether residual 2 failing tests should be explicit MS-R3 acceptance criteria or deferred to MS-R4 data rebuild.
 
-- unknowns: TODO(unknowns)
 ## Main Contradiction
 
-- current_main_contradiction: The project needs decision-ready `3d/5d/10d` signals, but current prediction credibility, false-signal controls, and optimization evaluation discipline are not yet sufficient.
-- main_aspect: prediction credibility before decision-model reliance.
+- current_main_contradiction: Product still needs decision-ready `3d/5d/10d` signals, but the current control plane is correctly idle on infrastructure/cleanup pipeline work (R3→R4) after restructuring; research promotion and infra cleanup must not be collapsed into one milestone.
+- main_aspect: pipeline sequencing vs research credibility backlog.
 
 ## Priority Judgment
 
-- current_highest_priority: Prepare `WT-A2-001` intake/review gate under active milestone `MS-S0-001`, then establish the mainline evaluation and anti-false-signal framework.
+- current_highest_priority: Keep control plane truthful, then decide whether to run pre-milestone intake for `MS-R3-001`.
 - long_term_highest_priority: Keep the A-share pipeline reproducible, auditable, line-separated, and capable of turning predictions into explainable decisions.
 - do_not_do_now:
+  - do not invent an active milestone or Worktrack Init without intake + programmer confirmation
   - do not merge `1d` into default mainline scoring
-  - do not use day-K-only `1d` results as the final ultra-fast prediction verdict
-  - do not prioritize complex decision-model implementation before `alpha_score` passes credibility gates
-  - do not expand model complexity to mask execution-layer gaps
-  - do not reopen multiple local worktrees without explicit need
+  - do not promote `alpha_score` / prediction heads
   - do not treat generated reports/checkpoints/logs as source truth
   - do not commit/push/branch-mutate without explicit programmer instruction
+  - do not reopen MS-R2 as active; it is completed/accepted
 
 ## Routing Projection
 
-- recommended_repo_action: observe active milestone `MS-S0-001`, then prepare the `WT-A2-001` intake/review gate.
-- recommended_next_route: RepoScope.Observe -> milestone-status-skill -> PreMilestoneIntake for `WT-A2-001`.
-- suggested_node_type: research/test
-- continuation_ready: partial
+- recommended_repo_action: RepoScope.Decide — `repo-whats-next` or start `MS-R3-001` pre-milestone intake when programmer requests progression
+- recommended_next_route: RepoScope.Decide -> (optional) pre-milestone-intake for MS-R3-001
+- suggested_node_type: cleanup / docs / config (for MS-R3 candidate)
+- continuation_ready: yes for Decide/Intake; no for Worktrack Init
 - continuation_blockers:
-  - milestone review gate is not ready for Worktrack Init
-  - active milestone development branch for `MS-S0-001` has not been created or checked out yet
+  - no confirmed active milestone
+  - MS-R3-001 pre-milestone intake not yet written
 
 ## Writeback Eligibility
 
 - writeback_eligibility:
-  - `.servo` bootstrap writeback: complete
-  - three-track planning writeback: complete
-  - revised milestone recommendation: complete
-  - formal milestone artifact and backlog: complete for `MS-ENV-000` and `MS-S0-001`
-  - milestone activation: complete for `MS-S0-001`
-  - `MS-S0-001` prerequisite dependency: satisfied by accepted `MS-ENV-000`
-  - worktrack creation: blocked until milestone review gate and worktrack intake are ready for `WT-A2-001`
-  - source code mutation: allowed only after an approved worktrack or direct user request
+  - control-state realignment: complete (2026-07-14)
+  - snapshot-status refresh: complete (2026-07-14)
+  - analysis refresh: complete (this file)
+  - milestone backlog/history: already consistent with idle + planned R3/R4
+  - git commit of control-plane refresh: deferred until programmer approval
+  - source code mutation: blocked until approved worktrack or direct user request
+  - milestone activation / Worktrack Init: blocked until intake + confirmation
 
 ## Notes
 
-- This analysis intentionally avoids deriving unapproved worktracks from existing branch names.
-- The first Servo-controlled work should be small enough to validate the harness loop without creating multiple worktrees or collapsing the three tracks back into one.
+- This analysis replaces the stale 2026-06-11 MS-ENV/MS-S0 routing projection.
+- Refresh evidence: git HEAD `1f7eab1`, milestone-history § MS-R2-001, milestone-backlog planned R3/R4, programmer request to update control plane on 2026-07-14.
+- Refresh report: `.servo/repo/refresh-report-control-plane-2026-07-14.md`

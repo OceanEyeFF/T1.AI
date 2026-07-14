@@ -2,7 +2,7 @@
 title: "Repo Snapshot / Status"
 artifact_type: "repo-snapshot-status"
 generated_from: "servo-set-harness-goal-skill/assets/repo/snapshot-status.md"
-updated: "2026-06-22T14:30:00+08:00"
+updated: "2026-07-14T10:50:00+08:00"
 owner: "OceanEyeFF"
 ---
 
@@ -14,30 +14,25 @@ owner: "OceanEyeFF"
 
 - repo: T1.AI
 - baseline_branch: develop
-- updated: 2026-06-17T14:00:13+08:00
-- status: idle (MS-S2-001 completed and accepted; no active milestone)
+- updated: 2026-07-14T10:50:00+08:00
+- status: idle (MS-R2-001 completed and accepted; no active milestone; MS-R3-001 / MS-R4-001 planned)
 
 ## Mainline Status
 
 - baseline_branch: develop
-- last_verified_checkpoint: 0095699d5610554bb23bbe511d2d2df8ad27abeb
+- last_verified_checkpoint: 1f7eab1ccc9a065c6eff330b4b2c588e5fbb24cc
 - checkpoint_ref: HEAD
 - checkpoint_type: git_commit
 - working_tree_state:
-  - uncommitted_servo_install: no; Servo bootstrap files are checkpointed in commit `0095699d5610554bb23bbe511d2d2df8ad27abeb`.
-  - uncommitted_gitignore_update: no; checkpointed in commit `0095699d5610554bb23bbe511d2d2df8ad27abeb`.
-  - environment_contract_changes: checkpointed in commit `0095699d5610554bb23bbe511d2d2df8ad27abeb`.
-  - business_code_changes: checkpointed MS-S0 focused A2 strict protocol gate in `scripts/compare_ic_reports.py` and tests.
-  - research_docs_changes: checkpointed A2 evaluation gate protocol and Daily-CS workflow updates.
-  - servo_control_changes: checkpointed `WT-A2-001`, `WT-A3-001`, `WT-B0-001`, and `WT-C0-001` initialized, verified, and closed.
-  - current_ms_s1_changes: checkpointed into `develop` at local commit `13fc2a2`; includes WT-S1-A1 through WT-S1-CLEANUP.
-  - current_ms_s2_changes: checkpointed into `milestone/MS-S2-001-stock-pool-stratification` at commit `98ef372`; includes stock-pool stratification contracts, TuShare fetch strategy (14 tests), registry pools (custom_liquid_large_proxy_v1, custom_low_control_proxy_candidate_v1, custom_low_manipulation_v1), pool construction and scoring scripts.
+  - clean: yes
+  - tracked_branch: develop...origin/develop (in sync)
+  - last_commit_subject: chore: clean up stale recommendation outputs, add .logs/ to gitignore
+  - layout: inputs/ + workspace/ + outputs/ three-zone model present at repo root (MS-R2-001 delivered)
+  - top_level_dirs_observed: deployment, docs, inputs, outputs, scripts, src, tests, workspace (+ root docs/config files)
 - worktree_state:
   - active_worktree_count: 1
   - active_worktree_path: /home/oceaneye/github/T1.AI
-  - removed_worktrees:
-    - /home/oceaneye/github/T1.AI-exec
-    - /home/oceaneye/github/T1.AI-model-d1
+  - policy: single-worktree / develop as programmer review branch
 
 ## Architecture And Module Map
 
@@ -49,46 +44,38 @@ owner: "OceanEyeFF"
   - `dataset`: tabular and sequence dataset builders.
   - `features`: momentum, price slope, technical, and volume features.
   - `labels`: excess return and multi-horizon labels.
-  - `models`: transformer and related model components.
+  - `models`: ModelABC + registry; LSTM / XGBoost / Transformer paths (MS-R1-001).
   - `training`: trainer and MTL finetune paths.
   - `evaluation`: metrics, sanity checks, trade-like panels.
   - `recommendation`: engine, validator, history, trend aggregation.
   - `backtest`: book and engine.
   - `pipeline`: orchestrator and monitoring.
-  - `stock_pool`: registry and stock pool typing.
+  - `stock_pools`: strategy ABC + low_manipulation strategy (MS-R0-001).
+- zone_layout (MS-R2-001):
+  - `inputs/`: data, configs, pools
+  - `workspace/`: checkpoints, runs, registry
+  - `outputs/`: predictions, reports, signals
 - scripts_root: `scripts`
-- config_roots:
-  - `configs`
-  - `configs/datasets`
-  - `configs/experiments`
-  - `configs/stock_pools`
 - docs_roots:
   - `README.md`
   - `NEXT_STEPS.md`
   - `ROADMAP.md`
-  - `docs/README.md`
-  - `docs/modules`
-  - `docs/overview`
+  - `docs/WORK_RULES.md`
+  - `docs/architecture`
+  - `docs/reference`
+  - `docs/guides`
   - `docs/research`
-  - `docs/interfaces`
+  - `docs/archive`
 
 ## Active Branches And Purpose
 
 - local:
-  - `milestone/MS-S0-001-prediction-credibility`: completed prediction credibility milestone branch checkpointed into `develop` at `0095699d5610554bb23bbe511d2d2df8ad27abeb`.
-  - `milestone/MS-ENV-000-conda-env-validation`: previous milestone branch retained locally.
-  - `develop`: current checked-out branch; intended single-worktree programmer review branch; includes local MS-S1 checkpoint `13fc2a2` and is not pushed.
-  - `milestone/MS-S1-001-three-head-credibility`: completed milestone branch fast-forwarded into `develop` at `13fc2a2`; retained locally.
-  - `feature/model-3d-5d-10d-head`: local branch retained; not currently checked out.
+  - `develop`: current checkout; programmer review / servo baseline branch; HEAD `1f7eab1`; synced with `origin/develop`.
 - remote_refs_observed:
   - `origin/develop`
-  - `origin/feature/execution-layer-v2`
-  - `origin/feature/model-d1-research`
-  - `origin/feature/model-3d-5d-10d-head`
-  - `origin/codex/read-research_checklist.md-for-new-branch`
 - consolidation_state:
-  - previous local worktrees for execution-layer and d1 research were removed.
-  - previous local branches `feature/execution-layer-v2` and `feature/model-d1-research` were deleted locally after confirming no unpushed commits.
+  - MS-R2 milestone branch work is recorded in history; current observed checkout is `develop` only.
+  - No active milestone development branch required while `active_milestone: none`.
 
 ## Governance Status
 
@@ -96,62 +83,43 @@ owner: "OceanEyeFF"
   - `README.md`: project purpose and current development lines.
   - `NEXT_STEPS.md`: current execution priority and staged work.
   - `ROADMAP.md`: long-term route.
-  - `docs/overview/three_track_development_plan_20260609.md`: current three-track development plan.
-  - `docs/modules/model_line_boundaries_1d_vs_3510d_20260309.md`: mainline vs 1d boundary.
-  - `docs/modules/system_io_and_architecture_spec.md`: system I/O and pipeline-first architecture.
+  - `docs/WORK_RULES.md`: global work rules after MS-R2 docs rebuild.
 - installed_servo:
-  - installer_command: `npx servo-installer@next`
-  - installer_version_observed: `0.6.1-rc.2`
-  - deployed_backends:
-    - `.agents/skills`
-    - `.claude/skills`
-- local_tooling:
-  - `.serena/` is ignored and local-only.
-  - `.logs/` is ignored and local-only.
-  - `.servo/` is not ignored and is intended to carry versionable Servo control artifacts unless the programmer later changes that policy.
+  - control artifacts under `.servo/` are versionable project state.
+  - skill backends historically under `.agents/skills` / `.claude/skills` (may be gitignored depending on later policy commits).
 - approval_state:
   - persistent Servo work habit variables are configured.
-  - `MS-ENV-000` is completed and accepted.
-  - `MS-S0-001` is completed and accepted with residual risk.
-  - `MS-S1-001` is completed and accepted with residual risk; final report concludes continue-research / blocked-by-data.
-  - `MS-S2-001` is completed and accepted (2026-06-22); 5/5 worktracks pass, 11/11 completion signals, 9/10 acceptance criteria. Stock-pool stratification registry contract delivered. Post-milestone WT-EXPAND-001 expanded cache to 65+ symbols and registered custom_low_manipulation_v1 (14 stocks).
+  - Completed/accepted milestones include MS-ENV-000, MS-S0-001, MS-S1-001, MS-S2-001, MS-R0-001, MS-R1-001, MS-R2-001.
   - No model is promoted; `alpha_score` remains candidate research signal.
-  - MS-S3-001 pre-milestone intake written but not activated: low-manipulation pool prediction stability validation.
+  - Pipeline planned: MS-R3-001 (deep cleanup) then MS-R4-001 (TuShare data lake).
 - three_track_status:
-  - `3d/5d/10d`: main alpha candidate line; A2 froze credibility protocol and A3 froze a planning/dry-run optimization queue under that protocol.
-  - `1d`: B0 feasibility report completed; modeling remains blocked until live provider permission and fixed-pool fixed-window minute replay are proven.
-  - decision_model: C0 I/O draft is available; implementation remains future-scoped and cannot use candidate signals as production trading inputs.
+  - `3d/5d/10d`: main alpha candidate line; credibility gates still block promotion.
+  - `1d`: modeling remains blocked until live provider permission and fixed-pool fixed-window minute replay are proven.
+  - decision_model: I/O draft exists; implementation remains future-scoped.
 
 ## Known Issues And Risks
 
-- Mainline `3d/5d/10d` prediction credibility is the current main gap: evaluation methodology and optimization discipline must be strengthened before treating `alpha_score` as decision-ready.
-- Completed milestone `MS-S1-001` intentionally deprioritized `alpha_score` and focused on the three prediction heads directly.
-- WT-S1-A1 added a local random-label anti-cheat path and evidence contract; quick8 random-label smoke passed but does not prove model usefulness.
-- WT-S1-A2 added a local neutralization gate; quick8 XGB industry-neutral IC turned negative for h3/h5/h10 and size neutralization is blocked by missing size columns in current XGB OOS, so promotion remains blocked.
-- WT-S1-A3 added XGBoost writer-level `evaluation_protocol` and `comparison_panel` output, making future XGBoost reports consumable by the shared protocol checker without relaxing checker behavior.
-- WT-S1-A4 found current fastpilot LSTM/XGB reports cannot run strict same-window daily-CS smoke because both lack OOS parquet paths, and historical XGB fastpilot lacks protocol fields.
-- WT-S1-A5 final report concludes `continue-research / blocked-by-data`; no `pred_3d`, `pred_5d`, `pred_10d`, or `alpha_score` signal is promoted.
-- Post-MS-S1 direction note records that stock-pool stratification and large-cap low-control-probability 3/5/10d revalidation should be split into separate future Milestones; small-cap/suspected-control behavior modeling is only a one-line future direction note.
-- Mainline `3d/5d/10d` and independent `1d` research must remain separated to avoid metric/config/report contamination.
-- `1d` ultra-fast prediction cannot be judged from day-K-only data; intraday/minute data source feasibility is a required gate.
+- Control plane was stale after MS-R2 acceptance until 2026-07-14 refresh (this snapshot).
+- MS-R2 left 2 pytest failures tied to old dataset paths; deferred to MS-R3-001 / MS-R4-001.
+- Mainline `3d/5d/10d` prediction credibility remains insufficient for decision-ready `alpha_score`.
+- `1d` ultra-fast prediction cannot be judged from day-K-only data.
 - External data source behavior depends on provider availability, credentials, caching, and replay discipline.
 - Generated caches, model checkpoints, logs, and reports must remain artifacts, not source truth.
-- Servo framework is installed and control artifacts are versionable project state.
-- Conda environment validation completed: `py311-private` is canonical and passes core imports, project imports, env guard, ruff availability, and minimal pytest on CPU.
-- GPU training on the local GTX 1080 Ti / `sm_61` is not validated with current PyTorch wheel and is non-blocking for the CPU-first next milestone.
-- `MS-S0-001` has completed all four planned Worktracks and was accepted by the programmer on 2026-06-12T01:28:03+08:00.
-- A2 audit found quick8 historical reports are OOS-comparable but fail raw/calibrated strict credibility gates and sanity checks; this is evidence against promotion, not a missing-artifact failure.
-- Independent random-label CLI, industry / market-cap neutralization gate, XGBoost report contract output, same-window blocked-by-data evidence, and final three-head acceptance report now exist as local credibility surfaces.
-- Actual model training remains deferred to explicit later execution slices; A3 only planned and dry-ran command manifests.
-- B0 found no current repo-ready minute replay implementation; TuShare `stk_mins` is the primary candidate, AkShare is smoke-only, and live provider validation remains approval-gated.
-- C0 produced a decision-model I/O draft with signal maturity guards; no trading logic was implemented and no signal was promoted.
-- WT-S1-A1 residual risk: h5 sanity smoke still failed time-reverse, reinforcing that quick8 evidence is not promotion evidence.
-- WT-S1-A2 residual risk: size neutralization remains blocked for current XGB OOS because no size column is present; industry-neutral quick8 evidence is negative/cautionary.
-- WT-S1-A3 residual risk: no end-to-end XGBoost retraining was run, and historical fastpilot XGB report still lacks OOS parquet path.
-- WT-S1-A4 residual risk: same-window strict LSTM/XGB comparison remains unavailable without same-window OOS parquet artifacts.
-- WT-S1-A5 residual risk: final milestone acceptance is complete; any commit/push remains programmer-gated.
+- Commit / push / destructive cleanup / dependency changes / final milestone acceptance remain programmer-gated.
+
+## Milestone Pipeline Snapshot
+
+- active_count: 0
+- planned_count: 2
+- completed_count: 7
+- active_milestone: none
+- planned:
+  - MS-R3-001: 旧文件深度清理 (depends on MS-R2-001; intake pending)
+  - MS-R4-001: TuShare 数据湖构建 (depends on MS-R3-001; intake draft exists)
+- latest_completed: MS-R2-001 (repo three-zone restructure; accepted 2026-06-23)
 
 ## Notes
 
 - Snapshot records observed facts, not approval for future work.
-- Next safe route is RepoScope.Observe and future Milestone intake when requested; no commit/push without programmer approval.
+- Next safe route is RepoScope.Decide (`repo-whats-next`) or pre-milestone intake for `MS-R3-001` when requested; no commit/push without programmer approval.
+- Control-plane refresh report: `.servo/repo/refresh-report-control-plane-2026-07-14.md`
