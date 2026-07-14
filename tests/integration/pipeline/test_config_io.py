@@ -4,7 +4,6 @@ import json
 import sys
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from scripts.config_io import extract_arg_overrides, load_mapping_config
 

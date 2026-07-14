@@ -13,7 +13,12 @@ from ashare_lab.recommendation.trend_aggregation import (
     rank_primary_trend_scores,
 )
 
-from tests.test_recommendation_engine import DummyFeatureBuilder, DummyMTLModel, DummyUniverseFilter, _make_symbols
+from tests.unit.recommendation.test_recommendation_engine import (
+    DummyFeatureBuilder,
+    DummyMTLModel,
+    DummyUniverseFilter,
+    _make_symbols,
+)
 
 
 def test_aggregate_primary_trend_scores_basic_ranking() -> None:

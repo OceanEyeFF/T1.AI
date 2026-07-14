@@ -34,6 +34,17 @@ package-dir = {"" = "src"}
 [tool.ruff]
 line-length = 100
 
+[tool.pytest.ini_options]
+pythonpath = ["src", "."]
+testpaths = ["tests"]
+markers = [
+  "unit: fast pure-logic unit tests",
+  "integration: multi-module / filesystem integration tests",
+  "contract: repo file / CLI / report schema contracts",
+  "slow: long-running tests",
+  "gpu: requires CUDA",
+]
+
 [tool.coverage.run]
 source = ["src/ashare_lab"]
 omit = [

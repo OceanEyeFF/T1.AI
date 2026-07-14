@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pandas as pd
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from scripts.audit_ic_reports import main
 

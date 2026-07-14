@@ -3,7 +3,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from scripts.auto_tune_xgb import ScoreWeights, _monthly_values_from_weekly_logs, score_report
 

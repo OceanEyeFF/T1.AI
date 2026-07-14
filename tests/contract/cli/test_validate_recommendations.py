@@ -8,7 +8,6 @@ from typing import Any
 import pandas as pd
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
 def _df_close(dates: list[str], closes: list[float]) -> pd.DataFrame:

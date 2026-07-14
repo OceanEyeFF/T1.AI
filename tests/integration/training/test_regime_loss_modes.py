@@ -4,7 +4,6 @@ from pathlib import Path
 import pytest
 import torch
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from scripts.run_lstm_rolling_retrain_dim19_regime import _compute_head_loss
 

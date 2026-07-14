@@ -13,9 +13,9 @@ owner: "OceanEyeFF"
 
 ## Metadata
 
-- updated: 2026-07-14T18:25:00+08:00
+- updated: 2026-07-14T18:45:00+08:00
 - owner: OceanEyeFF
-- refresh_note: A1 approved (Del-A1+Arch-v1); A2 Del-A1 done (6 passed); Cov-detail deferred to A4; next Init A3
+- refresh_note: WT-T1-A3 Arch-v1 migration complete; pytest 396 passed; next Init A4 (markers/cov)
 
 ## Current Control Level
 
@@ -25,17 +25,17 @@ owner: "OceanEyeFF"
 ## Active Worktrack
 
 - active_worktrack: none
-- worktrack_status: A1_approved_A2_completed
-- worktrack_contract: worktrack/WT-T1-A2-contract.md
-- plan_task_queue: worktrack/WT-T1-A1-plan-task-queue.md
+- worktrack_status: A1_A2_A3_completed
+- worktrack_contract: worktrack/WT-T1-A3-contract.md
+- plan_task_queue: N/A
 - gate_evidence: N/A
 - active_task_window: none
-- selected_next_action_id: WT-T1-A3-init-on-request
+- selected_next_action_id: WT-T1-A4-init-on-request
 - worktrack_gate_verdict: N/A
 - worktrack_blocker: none
-- worktrack_residual_risk: Cov-detail deferred to A4
-- worktrack_intake_review: worktrack/MS-T1-001-WT-T1-A2-intake-review.md
-- closeout_ref: worktrack/WT-T1-A2-execution-log.md
+- worktrack_residual_risk: Cov-detail + CI marker wiring deferred to A4
+- worktrack_intake_review: worktrack/MS-T1-001-WT-T1-A3-intake-review.md
+- closeout_ref: worktrack/WT-T1-A3-closeout.md
 
 ## Active Milestone
 
@@ -76,7 +76,7 @@ owner: "OceanEyeFF"
 
 ## Current Next Action
 
-- Del-A1 executed (deployment tests 6 passed). Arch-v1 adopted. Next: programmer Init WT-T1-A3 for migration. Cov numeric detail waits for A4.
+- WT-T1-A3 Arch-v1 complete (pytest 396 passed). Next: programmer Init WT-T1-A4 for markers/CI/cov.
 
 ## Linked Formal Documents
 
@@ -240,12 +240,12 @@ owner: "OceanEyeFF"
 ## Handback Guard
 
 - handoff_state: awaiting_worktrack_init
-- last_stop_reason: A2 Del-A1 complete; awaiting Init WT-T1-A3
-- last_handback_signature: WT-T1-A2/del-a1/2026-07-14T18:25:00+08:00
+- last_stop_reason: A3 Arch-v1 complete; awaiting Init WT-T1-A4
+- last_handback_signature: WT-T1-A3/arch-v1/2026-07-14T18:45:00+08:00
 - handback_reaffirmed_rounds: 0
 - stable_handback_threshold: 2
 - handback_lock_active: false
-- last_unlock_signal: programmer approved Del-A1 + Arch-v1
+- last_unlock_signal: programmer commit then start A3
 
 ## Baseline Traceability
 

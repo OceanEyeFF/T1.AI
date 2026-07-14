@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from scripts.env_guard import ensure_required_conda_env
 

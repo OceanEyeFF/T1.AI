@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from scripts.evaluate_recommendation import evaluate_top_k, generate_report  # noqa: E402
 

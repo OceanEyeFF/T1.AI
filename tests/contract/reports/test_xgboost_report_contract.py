@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pandas as pd
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from scripts.compare_ic_reports import check_protocol_consistency
 from scripts.run_xgboost_rolling_retrain_regime import (

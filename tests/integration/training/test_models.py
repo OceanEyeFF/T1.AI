@@ -17,8 +17,6 @@ from ashare_lab.models.transformer import (
     freeze_encoder_layers,
 )
 
-# Ensure repo root (for `scripts/`) is importable when pytest uses `src/` layout only.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from scripts.train_mtl import build_dataloaders_from_parquet, fit  # noqa: E402
 

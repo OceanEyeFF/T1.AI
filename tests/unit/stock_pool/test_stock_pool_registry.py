@@ -7,7 +7,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from ashare_lab.stock_pool import (
     export_stock_pool_artifacts,
@@ -115,7 +114,7 @@ def test_build_sequence_dataset_cli_smoke_supports_stock_pool_registry(
 ) -> None:
     from scripts import build_sequence_dataset as dataset_script
 
-    repo_root = Path(__file__).resolve().parents[1]
+    repo_root = Path(__file__).resolve().parents[3]
     monkeypatch.chdir(repo_root)
     monkeypatch.setattr(
         dataset_script, "_load_bars", lambda *_args, **_kwargs: _synthetic_daily_bars("000001")
@@ -171,7 +170,7 @@ def test_build_sequence_dataset_market_state_cli_smoke_supports_stock_pool_regis
 ) -> None:
     from scripts import build_sequence_dataset_market_state as market_state_script
 
-    repo_root = Path(__file__).resolve().parents[1]
+    repo_root = Path(__file__).resolve().parents[3]
     monkeypatch.chdir(repo_root)
     monkeypatch.setattr(
         market_state_script,

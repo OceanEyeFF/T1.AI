@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pandas as pd
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 import numpy as np
 

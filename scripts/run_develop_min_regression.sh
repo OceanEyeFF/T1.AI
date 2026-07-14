@@ -7,8 +7,8 @@ cd "${repo_root}"
 export PYTHONPATH="src:."
 
 pytest -q \
-  tests/test_trade_like_panel.py \
-  tests/test_trend_aggregation.py \
-  tests/test_trend_schema.py \
-  tests/test_lstm_dynamic_heads.py \
-  tests/test_multilevel_tuning.py
+  tests/unit/evaluation/test_trade_like_panel.py \
+  tests/unit/recommendation/test_trend_aggregation.py \
+  tests/unit/recommendation/test_trend_schema.py \
+  tests/integration/training/test_lstm_dynamic_heads.py \
+  tests/integration/training/test_multilevel_tuning.py

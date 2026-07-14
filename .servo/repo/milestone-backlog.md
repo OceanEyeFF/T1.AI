@@ -39,11 +39,11 @@ updated_by: "cursor-close-r3-init-t1-with-programmer-confirmation"
 - decisions_locked: D1=C, D2=S1, D3=Del-yes, D4=Acc-balanced, D5=confirmed
 - worktrack_list:
   - WT-T1-A1 (completed): inventory + Arch-v1 + Del-A1 approval
-  - WT-T1-A2 (completed): Del-A1 executed; deployment tests 6 passed
-  - WT-T1-A3 (planned): 目录分层搬迁 + fixtures/factories（Arch-v1）
+  - WT-T1-A2 (completed): Del-A1 executed
+  - WT-T1-A3 (completed): Arch-v1 migration; pytest 396 passed
   - WT-T1-A4 (planned): markers + CI 分层 + cov 门禁（数值 A4 实测）+ 文档 + R4 延后交接
-- updated: 2026-07-14T18:25:00+08:00
-- updated_by: cursor-WT-T1-A2-del-a1
+- updated: 2026-07-14T18:45:00+08:00
+- updated_by: cursor-WT-T1-A3-arch-v1
 
 ## Planned
 

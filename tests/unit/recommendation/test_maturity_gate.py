@@ -3,7 +3,6 @@ from pathlib import Path
 
 import pandas as pd
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from scripts.run_lstm_rolling_retrain_dim19_regime import (
     _attach_label_maturity_date,

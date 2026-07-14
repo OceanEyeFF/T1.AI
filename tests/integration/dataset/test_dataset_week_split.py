@@ -4,7 +4,6 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from scripts.build_sequence_dataset import _split_by_fixed_weeks, _split_by_ratio
 

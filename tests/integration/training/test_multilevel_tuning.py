@@ -4,7 +4,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from scripts.run_multilevel_tuning import (
     _build_lstm_specs,
@@ -175,7 +174,7 @@ def test_run_compare_requires_protocol_check(tmp_path: Path) -> None:
 
 
 def test_multilevel_tuning_dry_run_works_without_baseline_reports(tmp_path: Path) -> None:
-    repo_root = Path(__file__).resolve().parents[1]
+    repo_root = Path(__file__).resolve().parents[3]
     out_dir = tmp_path / "reports"
     lstm_cfg = tmp_path / "lstm_rolling_baseline.toml"
     xgb_cfg = tmp_path / "xgb_rolling_baseline.toml"
