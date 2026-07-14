@@ -13,9 +13,9 @@ owner: "OceanEyeFF"
 
 ## Metadata
 
-- updated: 2026-07-14T10:50:00+08:00
+- updated: 2026-07-14T11:35:00+08:00
 - owner: OceanEyeFF
-- refresh_note: control-plane realignment after MS-R2-001 acceptance; observed HEAD 1f7eab1 on develop
+- refresh_note: MS-R3-001 initialized and activated after confirmed intake (B+T2+P3)
 
 ## Current Control Level
 
@@ -37,52 +37,52 @@ owner: "OceanEyeFF"
 
 ## Active Milestone
 
-- active_milestone: none
-- milestone_status: none
-- milestone_kind: N/A
-- milestone_artifact: N/A (completed: MS-R2-001)
+- active_milestone: MS-R3-001
+- milestone_status: active
+- milestone_kind: goal-driven
+- milestone_artifact: milestone/MS-R3-001.md
 - milestone_backlog: repo/milestone-backlog.md
 - milestone_history: repo/milestone-history.md
 - milestone_pipeline_summary:
-  - active_count: 0
-  - planned_count: 2
+  - active_count: 1
+  - planned_count: 1
   - completed_count: 7
   - superseded_count: 0
-  - note: MS-R2-001 completed. MS-R3-001 (深度清理) MS-R4-001 (数据湖) planned.
-- milestone_review_gate_ready: no
-- latest_review_status: N/A
-- milestone_review_count: 0
-- latest_review_checkpoint: N/A
-- effective_review_pass: false
-- next_milestone_route: handback — MS-R2-001 accepted, MS-R3-001 needs pre-milestone intake
+  - note: MS-R3-001 active (deep cleanup). MS-R4-001 planned behind R3.
+- milestone_review_gate_ready: yes
+- latest_review_status: effective_pass
+- milestone_review_count: 1
+- latest_review_checkpoint: MS-R3-001-intake-2026-07-14T11:30:00+08:00
+- effective_review_pass: true
+- next_milestone_route: init first worktrack WT-R3-A1 (inventory) after programmer requests Worktrack Init
 
 ## Baseline Branch
 
 - baseline_branch: develop
-- baseline_ref: 1f7eab1ccc9a065c6eff330b4b2c588e5fbb24cc
+- baseline_ref: 7d5a22e1117b87f71b737032d05bbbc52df3e62d
 
 ## Branch Environment Guard
 
-- current_branch_context: repo
-- expected_branch_context: repo
+- current_branch_context: milestone
+- expected_branch_context: milestone
 - branch_context_guard_status: pass
-- branch_context_required_ref: refs/heads/develop
-- active_milestone_branch: N/A (no active milestone)
-- active_milestone_branch_sync_state: N/A
-- worktrack_branch: N/A (no active worktrack)
-- observed_checkout: develop @ 1f7eab1ccc9a065c6eff330b4b2c588e5fbb24cc (synced with origin/develop; clean)
+- branch_context_required_ref: refs/heads/milestone/MS-R3-001-deep-cleanup
+- active_milestone_branch: milestone/MS-R3-001-deep-cleanup
+- active_milestone_branch_sync_state: created_from_develop_at_7d5a22e1117b87f71b737032d05bbbc52df3e62d
+- worktrack_branch: N/A (no active worktrack yet)
 
 ## Current Next Action
 
-- Repo idle after MS-R2-001 acceptance. Pipeline next candidate: MS-R3-001 (旧文件深度清理) — needs pre-milestone intake before activation. MS-R4-001 remains planned behind MS-R3-001.
+- MS-R3-001 activated 2026-07-14. Intake ready (B+T2+P3). Next: Init first worktrack WT-R3-A1（inventory + 引用审计 + 2-fail 定性；只读）.
 
 ## Linked Formal Documents
 
 - repo_snapshot: repo/snapshot-status.md
 - repo_analysis: repo/analysis.md
-- milestone_artifact: N/A (latest completed: milestone/MS-R2-001.md; history: repo/milestone-history.md)
+- milestone_artifact: milestone/MS-R3-001.md
 - milestone_backlog: repo/milestone-backlog.md
 - milestone_history: repo/milestone-history.md
+- pre_milestone_intake: repo/MS-R3-001-pre-milestone-intake-review.md
 - planned_worktrack_backlog: repo/worktrack-backlog.md
 - worktrack_contract: N/A (no active worktrack)
 - plan_task_queue: N/A (no active worktrack)
@@ -103,6 +103,8 @@ owner: "OceanEyeFF"
 - final_acceptance_MS_R1_001: received on 2026-06-23T02:00:00+08:00; accepted model-layer extraction and governance. 8/8 worktracks (A1-A8), 10/10 completion signals, 6/6 acceptance criteria, 397/397 tests pass. Commit: 5da7cde.
 - final_acceptance_MS_R2_001: received on 2026-06-23T04:00:00+08:00; accepted repo directory restructuring (inputs/workspace/outputs). 11/11 worktracks, 11/11 completion signals, pytest 395/397 (2 residual path failures deferred to later milestones). History: repo/milestone-history.md § MS-R2-001.
 - milestone_brief_MS_R2_001: received on 2026-06-23T01:00:00+08:00; planned milestone registered for repo directory restructuring with 3-zone model; later expanded to 11 worktracks and completed/accepted.
+- milestone_brief_MS_R3_001: received and confirmed on 2026-07-14; decisions D1=B, D2=T2, D3=P3, D4=confirm; Init authorized by programmer message「初始化 MS-R3-001」.
+- milestone_activation_MS_R3_001: received on 2026-07-14T11:35:00+08:00; MS-R3-001 set active; branch milestone/MS-R3-001-deep-cleanup.
 - milestone_brief_MS_S1_001: received on 2026-06-12T10:01:18+08:00; planned milestone registered for three-head prediction credibility and report contract, explicitly excluding alpha_score optimization/promotion.
 - milestone_brief_MS_S2_001: received on 2026-06-22T09:21:03+08:00; planned milestone registered for stock-pool stratification definition and registry contract, explicitly excluding 3/5/10d revalidation, model retraining, and signal promotion.
 - milestone_plan_update_MS_S2_001: received on 2026-06-22T10:15:03+08:00; Worktrack planning updated to use TuShare cache-first, dry-run-first, quota-aware analysis and to keep low-control-probability labels as proxy/candidate boundaries.
@@ -230,39 +232,39 @@ owner: "OceanEyeFF"
 
 ## Handback Guard
 
-- handoff_state: repo_decide_ready
-- last_stop_reason: control-plane refreshed 2026-07-14; MS-R2-001 accepted; no active milestone; MS-R3-001 awaiting pre-milestone intake
-- last_handback_signature: MS-R2-001/programmer-acceptance/2026-06-23T04:00:00+08:00
+- handoff_state: worktrack_init_ready
+- last_stop_reason: MS-R3-001 activated; waiting for WT-R3-A1 Worktrack Init instruction
+- last_handback_signature: MS-R3-001/init-activate/2026-07-14T11:35:00+08:00
 - handback_reaffirmed_rounds: 0
 - stable_handback_threshold: 2
 - handback_lock_active: false
-- last_unlock_signal: programmer requested control-plane refresh on 2026-07-14 after repo-status observed stale artifacts
+- last_unlock_signal: programmer Init MS-R3-001 after confirmed intake
 
 ## Baseline Traceability
 
 > 记录最近一次 worktrack 关闭后的已验证基线，供后续续跑时快速定位。
 
-- last_verified_checkpoint: 1f7eab1ccc9a065c6eff330b4b2c588e5fbb24cc
-- latest_observed_checkpoint: 1f7eab1ccc9a065c6eff330b4b2c588e5fbb24cc
-- last_doc_catch_up_checkpoint: 1f7eab1ccc9a065c6eff330b4b2c588e5fbb24cc
-- milestone_input_checkpoint: MS-R2-001-completed-2026-06-23T04:00:00+08:00
+- last_verified_checkpoint: 7d5a22e1117b87f71b737032d05bbbc52df3e62d
+- latest_observed_checkpoint: 7d5a22e1117b87f71b737032d05bbbc52df3e62d
+- last_doc_catch_up_checkpoint: 7d5a22e1117b87f71b737032d05bbbc52df3e62d
+- milestone_input_checkpoint: MS-R3-001-activated-2026-07-14T11:35:00+08:00
 - checkpoint_type: git_commit
-- checkpoint_ref: 1f7eab1ccc9a065c6eff330b4b2c588e5fbb24cc
-- verified_at: 2026-07-14T10:50:00+08:00
-- if_no_commit_reason: N/A; develop @ 1f7eab1 is clean and matches origin/develop; control-plane refresh is artifact writeback only (no new git commit in this refresh)
+- checkpoint_ref: 7d5a22e1117b87f71b737032d05bbbc52df3e62d
+- verified_at: 2026-07-14T11:35:00+08:00
+- if_no_commit_reason: N/A; milestone branch created from develop@7d5a22e; init writeback not yet committed
 - alternative_traceability:
+  - MS-R3 intake: .servo/repo/MS-R3-001-pre-milestone-intake-review.md
+  - MS-R3 artifact: .servo/milestone/MS-R3-001.md
   - MS-R2 acceptance writeback commit: 68e43f9e16ec9de8f3742ebfd527f624fcac8e8a
-  - MS-R2 baseline hash update: 935a7a2
-  - post-MS-R2 cleanup on develop: 1f7eab1 (stale recommendation outputs + .logs/ gitignore)
+  - control-plane refresh commit: 7d5a22e1117b87f71b737032d05bbbc52df3e62d
   - MS-R2 history: .servo/repo/milestone-history.md § MS-R2-001
-  - MS-S0 accepted baseline (historical): 0095699d5610554bb23bbe511d2d2df8ad27abeb
 
 ## Autonomy Ledger
 
-- autonomy_budget_remaining: 0
-- active_persistent_autonomy_budget_source: none (no active milestone)
+- autonomy_budget_remaining: 6
+- active_persistent_autonomy_budget_source: per_milestone_automatic_worktrack_budget (MS-R3-001)
 - historical_one_shot_budget_remaining: 26
-- autonomous_worktracks_opened: 4
+- autonomous_worktracks_opened: 0
 - one_shot_execution_cycle_budget:
   - granted_at: 2026-06-11
   - scope: MS-S0-001
@@ -280,15 +282,15 @@ owner: "OceanEyeFF"
 - `.servo` bootstrap was generated by the installed Servo deploy helper, then project facts were filled from README, NEXT_STEPS, ROADMAP, pyproject, and git status.
 - three_track_plan_ref: docs/overview/three_track_development_plan_20260609.md
 - completed_milestone_latest: MS-R2-001 repo directory restructuring (inputs/workspace/outputs)
-- last_active_milestone_initialized: MS-R2-001
-- planned_milestone_waiting: MS-R3-001 (needs pre-milestone intake); MS-R4-001 (depends on MS-R3-001; intake draft exists)
-- worktrack_init_blocked_until: no_active_milestone — activate a confirmed milestone before Worktrack Init
+- last_active_milestone_initialized: MS-R3-001
+- planned_milestone_waiting: MS-R4-001 (depends on MS-R3-001; intake draft exists)
+- worktrack_init_blocked_until: N/A — active milestone confirmed; WT-R3-A1 ready for Worktrack Init on request
 - active_worktrack_initialized: none
 - worktrack_intake_review_ref: N/A
 - worktrack_gate_evidence_ref: N/A
 - environment_validation_report_ref: .servo/worktrack/environment-validation-report.md
-- current_stop_condition: none for observation/decision; continuous Worktrack autonomy blocked until a milestone is confirmed active
-- active_intake_review_ref: N/A (next candidate intake: MS-R3-001 — not yet written)
+- current_stop_condition: none for Worktrack Init of WT-R3-A1 within confirmed MS-R3-001; destructive delete still approval-gated per inventory
+- active_intake_review_ref: .servo/repo/MS-R3-001-pre-milestone-intake-review.md
 - control_plane_refresh_ref: .servo/repo/refresh-report-control-plane-2026-07-14.md
 - persistent_work_habits_updated: 2026-06-10
 - default_workflow_policy: develop is programmer review branch; one development branch per confirmed milestone; delegated SubAgent execution retained; commit and push require approval.
