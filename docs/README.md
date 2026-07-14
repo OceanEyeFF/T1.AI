@@ -16,7 +16,7 @@
 |------|------|
 | [architecture/](architecture/) | 架构设计：流水线、测试矩阵、模型注册表、目录结构 |
 | [reference/](reference/) | 接口契约：数据 schema、股票池 schema |
-| [guides/](guides/) | 操作指南：选股池维护、模型维护、流水线运维 |
+| [guides/](guides/) | 操作指南：选股池维护、模型维护、流水线运维、测试体系 |
 | [research/](research/) | 研究记录 |
 | [archive/](archive/) | 已退场的历史文档 |
 

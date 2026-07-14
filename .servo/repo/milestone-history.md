@@ -1,8 +1,8 @@
 ---
 title: "Milestone History"
 artifact_type: "milestone-history"
-updated: "2026-06-22T12:45:00+08:00"
-updated_by: "codex-with-programmer-acceptance"
+updated: "2026-07-14T17:24:00+08:00"
+updated_by: "cursor-with-programmer-acceptance"
 ---
 
 # Milestone History
@@ -10,6 +10,43 @@ updated_by: "codex-with-programmer-acceptance"
 > Completed and superseded milestones are moved here from `.servo/repo/milestone-backlog.md`.
 
 ## Completed
+
+### MS-R3-001
+
+- milestone_id: MS-R3-001
+- title: 旧文件深度清理
+- purpose: 以治理模式（inventory→批准→分批删除）按 P3 偏瘦身默认分类清除过期文档/脚本/checkpoint；T2 分流 R2 遗留 2 fail；为后续测试体系与数据湖腾出干净仓库面
+- status: completed
+- milestone_kind: goal-driven
+- priority: 2
+- depends_on_milestones: MS-R2-001
+- created_by: programmer
+- created_at: 2026-06-23T03:00:00+08:00
+- activated_at: 2026-07-14T11:35:00+08:00
+- completed_at: 2026-07-14T17:24:00+08:00
+- accepted_by: OceanEyeFF
+- acceptance_verdict: accepted
+- updated: 2026-07-14T17:24:00+08:00
+- updated_by: cursor-with-programmer-acceptance
+- artifact_path: .servo/milestone/MS-R3-001.md
+- pre_milestone_intake_review: .servo/repo/MS-R3-001-pre-milestone-intake-review.md
+- worktrack_list:
+  - WT-R3-A1 (done): inventory + 引用审计 + 2-fail 定性
+  - WT-R3-A2 (done): 按批准清单分批删除/退役
+  - WT-R3-A3 (done): F1/F2 路径修复；pytest 397/397
+- completion_signals: 5/5 (CS5 N/A — no R4 defer)
+- acceptance_criteria: 5/5
+- pytest: 397/397
+- branch: milestone/MS-R3-001-deep-cleanup
+- merge_commit: 296318baeb27d4271986e51852ba4ade0abe0f02 on develop
+- key_artifacts:
+  - .servo/worktrack/WT-R3-A1-inventory.md
+  - .servo/worktrack/WT-R3-A2-execution-log.md
+  - .servo/worktrack/WT-R3-A3-closeout.md
+  - stock_pool registry relative-path fix + market_state default registry `inputs/pools`
+- final_note: >
+  旧文件治理清理完成并合入 develop。R2 遗留 2 fail 均在 R3 侧修复，无 R4 defer。
+  广义测试体系清理移交 MS-T1-001（先于 MS-R4-001）。
 
 ### MS-S2-001
 

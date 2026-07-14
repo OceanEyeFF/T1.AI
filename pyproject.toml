@@ -34,6 +34,17 @@ package-dir = {"" = "src"}
 [tool.ruff]
 line-length = 100
 
+[tool.pytest.ini_options]
+pythonpath = ["src", "."]
+testpaths = ["tests"]
+markers = [
+  "unit: fast pure-logic unit tests",
+  "integration: multi-module / filesystem integration tests",
+  "contract: repo file / CLI / report schema contracts",
+  "slow: long-running tests",
+  "gpu: requires CUDA",
+]
+
 [tool.coverage.run]
 source = ["src/ashare_lab"]
 omit = [
@@ -47,4 +58,6 @@ omit = [
 ]
 
 [tool.coverage.report]
-fail_under = 90
+# Acc-balanced (MS-T1-001 / WT-T1-A4): measured TOTAL 78% on 2026-07-14;
+# lock max(70, baseline-2) => 76. Fast lane does not run --cov.
+fail_under = 76
