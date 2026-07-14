@@ -3,7 +3,6 @@
 **文档颗粒度：** `overview`  
 **时间属性：** `future` / `long_term`  
 **作用：** 长期路线入口，回答“项目未来要变成什么样，以及按什么顺序演进”。
-**配套导航：** `docs/overview/README.md`
 
 ## 战略定位
 
@@ -140,6 +139,9 @@ T1.AI 的长期目标，不是单纯堆出一个更复杂的模型，而是建�
 
 - 当前执行入口：[NEXT_STEPS.md](NEXT_STEPS.md)
 - 文档总导航：[docs/README.md](docs/README.md)
+- 全局工作规则：[docs/WORK_RULES.md](docs/WORK_RULES.md)
 - 主线评估门禁：[docs/research/mainline_3510d_evaluation_gate_protocol.md](docs/research/mainline_3510d_evaluation_gate_protocol.md)
 - 研究清单：[docs/research/research_checklist.md](docs/research/research_checklist.md)
 - 仓库结构：[docs/architecture/repo_structure_guide.md](docs/architecture/repo_structure_guide.md)
+- 核心研究方法论：[docs/research/](docs/research/)
+- 已归档旧文档：[docs/archive/](docs/archive/)

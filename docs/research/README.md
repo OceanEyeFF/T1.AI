@@ -2,6 +2,8 @@
 
 这一层放研究方法、评估工作流与当前仍有效的研究口径。
 
+> MS-R3-001（2026-07-14）已删除过时 202603 计划/PDF/历史笔记；如需历史材料请查 git history。
+
 ## 推荐阅读
 
 1. [research_checklist.md](research_checklist.md)
@@ -15,4 +17,7 @@
 - `1d`：独立研究线，未解除 blocked-by-data 前不并入主线评分
 - 选股：以 `inputs/pools/low_manipulation` 为现行正式池入口
 
-> MS-R3-001 已删除过时 202603 计划/PDF/历史笔记；如需历史材料请查 git history。
+## 使用边界
+
+- 研究层不直接改写接口层与执行层默认定义。
+- 若研究结论已成为当前默认口径，必须同步更新 `README.md`、`NEXT_STEPS.md` 或对应模块文档。
