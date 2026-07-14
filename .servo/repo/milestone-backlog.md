@@ -39,7 +39,7 @@ updated_by: "cursor-init-milestone-with-programmer-confirmation"
 - worktrack_list:
   - WT-R3-A1 (completed): inventory + 引用审计 + 2-fail 定性
   - WT-R3-A2 (completed): 按批准清单分批删除/退役
-  - WT-R3-A3 (planned): 文档一致性 + 可修测 + R4 defer 交接
+  - WT-R3-A3 (completed): F1/F2 路径修复；pytest 397/397
 - updated: 2026-07-14T11:35:00+08:00
 - updated_by: cursor-init-milestone-with-programmer-confirmation
 

@@ -98,9 +98,11 @@ def _resolve_symbols_input(
         artifacts = export_stock_pool_artifacts(
             record,
             output_dir=stock_pool_export_dir,
-            registry_root=Path.cwd(),
+            registry_root=Path(stock_pool_registry_dir),
         )
-        resolved_symbols = resolve_stock_pool_symbols(record, registry_root=Path.cwd())
+        resolved_symbols = resolve_stock_pool_symbols(
+            record, registry_root=Path(stock_pool_registry_dir)
+        )
         return resolved_symbols, {
             "stock_pool_id": record.stock_pool_id,
             "stock_pool_version": record.stock_pool_version,

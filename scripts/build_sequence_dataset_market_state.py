@@ -213,9 +213,11 @@ def _resolve_symbols_input(
         artifacts = export_stock_pool_artifacts(
             record,
             output_dir=stock_pool_export_dir,
-            registry_root=Path.cwd(),
+            registry_root=Path(stock_pool_registry_dir),
         )
-        resolved_symbols = resolve_stock_pool_symbols(record, registry_root=Path.cwd())
+        resolved_symbols = resolve_stock_pool_symbols(
+            record, registry_root=Path(stock_pool_registry_dir)
+        )
         return resolved_symbols, {
             "stock_pool_id": record.stock_pool_id,
             "stock_pool_version": record.stock_pool_version,
@@ -1185,7 +1187,7 @@ def main() -> None:
         "--stock-pool-version", default="", help="股票池版本，留空则要求 registry 内仅有单版本"
     )
     parser.add_argument(
-        "--stock-pool-registry-dir", default="configs/stock_pools", help="股票池 registry 目录"
+        "--stock-pool-registry-dir", default="inputs/pools", help="股票池 registry 目录"
     )
     parser.add_argument(
         "--stock-pool-export-dir", default="output/stock_pools", help="导出的股票池产物目录"

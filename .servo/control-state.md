@@ -13,9 +13,9 @@ owner: "OceanEyeFF"
 
 ## Metadata
 
-- updated: 2026-07-14T13:05:00+08:00
+- updated: 2026-07-14T15:15:00+08:00
 - owner: OceanEyeFF
-- refresh_note: WT-R3-A2 executed approved Batch A+B deletes; A3 remains for F1/F2
+- refresh_note: WT-R3-A3 fixed F1/F2; pytest 397 passed; MS-R3 worktracks 3/3 complete pending final acceptance
 
 ## Current Control Level
 
@@ -25,17 +25,17 @@ owner: "OceanEyeFF"
 ## Active Worktrack
 
 - active_worktrack: none
-- worktrack_status: A1+A2 completed; A3 planned
-- worktrack_contract: worktrack/WT-R3-A2-contract.md
+- worktrack_status: all_completed (A1-A3)
+- worktrack_contract: worktrack/WT-R3-A3-contract.md
 - plan_task_queue: N/A
 - gate_evidence: N/A
 - active_task_window: none
-- selected_next_action_id: WT-R3-A3-init-or-commit
+- selected_next_action_id: MS-R3-001-final-acceptance-or-commit
 - worktrack_gate_verdict: N/A
 - worktrack_blocker: none
-- worktrack_residual_risk: F1/F2 path failures remain for A3
-- worktrack_intake_review: worktrack/MS-R3-001-WT-R3-A1-intake-review.md
-- execution_log: worktrack/WT-R3-A2-execution-log.md
+- worktrack_residual_risk: none for path fails; final milestone acceptance still programmer-gated
+- worktrack_intake_review: worktrack/MS-R3-001-WT-R3-A3-intake-review.md
+- closeout_ref: worktrack/WT-R3-A3-closeout.md
 
 ## Active Milestone
 
@@ -76,7 +76,7 @@ owner: "OceanEyeFF"
 
 ## Current Next Action
 
-- Batch A+B deletes executed (WT-R3-A2). Next: Init WT-R3-A3（F1/F2 路径修复）或 commit 当前删除结果。
+- WT-R3-A3 complete; pytest 397/397. Next: commit A3 fixes and/or programmer final acceptance of MS-R3-001.
 
 ## Linked Formal Documents
 

@@ -151,6 +151,32 @@ def _read_symbols_csv(path: Path) -> list[str]:
     raise ValueError(f"{path} must contain one of columns: symbol, code, ts_code")
 
 
+def _resolve_symbols_csv_path(
+    record: StockPoolRecord,
+    *,
+    registry_root: str | Path,
+) -> Path:
+    """Resolve symbols CSV relative to registry_root, with repo-relative fallback.
+
+    Preferred form after MS-R3: paths relative to the registry root
+    (e.g. ``low_manipulation/symbols.csv`` under ``inputs/pools``).
+    Older configs may store repo-relative paths like ``inputs/pools/.../symbols.csv``.
+    """
+    raw = Path(str(record.symbols_csv).strip())
+    if raw.is_absolute():
+        return raw.resolve()
+
+    under_registry = (Path(registry_root) / raw).resolve()
+    if under_registry.exists():
+        return under_registry
+
+    cwd_candidate = raw.resolve()
+    if cwd_candidate.exists():
+        return cwd_candidate
+
+    return under_registry
+
+
 def resolve_stock_pool_symbols(
     record: StockPoolRecord,
     *,
@@ -160,7 +186,7 @@ def resolve_stock_pool_symbols(
         raise ValueError(
             f"stock pool {record.stock_pool_id}/{record.stock_pool_version} has no symbols_csv"
         )
-    csv_path = (Path(registry_root) / record.symbols_csv).resolve()
+    csv_path = _resolve_symbols_csv_path(record, registry_root=registry_root)
     symbols = _read_symbols_csv(csv_path)
     if len(symbols) != record.symbols_count:
         raise ValueError(
