@@ -29,4 +29,4 @@ owner: "OceanEyeFF"
 
 ## Milestone
 
-- MS-T1-001 worktracks 4/4 completed（pending programmer final acceptance / merge）
+- MS-T1-001 worktracks 4/4 completed；programmer final acceptance 2026-07-14T20:11；merge develop@eed3e24

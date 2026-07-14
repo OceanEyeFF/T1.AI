@@ -1,7 +1,7 @@
 ---
 title: "Milestone History"
 artifact_type: "milestone-history"
-updated: "2026-07-14T17:24:00+08:00"
+updated: "2026-07-14T20:11:00+08:00"
 updated_by: "cursor-with-programmer-acceptance"
 ---
 
@@ -10,6 +10,51 @@ updated_by: "cursor-with-programmer-acceptance"
 > Completed and superseded milestones are moved here from `.servo/repo/milestone-backlog.md`.
 
 ## Completed
+
+### MS-T1-001
+
+- milestone_id: MS-T1-001
+- title: 广义测试体系清理（T-heavy）
+- purpose: >
+  对 tests/ 做架构级重写（分层、fixtures、markers、CI fast/full）；经批准退役死测；
+  温和 cov 门禁；完成后再启动 MS-R4
+- status: completed
+- milestone_kind: goal-driven
+- priority: 3
+- depends_on_milestones: MS-R3-001
+- precedes: MS-R4-001
+- created_by: programmer
+- created_at: 2026-07-14T17:24:00+08:00
+- activated_at: 2026-07-14T17:24:00+08:00
+- completed_at: 2026-07-14T20:11:00+08:00
+- accepted_by: OceanEyeFF
+- acceptance_verdict: accepted
+- updated: 2026-07-14T20:11:00+08:00
+- updated_by: cursor-with-programmer-acceptance
+- artifact_path: .servo/milestone/MS-T1-001.md
+- pre_milestone_intake_review: .servo/repo/MS-T1-001-pre-milestone-intake-review.md
+- decisions_locked: D1=C, D2=S1, D3=Del-yes, D4=Acc-balanced, D5=confirmed
+- worktrack_list:
+  - WT-T1-A1 (done): inventory + Arch-v1 + cov floor 建议
+  - WT-T1-A2 (done): Del-A1 冗余 deployment structure 测例删除
+  - WT-T1-A3 (done): Arch-v1 分层搬迁 + conftest/pythonpath
+  - WT-T1-A4 (done): markers + fast/full/cov76 + testing guide + R4 handoff
+- completion_signals: 5/5
+- acceptance_criteria: 5/5
+- pytest_full: 396/396
+- pytest_fast: 277 passed / 119 deselected
+- cov_total: ~78%; fail_under: 76
+- branch: milestone/MS-T1-001-test-suite-rewrite
+- merge_commit: eed3e24e154f03b66f5209cff542eb3a379708d2 on develop
+- key_artifacts:
+  - tests/{unit,integration,contract,support}/
+  - docs/guides/testing_guide.md
+  - scripts/run_tests_{fast,full,cov}.sh
+  - .servo/worktrack/WT-T1-A1-inventory.md
+  - .servo/worktrack/WT-T1-A4-r4-handoff.md
+- final_note: >
+  测试体系 T-heavy 清理完成并合入 develop。下一主线为 MS-R4-001（TuShare 数据湖）；
+  新测例应按 Arch-v1 落入对应分层，勿恢复扁平 tests/ 根目录堆放。
 
 ### MS-R3-001
 

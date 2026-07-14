@@ -1,8 +1,8 @@
 ---
 title: "Milestone Backlog"
 artifact_type: "milestone-backlog"
-updated: "2026-07-14T17:24:00+08:00"
-updated_by: "cursor-close-r3-init-t1-with-programmer-confirmation"
+updated: "2026-07-14T20:11:00+08:00"
+updated_by: "cursor-with-programmer-final-acceptance-MS-T1"
 ---
 
 # Milestone Backlog
@@ -11,39 +11,15 @@ updated_by: "cursor-close-r3-init-t1-with-programmer-confirmation"
 
 ## Pipeline Summary
 
-- active_count: 1
+- active_count: 0
 - planned_count: 1
-- completed_count: 8
+- completed_count: 9
 - superseded_count: 0
-- active_milestone: MS-T1-001
+- active_milestone: none
 
 ## Active
 
-### MS-T1-001
-
-- milestone_id: MS-T1-001
-- title: 广义测试体系清理（T-heavy）
-- purpose: 对 tests/ 做架构级重写（分层、fixtures、markers、CI fast/full）；经批准退役死测；温和 cov 门禁；完成后启动 MS-R4
-- status: active
-- milestone_kind: goal-driven
-- priority: 3
-- depends_on_milestones: MS-R3-001
-- precedes: MS-R4-001
-- created_by: programmer
-- created_at: 2026-07-14T17:24:00+08:00
-- activated_at: 2026-07-14T17:24:00+08:00
-- activated_by: OceanEyeFF
-- artifact_path: .servo/milestone/MS-T1-001.md
-- pre_milestone_intake: .servo/repo/MS-T1-001-pre-milestone-intake-review.md
-- milestone_branch: milestone/MS-T1-001-test-suite-rewrite
-- decisions_locked: D1=C, D2=S1, D3=Del-yes, D4=Acc-balanced, D5=confirmed
-- worktrack_list:
-  - WT-T1-A1 (completed): inventory + Arch-v1 + Del-A1 approval
-  - WT-T1-A2 (completed): Del-A1 executed
-  - WT-T1-A3 (completed): Arch-v1 migration; pytest 396 passed
-  - WT-T1-A4 (completed): markers + fast/full/cov76 + testing guide + R4 handoff
-- updated: 2026-07-14T18:58:00+08:00
-- updated_by: cursor-WT-T1-A4
+- none
 
 ## Planned
 
@@ -58,5 +34,9 @@ updated_by: "cursor-close-r3-init-t1-with-programmer-confirmation"
 - depends_on_milestones: MS-T1-001
 - created_by: programmer
 - created_at: 2026-06-23T03:00:00+08:00
-- note: 记录但不激活；D2=S1 — 需先完成 MS-T1-001（MS-R3-001 已完成）
+- note: >
+  记录但不激活。前置 MS-R3 + MS-T1 均已 completed/accepted；
+  激活前请 refresh pre-milestone intake（`.servo/repo/MS-R4-001-pre-milestone-intake-review.md`），
+  并阅读 T1→R4 handoff：`.servo/worktrack/WT-T1-A4-r4-handoff.md`。
 - pre_milestone_intake: .servo/repo/MS-R4-001-pre-milestone-intake-review.md
+- handoff_from_t1: .servo/worktrack/WT-T1-A4-r4-handoff.md
