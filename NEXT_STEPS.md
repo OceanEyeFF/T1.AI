@@ -27,17 +27,16 @@
 
 相关文档：
 
-- 模型边界：[docs/modules/model_line_boundaries_1d_vs_3510d_20260309.md](docs/modules/model_line_boundaries_1d_vs_3510d_20260309.md)
-- 三线开发规划：[docs/overview/three_track_development_plan_20260609.md](docs/overview/three_track_development_plan_20260609.md)
-- 主模型层专项计划：[docs/research/mainline_3510d_model_development_plan_20260310.md](docs/research/mainline_3510d_model_development_plan_20260310.md)
-- `1d` 执行策略：[docs/research/1d_independent_model_execution_strategy_20260309.md](docs/research/1d_independent_model_execution_strategy_20260309.md)
-- 研究路线建议：[docs/research/future_roadmap_suggestions.md](docs/research/future_roadmap_suggestions.md)
+- 模型边界：[docs/architecture/](docs/architecture/)（见 repo structure / model registry）
+- 主线评估门禁：[docs/research/mainline_3510d_evaluation_gate_protocol.md](docs/research/mainline_3510d_evaluation_gate_protocol.md)
+- Daily-CS 工作流：[docs/research/daily_cs_eval_workflow.md](docs/research/daily_cs_eval_workflow.md)
+- 研究清单：[docs/research/research_checklist.md](docs/research/research_checklist.md)
 
 ## 工作线 A：`3d/5d/10d` 短期预测模型
 
 **目标：** 稳定当前主 alpha 研究线，形成可复跑、可比较、可接入决策模型的预测输出。
 
-详细执行顺序见：[docs/research/mainline_3510d_model_development_plan_20260310.md](docs/research/mainline_3510d_model_development_plan_20260310.md)
+详细执行顺序见：[docs/research/mainline_3510d_evaluation_gate_protocol.md](docs/research/mainline_3510d_evaluation_gate_protocol.md) 与 [research_checklist.md](docs/research/research_checklist.md)
 
 ### P0：本阶段必须完成
 
@@ -172,7 +171,7 @@
 
 - 长期路线：[ROADMAP.md](ROADMAP.md)
 - 文档总导航：[docs/README.md](docs/README.md)
-- 三线开发规划：[docs/overview/three_track_development_plan_20260609.md](docs/overview/three_track_development_plan_20260609.md)
-- 模型线边界：[docs/modules/model_line_boundaries_1d_vs_3510d_20260309.md](docs/modules/model_line_boundaries_1d_vs_3510d_20260309.md)
-- `1d` 独立执行策略：[docs/research/1d_independent_model_execution_strategy_20260309.md](docs/research/1d_independent_model_execution_strategy_20260309.md)
-- 当前研究路线建议：[docs/research/future_roadmap_suggestions.md](docs/research/future_roadmap_suggestions.md)
+- 主线评估门禁：[docs/research/mainline_3510d_evaluation_gate_protocol.md](docs/research/mainline_3510d_evaluation_gate_protocol.md)
+- Daily-CS 工作流：[docs/research/daily_cs_eval_workflow.md](docs/research/daily_cs_eval_workflow.md)
+- 研究清单：[docs/research/research_checklist.md](docs/research/research_checklist.md)
+- 仓库结构：[docs/architecture/repo_structure_guide.md](docs/architecture/repo_structure_guide.md)

@@ -177,6 +177,40 @@ def test_run_compare_requires_protocol_check(tmp_path: Path) -> None:
 def test_multilevel_tuning_dry_run_works_without_baseline_reports(tmp_path: Path) -> None:
     repo_root = Path(__file__).resolve().parents[1]
     out_dir = tmp_path / "reports"
+    lstm_cfg = tmp_path / "lstm_rolling_baseline.toml"
+    xgb_cfg = tmp_path / "xgb_rolling_baseline.toml"
+    lstm_cfg.write_text(
+        "\n".join(
+            [
+                "[run_lstm_rolling_retrain_dim19_regime]",
+                'dataset_dir = "data/datasets/mock"',
+                'backbone = "lstm"',
+                "seq_len = 20",
+                "hidden_size = 64",
+                "num_layers = 2",
+                "batch_size = 32",
+                "max_epochs = 2",
+                "patience = 1",
+                "seed = 42",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    xgb_cfg.write_text(
+        "\n".join(
+            [
+                "[run_xgboost_rolling_retrain_regime]",
+                'dataset_dir = "data/datasets/mock"',
+                "n_estimators = 10",
+                "max_depth = 3",
+                "learning_rate = 0.05",
+                "seed = 42",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     cmd = [
         "conda",
         "run",
@@ -190,6 +224,10 @@ def test_multilevel_tuning_dry_run_works_without_baseline_reports(tmp_path: Path
         "L1",
         "--max-runs-per-level",
         "1",
+        "--lstm-config-file",
+        str(lstm_cfg),
+        "--xgb-config-file",
+        str(xgb_cfg),
         "--output-dir",
         str(out_dir),
         "--tag",

@@ -4,4 +4,4 @@
 
 格式见 `docs/architecture/xyz_test_matrix.md`。
 
-当前状态：4 个旧实验 TOML（lstm/xgb_rolling_baseline/fastpilot），引用已删除的 AkShare 数据集路径，需在数据湖重建后更新。
+当前状态（MS-R3-001）：旧 rolling baseline/fastpilot TOML 已删除（引用不存在的 `data/datasets/...`）。待 MS-R4 数据湖落成后再补新实验矩阵。

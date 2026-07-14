@@ -140,7 +140,6 @@ T1.AI 的长期目标，不是单纯堆出一个更复杂的模型，而是建�
 
 - 当前执行入口：[NEXT_STEPS.md](NEXT_STEPS.md)
 - 文档总导航：[docs/README.md](docs/README.md)
-- 三线开发规划：[docs/overview/three_track_development_plan_20260609.md](docs/overview/three_track_development_plan_20260609.md)
-- 模型线边界：[docs/modules/model_line_boundaries_1d_vs_3510d_20260309.md](docs/modules/model_line_boundaries_1d_vs_3510d_20260309.md)
-- `1d` 独立执行策略：[docs/research/1d_independent_model_execution_strategy_20260309.md](docs/research/1d_independent_model_execution_strategy_20260309.md)
-- 当前研究路线建议：[docs/research/future_roadmap_suggestions.md](docs/research/future_roadmap_suggestions.md)
+- 主线评估门禁：[docs/research/mainline_3510d_evaluation_gate_protocol.md](docs/research/mainline_3510d_evaluation_gate_protocol.md)
+- 研究清单：[docs/research/research_checklist.md](docs/research/research_checklist.md)
+- 仓库结构：[docs/architecture/repo_structure_guide.md](docs/architecture/repo_structure_guide.md)

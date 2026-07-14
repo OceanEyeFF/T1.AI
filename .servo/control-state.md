@@ -13,9 +13,9 @@ owner: "OceanEyeFF"
 
 ## Metadata
 
-- updated: 2026-07-14T11:35:00+08:00
+- updated: 2026-07-14T13:05:00+08:00
 - owner: OceanEyeFF
-- refresh_note: MS-R3-001 initialized and activated after confirmed intake (B+T2+P3)
+- refresh_note: WT-R3-A2 executed approved Batch A+B deletes; A3 remains for F1/F2
 
 ## Current Control Level
 
@@ -25,15 +25,17 @@ owner: "OceanEyeFF"
 ## Active Worktrack
 
 - active_worktrack: none
-- worktrack_status: all_completed
-- worktrack_contract: N/A
+- worktrack_status: A1+A2 completed; A3 planned
+- worktrack_contract: worktrack/WT-R3-A2-contract.md
 - plan_task_queue: N/A
 - gate_evidence: N/A
 - active_task_window: none
-- selected_next_action_id: none
+- selected_next_action_id: WT-R3-A3-init-or-commit
 - worktrack_gate_verdict: N/A
 - worktrack_blocker: none
-- worktrack_residual_risk: N/A — MS-R0-001 all worktracks completed (A1-A4)
+- worktrack_residual_risk: F1/F2 path failures remain for A3
+- worktrack_intake_review: worktrack/MS-R3-001-WT-R3-A1-intake-review.md
+- execution_log: worktrack/WT-R3-A2-execution-log.md
 
 ## Active Milestone
 
@@ -54,7 +56,7 @@ owner: "OceanEyeFF"
 - milestone_review_count: 1
 - latest_review_checkpoint: MS-R3-001-intake-2026-07-14T11:30:00+08:00
 - effective_review_pass: true
-- next_milestone_route: init first worktrack WT-R3-A1 (inventory) after programmer requests Worktrack Init
+- next_milestone_route: execute WT-R3-A1 readonly inventory (R3-A1-T1…) then programmer approval before A2
 
 ## Baseline Branch
 
@@ -69,11 +71,12 @@ owner: "OceanEyeFF"
 - branch_context_required_ref: refs/heads/milestone/MS-R3-001-deep-cleanup
 - active_milestone_branch: milestone/MS-R3-001-deep-cleanup
 - active_milestone_branch_sync_state: created_from_develop_at_7d5a22e1117b87f71b737032d05bbbc52df3e62d
-- worktrack_branch: N/A (no active worktrack yet)
+- worktrack_branch: milestone/MS-R3-001-deep-cleanup (shared; one branch per milestone)
+- observed_checkout: milestone/MS-R3-001-deep-cleanup @ 6511d8c1f033d60c6eee43847b4682bcbcdbc262
 
 ## Current Next Action
 
-- MS-R3-001 activated 2026-07-14. Intake ready (B+T2+P3). Next: Init first worktrack WT-R3-A1（inventory + 引用审计 + 2-fail 定性；只读）.
+- Batch A+B deletes executed (WT-R3-A2). Next: Init WT-R3-A3（F1/F2 路径修复）或 commit 当前删除结果。
 
 ## Linked Formal Documents
 
@@ -84,9 +87,10 @@ owner: "OceanEyeFF"
 - milestone_history: repo/milestone-history.md
 - pre_milestone_intake: repo/MS-R3-001-pre-milestone-intake-review.md
 - planned_worktrack_backlog: repo/worktrack-backlog.md
-- worktrack_contract: N/A (no active worktrack)
-- plan_task_queue: N/A (no active worktrack)
-- gate_evidence: N/A (no active worktrack)
+- worktrack_contract: worktrack/WT-R3-A1-contract.md
+- plan_task_queue: worktrack/WT-R3-A1-plan-task-queue.md
+- gate_evidence: N/A
+- worktrack_intake_review: worktrack/MS-R3-001-WT-R3-A1-intake-review.md
 
 ## Approval Boundary
 
@@ -232,13 +236,13 @@ owner: "OceanEyeFF"
 
 ## Handback Guard
 
-- handoff_state: worktrack_init_ready
-- last_stop_reason: MS-R3-001 activated; waiting for WT-R3-A1 Worktrack Init instruction
-- last_handback_signature: MS-R3-001/init-activate/2026-07-14T11:35:00+08:00
+- handoff_state: worktrack_schedule_ready
+- last_stop_reason: WT-R3-A1 initialized; queue seeded; execution not started
+- last_handback_signature: WT-R3-A1/init/2026-07-14T11:55:00+08:00
 - handback_reaffirmed_rounds: 0
 - stable_handback_threshold: 2
 - handback_lock_active: false
-- last_unlock_signal: programmer Init MS-R3-001 after confirmed intake
+- last_unlock_signal: programmer Init WT-R3-A1
 
 ## Baseline Traceability
 
@@ -285,11 +289,11 @@ owner: "OceanEyeFF"
 - last_active_milestone_initialized: MS-R3-001
 - planned_milestone_waiting: MS-R4-001 (depends on MS-R3-001; intake draft exists)
 - worktrack_init_blocked_until: N/A — active milestone confirmed; WT-R3-A1 ready for Worktrack Init on request
-- active_worktrack_initialized: none
-- worktrack_intake_review_ref: N/A
+- active_worktrack_initialized: WT-R3-A1
+- worktrack_intake_review_ref: .servo/worktrack/MS-R3-001-WT-R3-A1-intake-review.md
 - worktrack_gate_evidence_ref: N/A
 - environment_validation_report_ref: .servo/worktrack/environment-validation-report.md
-- current_stop_condition: none for Worktrack Init of WT-R3-A1 within confirmed MS-R3-001; destructive delete still approval-gated per inventory
+- current_stop_condition: none for readonly A1 execution; deletes/commit/push remain approval-gated
 - active_intake_review_ref: .servo/repo/MS-R3-001-pre-milestone-intake-review.md
 - control_plane_refresh_ref: .servo/repo/refresh-report-control-plane-2026-07-14.md
 - persistent_work_habits_updated: 2026-06-10

@@ -39,10 +39,8 @@ source = ["src/ashare_lab"]
 omit = [
   "scripts/build_dataset.py",
   "scripts/build_dataset_multi_stock.py",
-  "scripts/build_universe.py",
   "scripts/evaluate_model.py",
   "scripts/run_backtest.py",
-  "scripts/select_industry_stocks.py",
   "scripts/train_baseline_models.py",
   "scripts/train_model.py",
   "scripts/train_mtl.py",

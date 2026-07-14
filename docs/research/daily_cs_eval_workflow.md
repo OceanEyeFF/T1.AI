@@ -8,8 +8,8 @@
 ## 2. 训练产物要求
 滚动实验脚本必须输出 OOS 逐样本预测 parquet，并把路径写入报告 JSON：
 
-- `scripts/run_lstm_rolling_retrain_dim19_h2.py --save-oos-parquet ...`
 - `scripts/run_lstm_rolling_retrain_dim19_regime.py --save-oos-parquet ...`
+- `scripts/run_xgboost_rolling_retrain_regime.py --save-oos-parquet ...`
 
 报告至少应包含：
 - `oos_predictions_path`

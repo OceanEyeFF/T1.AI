@@ -37,8 +37,8 @@ updated_by: "cursor-init-milestone-with-programmer-confirmation"
 - milestone_branch: milestone/MS-R3-001-deep-cleanup
 - decisions_locked: D1=B, D2=T2, D3=P3, D4=confirmed
 - worktrack_list:
-  - WT-R3-A1 (planned): inventory + 引用审计 + 2-fail 定性
-  - WT-R3-A2 (planned): 按批准清单分批删除/退役
+  - WT-R3-A1 (completed): inventory + 引用审计 + 2-fail 定性
+  - WT-R3-A2 (completed): 按批准清单分批删除/退役
   - WT-R3-A3 (planned): 文档一致性 + 可修测 + R4 defer 交接
 - updated: 2026-07-14T11:35:00+08:00
 - updated_by: cursor-init-milestone-with-programmer-confirmation

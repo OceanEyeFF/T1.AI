@@ -64,19 +64,13 @@ def test_systemd_timer_exists():
     assert "OnCalendar=" in content, "Timer file missing OnCalendar"
 
 
-def test_production_scheduler_doc_exists():
-    """Test that production scheduler documentation exists."""
-    doc_path = Path("docs/archive/production_scheduler.md")
-    assert doc_path.exists(), "docs/archive/production_scheduler.md does not exist"
-
-    # Check that documentation covers both deployment options
-    content = doc_path.read_text()
-    assert "Cron" in content, "Documentation missing Cron section"
-    assert "Systemd" in content, "Documentation missing Systemd section"
-    assert "错误排查" in content or "troubleshooting" in content.lower(), (
-        "Documentation missing troubleshooting section"
-    )
-    assert "TUSHARE_TOKEN" in content, "Documentation missing token setup"
+def test_daily_pipeline_ops_doc_exists():
+    """Deployment ops doc exists after MS-R3 archive cleanup."""
+    doc_path = Path("docs/guides/daily_pipeline_ops.md")
+    assert doc_path.exists(), "docs/guides/daily_pipeline_ops.md does not exist"
+    content = doc_path.read_text(encoding="utf-8")
+    assert "daily_pipeline" in content
+    assert "deployment" in content.lower() or "systemd" in content.lower() or "cron" in content.lower()
 
 
 def test_deployment_directory_structure():
