@@ -38,12 +38,12 @@ updated_by: "cursor-close-r3-init-t1-with-programmer-confirmation"
 - milestone_branch: milestone/MS-T1-001-test-suite-rewrite
 - decisions_locked: D1=C, D2=S1, D3=Del-yes, D4=Acc-balanced, D5=confirmed
 - worktrack_list:
-  - WT-T1-A1 (planned): inventory + 目标架构草案 + 搬迁/退役清单 + cov floor 建议
-  - WT-T1-A2 (planned): 按批准清单删除/合并
-  - WT-T1-A3 (planned): 目录分层搬迁 + fixtures/factories
-  - WT-T1-A4 (planned): markers + CI 分层 + cov 门禁 + 文档 + R4 延后交接
-- updated: 2026-07-14T17:24:00+08:00
-- updated_by: cursor-init-milestone-with-programmer-confirmation
+  - WT-T1-A1 (completed): inventory + Arch-v1 + Del-A1 approval
+  - WT-T1-A2 (completed): Del-A1 executed; deployment tests 6 passed
+  - WT-T1-A3 (planned): 目录分层搬迁 + fixtures/factories（Arch-v1）
+  - WT-T1-A4 (planned): markers + CI 分层 + cov 门禁（数值 A4 实测）+ 文档 + R4 延后交接
+- updated: 2026-07-14T18:25:00+08:00
+- updated_by: cursor-WT-T1-A2-del-a1
 
 ## Planned
 

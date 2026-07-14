@@ -13,29 +13,29 @@ owner: "OceanEyeFF"
 
 ## Metadata
 
-- updated: 2026-07-14T17:24:00+08:00
+- updated: 2026-07-14T18:25:00+08:00
 - owner: OceanEyeFF
-- refresh_note: MS-R3-001 formal closed/accepted; MS-T1-001 initialized and activated (T-heavy test suite rewrite; before R4)
+- refresh_note: A1 approved (Del-A1+Arch-v1); A2 Del-A1 done (6 passed); Cov-detail deferred to A4; next Init A3
 
 ## Current Control Level
 
 - repo_scope: active
-- worktrack_scope: closed
+- worktrack_scope: active
 
 ## Active Worktrack
 
 - active_worktrack: none
-- worktrack_status: none
-- worktrack_contract: N/A
-- plan_task_queue: N/A
+- worktrack_status: A1_approved_A2_completed
+- worktrack_contract: worktrack/WT-T1-A2-contract.md
+- plan_task_queue: worktrack/WT-T1-A1-plan-task-queue.md
 - gate_evidence: N/A
 - active_task_window: none
-- selected_next_action_id: WT-T1-A1-init-on-request
+- selected_next_action_id: WT-T1-A3-init-on-request
 - worktrack_gate_verdict: N/A
 - worktrack_blocker: none
-- worktrack_residual_risk: none
-- worktrack_intake_review: N/A
-- closeout_ref: N/A
+- worktrack_residual_risk: Cov-detail deferred to A4
+- worktrack_intake_review: worktrack/MS-T1-001-WT-T1-A2-intake-review.md
+- closeout_ref: worktrack/WT-T1-A2-execution-log.md
 
 ## Active Milestone
 
@@ -56,7 +56,7 @@ owner: "OceanEyeFF"
 - milestone_review_count: 1
 - latest_review_checkpoint: MS-T1-001-intake-2026-07-14T17:22:00+08:00
 - effective_review_pass: true
-- next_milestone_route: Init WT-T1-A1 (readonly inventory) on programmer request
+- next_milestone_route: execute WT-T1-A1 readonly inventory (T1-A1-T1…) then programmer approval before A2
 
 ## Baseline Branch
 
@@ -72,11 +72,11 @@ owner: "OceanEyeFF"
 - active_milestone_branch: milestone/MS-T1-001-test-suite-rewrite
 - active_milestone_branch_sync_state: created_from_develop_at_296318baeb27d4271986e51852ba4ade0abe0f02
 - worktrack_branch: milestone/MS-T1-001-test-suite-rewrite (shared; one branch per milestone)
-- observed_checkout: milestone/MS-T1-001-test-suite-rewrite @ 296318baeb27d4271986e51852ba4ade0abe0f02 (close+init writeback uncommitted)
+- observed_checkout: milestone/MS-T1-001-test-suite-rewrite @ 476da6b98e5c7a9ad84df17764a54f4a331105b7
 
 ## Current Next Action
 
-- MS-T1-001 active. Next: programmer Init WT-T1-A1 (readonly inventory + architecture draft). Commit/push of close+init writeback still approval-gated if not yet committed.
+- Del-A1 executed (deployment tests 6 passed). Arch-v1 adopted. Next: programmer Init WT-T1-A3 for migration. Cov numeric detail waits for A4.
 
 ## Linked Formal Documents
 
@@ -87,10 +87,10 @@ owner: "OceanEyeFF"
 - milestone_history: repo/milestone-history.md
 - pre_milestone_intake: repo/MS-T1-001-pre-milestone-intake-review.md
 - planned_worktrack_backlog: repo/worktrack-backlog.md
-- worktrack_contract: N/A
-- plan_task_queue: N/A
+- worktrack_contract: worktrack/WT-T1-A1-contract.md
+- plan_task_queue: worktrack/WT-T1-A1-plan-task-queue.md
 - gate_evidence: N/A
-- worktrack_intake_review: N/A
+- worktrack_intake_review: worktrack/MS-T1-001-WT-T1-A1-intake-review.md
 - completed_milestone_artifact: milestone/MS-R3-001.md
 ## Approval Boundary
 
@@ -239,13 +239,13 @@ owner: "OceanEyeFF"
 
 ## Handback Guard
 
-- handoff_state: milestone_active_awaiting_worktrack_init
-- last_stop_reason: MS-R3 closed; MS-T1 initialized/activated; WT-T1-A1 not yet initialized
-- last_handback_signature: MS-T1-001/init/2026-07-14T17:24:00+08:00
+- handoff_state: awaiting_worktrack_init
+- last_stop_reason: A2 Del-A1 complete; awaiting Init WT-T1-A3
+- last_handback_signature: WT-T1-A2/del-a1/2026-07-14T18:25:00+08:00
 - handback_reaffirmed_rounds: 0
 - stable_handback_threshold: 2
 - handback_lock_active: false
-- last_unlock_signal: programmer Formal Close R3 + Init MS-T1-001
+- last_unlock_signal: programmer approved Del-A1 + Arch-v1
 
 ## Baseline Traceability
 
@@ -290,12 +290,12 @@ owner: "OceanEyeFF"
 - completed_milestone_latest: MS-R3-001 旧文件深度清理 (accepted; merge develop@296318b)
 - last_active_milestone_initialized: MS-T1-001
 - planned_milestone_waiting: MS-R4-001 (depends on MS-T1-001; intake draft exists; deferred until T1 completes)
-- worktrack_init_blocked_until: N/A — active milestone confirmed; WT-T1-A1 ready for Worktrack Init on request
-- active_worktrack_initialized: none
-- worktrack_intake_review_ref: N/A
+- worktrack_init_blocked_until: N/A — WT-T1-A1 initialized; readonly execution may proceed
+- active_worktrack_initialized: WT-T1-A1
+- worktrack_intake_review_ref: .servo/worktrack/MS-T1-001-WT-T1-A1-intake-review.md
 - worktrack_gate_evidence_ref: N/A
 - environment_validation_report_ref: .servo/worktrack/environment-validation-report.md
-- current_stop_condition: awaiting WT-T1-A1 Init; commit/push/deletes remain approval-gated
+- current_stop_condition: A1 complete; A2 deletes/A3 moves blocked until inventory batch approval; commit/push remain approval-gated
 - active_intake_review_ref: .servo/repo/MS-T1-001-pre-milestone-intake-review.md
 - control_plane_refresh_ref: .servo/repo/refresh-report-control-plane-2026-07-14.md
 - persistent_work_habits_updated: 2026-06-10

@@ -71,15 +71,3 @@ def test_daily_pipeline_ops_doc_exists():
     content = doc_path.read_text(encoding="utf-8")
     assert "daily_pipeline" in content
     assert "deployment" in content.lower() or "systemd" in content.lower() or "cron" in content.lower()
-
-
-def test_deployment_directory_structure():
-    """Test that deployment directory has all required files."""
-    deployment_dir = Path("deployment")
-    assert deployment_dir.exists(), "deployment directory does not exist"
-
-    required_files = ["crontab.example", "daily-pipeline.service", "daily-pipeline.timer"]
-
-    for filename in required_files:
-        filepath = deployment_dir / filename
-        assert filepath.exists(), f"Missing deployment file: {filename}"
