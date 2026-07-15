@@ -13,50 +13,50 @@ owner: "OceanEyeFF"
 
 ## Metadata
 
-- updated: 2026-07-14T20:11:00+08:00
+- updated: 2026-07-15T13:50:00+08:00
 - owner: OceanEyeFF
-- refresh_note: MS-T1-001 formally closed/accepted; control plane idle; MS-R4-001 planned next
+- refresh_note: WT-R4-A0 T6 complete; implementation done; awaiting gate/close + commit approval
 
 ## Current Control Level
 
 - repo_scope: active
-- worktrack_scope: idle
+- worktrack_scope: active
 
 ## Active Worktrack
 
-- active_worktrack: none
-- worktrack_status: none
-- worktrack_contract: N/A
-- plan_task_queue: N/A
-- gate_evidence: N/A
-- active_task_window: none
-- selected_next_action_id: repo-idle-or-MS-R4-intake-refresh
-- worktrack_gate_verdict: N/A
+- active_worktrack: WT-R4-A0
+- worktrack_status: implementation_complete_awaiting_gate_close
+- worktrack_contract: worktrack/WT-R4-A0-contract.md
+- plan_task_queue: worktrack/WT-R4-A0-plan-task-queue.md
+- gate_evidence: worktrack/WT-R4-A0-gate-evidence.md
+- active_task_window: GATE
+- selected_next_action_id: GATE
+- worktrack_gate_verdict: proposed_pass_with_accepted_residuals
 - worktrack_blocker: none
-- worktrack_residual_risk: none
-- worktrack_intake_review: N/A
-- closeout_ref: worktrack/WT-T1-A4-closeout.md
+- worktrack_residual_risk: soft_target_80_not_met_due_to_cache_universe; index_510300_empty; A3_lake_fill; uncommitted_tree
+- worktrack_intake_review: worktrack/MS-R4-001-WT-R4-A0-intake-review.md
+- closeout_ref: worktrack/WT-R4-A0-closeout.md
 
 ## Active Milestone
 
-- active_milestone: none
-- milestone_status: idle
-- milestone_kind: N/A
-- milestone_artifact: N/A
+- active_milestone: MS-R4-001
+- milestone_status: active
+- milestone_kind: goal-driven
+- milestone_artifact: milestone/MS-R4-001.md
 - milestone_backlog: repo/milestone-backlog.md
 - milestone_history: repo/milestone-history.md
 - milestone_pipeline_summary:
-  - active_count: 0
-  - planned_count: 1
+  - active_count: 1
+  - planned_count: 0
   - completed_count: 9
   - superseded_count: 0
-  - note: MS-T1-001 completed/accepted (merge develop@eed3e24). MS-R4-001 planned. MS-R3-001 completed.
-- milestone_review_gate_ready: N/A
-- latest_review_status: N/A
-- milestone_review_count: N/A
-- latest_review_checkpoint: N/A
-- effective_review_pass: N/A
-- next_milestone_route: refresh MS-R4-001 pre-milestone intake then activate on programmer request
+  - note: MS-R4-001 active after Init 2026-07-15; MS-T1-001 completed/accepted.
+- milestone_review_gate_ready: true
+- latest_review_status: effective_pass
+- milestone_review_count: 1
+- latest_review_checkpoint: MS-R4-001-intake-ready-2026-07-15T00:10:00+08:00
+- effective_review_pass: true
+- next_milestone_route: WT-R4-A0 T6 done; Judging/Close then WT-R4-A1 intake; commit/push approval-gated
 
 ## Baseline Branch
 
@@ -65,32 +65,32 @@ owner: "OceanEyeFF"
 
 ## Branch Environment Guard
 
-- current_branch_context: repo
-- expected_branch_context: repo
+- current_branch_context: milestone
+- expected_branch_context: milestone
 - branch_context_guard_status: pass
-- branch_context_required_ref: refs/heads/develop
-- active_milestone_branch: none
-- active_milestone_branch_sync_state: N/A (idle after MS-T1 merge)
+- branch_context_required_ref: refs/heads/milestone/MS-R4-001-tushare-datalake
+- active_milestone_branch: milestone/MS-R4-001-tushare-datalake
+- active_milestone_branch_sync_state: created_from_develop@aa2b14c (Init)
 - worktrack_branch: none
-- observed_checkout: develop @ eed3e24e154f03b66f5209cff542eb3a379708d2
+- observed_checkout: milestone/MS-R4-001-tushare-datalake @ aa2b14c1cd109e67e5eb48314572e03da1a4e750
 
 ## Current Next Action
 
-- Repo idle after MS-T1-001 formal close. Next safe route: refresh MS-R4-001 pre-milestone intake (read WT-T1-A4-r4-handoff) then activate on programmer request. Commit/push of this close writeback remain approval-gated.
+- WT-R4-A0 T6 done: closeout+gate evidence; stock_pool tests 15 passed + smoke OK. Next: gate/close then A1. Commit/push approval-gated.
 
 ## Linked Formal Documents
 
 - repo_snapshot: repo/snapshot-status.md
 - repo_analysis: repo/analysis.md
-- milestone_artifact: N/A (idle)
+- milestone_artifact: milestone/MS-R4-001.md
 - milestone_backlog: repo/milestone-backlog.md
 - milestone_history: repo/milestone-history.md
 - pre_milestone_intake: repo/MS-R4-001-pre-milestone-intake-review.md
 - planned_worktrack_backlog: repo/worktrack-backlog.md
-- worktrack_contract: N/A
-- plan_task_queue: N/A
+- worktrack_contract: worktrack/WT-R4-A0-contract.md
+- plan_task_queue: worktrack/WT-R4-A0-plan-task-queue.md
 - gate_evidence: N/A
-- worktrack_intake_review: N/A
+- worktrack_intake_review: worktrack/MS-R4-001-WT-R4-A0-intake-review.md
 - completed_milestone_artifact: milestone/MS-T1-001.md
 ## Approval Boundary
 
@@ -240,13 +240,13 @@ owner: "OceanEyeFF"
 
 ## Handback Guard
 
-- handoff_state: repo_idle_after_milestone_close
-- last_stop_reason: MS-T1-001 formal close/accepted; awaiting programmer direction for MS-R4 intake refresh or other repo action
-- last_handback_signature: MS-T1-001/formal-close/2026-07-14T20:11:00+08:00
+- handoff_state: worktrack_ready_for_gate_close
+- last_stop_reason: WT-R4-A0 T6 complete; awaiting gate verdict + close approval; commit/push gated
+- last_handback_signature: WT-R4-A0/T6-closeout/2026-07-15T13:50:00+08:00
 - handback_reaffirmed_rounds: 0
 - stable_handback_threshold: 2
 - handback_lock_active: false
-- last_unlock_signal: programmer Formal Close MS-T1-001 + control-plane update
+- last_unlock_signal: programmer approve T6 closeout
 
 ## Baseline Traceability
 
@@ -269,7 +269,7 @@ owner: "OceanEyeFF"
 ## Autonomy Ledger
 
 - autonomy_budget_remaining: 6
-- active_persistent_autonomy_budget_source: none (idle; no active milestone)
+- active_persistent_autonomy_budget_source: MS-R4-001 (within confirmed active milestone; still stop on approval/evidence gates)
 - historical_one_shot_budget_remaining: 26
 - autonomous_worktracks_opened: 0
 - one_shot_execution_cycle_budget:
@@ -289,15 +289,16 @@ owner: "OceanEyeFF"
 - `.servo` bootstrap was generated by the installed Servo deploy helper, then project facts were filled from README, NEXT_STEPS, ROADMAP, pyproject, and git status.
 - three_track_plan_ref: docs/overview/three_track_development_plan_20260609.md
 - completed_milestone_latest: MS-T1-001 广义测试体系清理 (accepted; merge develop@eed3e24)
-- last_active_milestone_initialized: MS-T1-001
-- planned_milestone_waiting: MS-R4-001 (depends on MS-T1-001 — dependency satisfied; intake refresh then activate on request)
-- worktrack_init_blocked_until: active milestone confirmed (none now)
-- active_worktrack_initialized: none
-- worktrack_intake_review_ref: N/A
-- worktrack_gate_evidence_ref: N/A
+- last_active_milestone_initialized: MS-R4-001
+- planned_milestone_waiting: none (MS-R4-001 active)
+- worktrack_init_blocked_until: N/A (WT-R4-A0 active)
+- active_worktrack_initialized: WT-R4-A0
+- worktrack_intake_review_ref: .servo/worktrack/MS-R4-001-WT-R4-A0-intake-review.md
+- worktrack_gate_evidence_ref: .servo/worktrack/WT-R4-A0-gate-evidence.md
+- closeout_ref: .servo/worktrack/WT-R4-A0-closeout.md
 - environment_validation_report_ref: .servo/worktrack/environment-validation-report.md
-- current_stop_condition: repo idle after MS-T1 close; commit/push of close writeback approval-gated; MS-R4 not auto-started
-- active_intake_review_ref: .servo/repo/MS-R4-001-pre-milestone-intake-review.md
+- current_stop_condition: WT-R4-A0 T6 complete; next gate/close then A1; commit/push approval-gated; no silent live
+- active_intake_review_ref: .servo/worktrack/MS-R4-001-WT-R4-A0-intake-review.md
 - control_plane_refresh_ref: .servo/repo/refresh-report-MS-T1-001-close-2026-07-14.md
 - persistent_work_habits_updated: 2026-06-10
 - default_workflow_policy: develop is programmer review branch; one development branch per confirmed milestone; delegated SubAgent execution retained; commit and push require approval.

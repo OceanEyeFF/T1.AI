@@ -1,0 +1,18 @@
+{
+  "generated_at": "2026-07-15T10:26:44+08:00",
+  "strategy": "research_liquidity_quality",
+  "score_threshold": 55.0,
+  "soft_target_size": 80,
+  "hard_cap": 100,
+  "pool_size": 61,
+  "total_universe_cache_qfq": 65,
+  "total_scored": 62,
+  "reject_reason_counts": {
+    "H7_limit_hits": 2
+  },
+  "index_available": false,
+  "amount_unit": "tushare_thousand_cny",
+  "t3_run_at": "2026-07-15T10:09:49+08:00",
+  "policy": "cache_first_no_live",
+  "soft_target_deficit": 19
+}

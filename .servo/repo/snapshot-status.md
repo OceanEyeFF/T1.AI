@@ -14,8 +14,8 @@ owner: "OceanEyeFF"
 
 - repo: T1.AI
 - baseline_branch: develop
-- updated: 2026-07-14T20:11:00+08:00
-- status: idle (MS-T1-001 completed/accepted; MS-R4-001 planned; no active milestone)
+- updated: 2026-07-15T00:16:00+08:00
+- status: active-milestone (MS-R4-001; MS-T1-001 completed/accepted)
 
 ## Mainline Status
 
@@ -116,13 +116,13 @@ owner: "OceanEyeFF"
 - active_count: 0
 - planned_count: 1
 - completed_count: 9
-- active_milestone: none
+- active_milestone: MS-R4-001
 - planned:
-  - MS-R4-001: TuShare 数据湖构建 (depends on MS-T1-001 — satisfied; refresh intake before activate)
+  - none (MS-R4-001 moved to active)
 - latest_completed: MS-T1-001 (test suite rewrite; accepted 2026-07-14; merge develop@eed3e24)
 
 ## Notes
 
 - Snapshot records observed facts, not approval for future work.
-- Next safe route: refresh MS-R4-001 pre-milestone intake + read `.servo/worktrack/WT-T1-A4-r4-handoff.md`; no auto-start of R4.
+- Next safe route: WT-R4-A0 worktrack intake/schedule on branch `milestone/MS-R4-001-tushare-datalake`.
 - Control-plane refresh report: `.servo/repo/refresh-report-MS-T1-001-close-2026-07-14.md`

@@ -46,9 +46,23 @@ def test_load_stock_pool_record_from_registry_sample() -> None:
     assert record.symbols_count == 14
 
 
+def test_load_research_liquidity_quality_registry_record() -> None:
+    path = Path("inputs/pools/research_liquidity_quality/config.toml")
+    record = load_stock_pool_record(path)
+    assert record.stock_pool_id == "custom_research_liquidity_quality_v1"
+    assert record.stock_pool_version == "1"
+    assert record.pool_family == "custom"
+    assert record.is_research_only is True
+    assert 20 <= record.symbols_count <= 100
+    symbols = resolve_stock_pool_symbols(record, registry_root=Path("inputs/pools"))
+    assert len(symbols) == record.symbols_count
+    assert len(symbols) <= 100
+
+
 def test_load_stock_pool_registry_and_get_single_record() -> None:
     registry = load_stock_pool_registry("inputs/pools")
     assert ("custom_low_manipulation", "v1") in registry
+    assert ("custom_research_liquidity_quality_v1", "1") in registry
     record = get_stock_pool_record("inputs/pools", stock_pool_id="custom_low_manipulation")
     assert record.pool_family == "custom"
 

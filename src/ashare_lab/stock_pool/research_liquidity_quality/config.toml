@@ -1,0 +1,24 @@
+# research_liquidity_quality — 研究可交易卫生筛（A0 brief draft）
+
+[strategy]
+score_threshold = 55.0
+lookback_days = 60
+min_data_days = 120
+soft_target_size = 80
+hard_cap = 100
+basic_coverage_min = 0.80
+min_avg_amount_yi = 0.5          # 日均成交额下限（亿元）；0.5 = 5000万；TuShare amount=千元 → /1e5
+max_zero_volume_ratio = 0.15
+max_limit_hits = 8
+index_symbol = "510300.SH"
+
+[weights]
+liquidity_depth = 0.30
+turnover_health = 0.25
+data_completeness = 0.20
+trading_hygiene = 0.15
+market_synchronicity = 0.10
+
+[turnover_sweet_spot]
+low = 0.8
+high = 6.0

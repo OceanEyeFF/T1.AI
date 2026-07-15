@@ -1,8 +1,8 @@
 ---
 title: "Milestone Backlog"
 artifact_type: "milestone-backlog"
-updated: "2026-07-14T20:11:00+08:00"
-updated_by: "cursor-with-programmer-final-acceptance-MS-T1"
+updated: "2026-07-15T09:12:00+08:00"
+updated_by: "cursor-init-milestone-MS-R4-001"
 ---
 
 # Milestone Backlog
@@ -11,32 +11,45 @@ updated_by: "cursor-with-programmer-final-acceptance-MS-T1"
 
 ## Pipeline Summary
 
-- active_count: 0
-- planned_count: 1
+- active_count: 1
+- planned_count: 0
 - completed_count: 9
 - superseded_count: 0
-- active_milestone: none
+- active_milestone: MS-R4-001
 
 ## Active
-
-- none
-
-## Planned
 
 ### MS-R4-001
 
 - milestone_id: MS-R4-001
-- title: TuShare 数据湖构建
-- purpose: 以 TuShare 替代 AkShare 作为主数据源，从 2023 年起构建干净数据底座
-- status: planned
+- title: TuShare 数据湖构建（精选池重组 + 可复现湖合同）
+- purpose: >
+  先以新 stock_pool 策略族重组可版本化精选池（≤100），再以 TuShare 为默认日频源，
+  按 R1 审计复用 + L2 limited-live 构建 cache/derived 可复现数据湖与质量审计。
+- status: active
 - milestone_kind: goal-driven
 - priority: 5
 - depends_on_milestones: MS-T1-001
+- worktrack_list: [WT-R4-A0, WT-R4-A1, WT-R4-A2, WT-R4-A3, WT-R4-A4]
 - created_by: programmer
 - created_at: 2026-06-23T03:00:00+08:00
-- note: >
-  记录但不激活。前置 MS-R3 + MS-T1 均已 completed/accepted；
-  激活前请 refresh pre-milestone intake（`.servo/repo/MS-R4-001-pre-milestone-intake-review.md`），
-  并阅读 T1→R4 handoff：`.servo/worktrack/WT-T1-A4-r4-handoff.md`。
+- activated_at: 2026-07-15T00:16:00+08:00
+- activated_by: OceanEyeFF
+- updated: 2026-07-15T00:16:00+08:00
+- updated_by: cursor-init-milestone-MS-R4-001
+- artifact: .servo/milestone/MS-R4-001.md
 - pre_milestone_intake: .servo/repo/MS-R4-001-pre-milestone-intake-review.md
 - handoff_from_t1: .servo/worktrack/WT-T1-A4-r4-handoff.md
+- intake_status: ready
+- milestone_branch: milestone/MS-R4-001-tushare-datalake
+- decisions_locked: D1=B, D1b=P1, D1c=C2, D2=L2, D3=R1, CG2=M1, D4=lake_qa, D5=tushare_primary
+- init_action: upserted_and_activated
+- active_worktrack: WT-R4-A0
+- worktrack_contract: .servo/worktrack/WT-R4-A0-contract.md
+- note: >
+  Explicit Init 2026-07-15 after intake BRIEF=Y. Next: worktrack intake/schedule for WT-R4-A0.
+  No Worktrack Init implied by this activation alone.
+
+## Planned
+
+- none

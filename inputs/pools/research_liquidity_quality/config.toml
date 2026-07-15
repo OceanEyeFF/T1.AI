@@ -1,0 +1,16 @@
+stock_pool_id = "custom_research_liquidity_quality_v1"
+stock_pool_version = "1"
+pool_family = "custom"
+pool_label = "研究流动性卫生池 v1"
+construction_method = "hard-filters + 5-dimension hygiene score; cache-first"
+base_universe = "main board A-shares (excl. 300/688/8/4); cache-available first"
+symbols_source = "research_liquidity_quality/symbols.csv"
+symbols_csv = "research_liquidity_quality/symbols.csv"
+symbols_count = 61
+rebalance_frequency = "monthly"
+effective_start = "2023-01-01"
+effective_end = ""
+is_default = false
+is_research_only = true
+owner = "stock_pool/research_liquidity_quality"
+notes = "research_liquidity_quality cache-first select (WT-R4-A0 T3/T4). selected=61; soft_target=80 (deficit=19); hard_cap=100. H5 amount unit=TuShare thousand CNY -> yi via /1e5. index_anchor 510300.SH unavailable (empty cache dir). No live pull. is_research_only=true until MS-R4 Gate. Evidence: .servo/worktrack/WT-R4-A0-data-gaps.md + WT-R4-A0-t3-select-run-notes.json"
