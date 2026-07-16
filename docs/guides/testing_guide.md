@@ -34,12 +34,35 @@ export PYTHONPATH=src:.
 bash scripts/run_tests_fast.sh
 # 或：bash scripts/run_develop_min_regression.sh
 
+# Infra A（lake + sim + guard，无网络，夹具见 tests/fixtures/infra_a/）
+bash scripts/run_tests_infra_a.sh
+# 覆盖：tests/unit/{guard,infra,sim,backtest} + tests/integration/infra
+#       + tests/integration/sources + tests/contract/infra + universe 集成
+
+# Infra Smoke（模拟下载 / 加票 / 改起始日，无网络）
+python scripts/run_infra_smoke.py
+python scripts/run_infra_smoke.py --json
+
 # Full
 bash scripts/run_tests_full.sh
 
 # Full + coverage（强制 fail_under，见 pyproject）
 bash scripts/run_tests_cov.sh
 ```
+
+### Infra A 清单（WT-INFRA-001-TQA）
+
+白盒 Guard/Lake/Sim + 跨层 I* + 入口 C/Smoke。详见
+`.servo/worktrack/WT-INFRA-001-tqa-gap-report.md`。
+
+| ID | 状态 |
+|----|------|
+| U-G1..G5, U-S2, I1..I3, C1, Smoke | ✅ 基线 |
+| U-G6 sanity / U-G7 temporal+as_of / U-G8 execution | ✅ |
+| U-L2 maintain 增量 / U-S1 no-peek / I4 stockpool / I5 sanity / C2..C4 | ✅ |
+| U-L3 stock_basic→DataLake | 🟡 延后（见 worktrack TODO） |
+
+Coverage `source` 已含 `src/ashare_infra`（`pyproject.toml`）。
 
 等价 marker 选择：
 

@@ -1,7 +1,20 @@
-from ashare_lab.sim.broker import PaperBroker, SimConfig
-from ashare_lab.sim.fill_model import match_limit_daily_ohlc
-from ashare_lab.sim.replay import ReplayConfig, ReplayEngine, ReplayResult, ScriptedPlanner
-from ashare_lab.sim.types import DailyBar, DayMatchResult, LimitOrder, Reject
+"""Compatibility shim — re-exports ``ashare_infra.sim`` (paper + backtest)."""
+
+from __future__ import annotations
+
+from ashare_infra.sim import (
+    DailyBar,
+    DayMatchResult,
+    LimitOrder,
+    PaperBroker,
+    Reject,
+    ReplayConfig,
+    ReplayEngine,
+    ReplayResult,
+    ScriptedPlanner,
+    SimConfig,
+    match_limit_daily_ohlc,
+)
 
 __all__ = [
     "DailyBar",

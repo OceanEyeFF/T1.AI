@@ -1,13 +1,7 @@
+"""Compatibility shim — canonical utils live in ``ashare_infra.utils``."""
+
 from __future__ import annotations
 
-import math
+from ashare_infra.utils import floor_to_lot, round_price
 
-
-def round_price(value: float) -> float:
-    return round(float(value) + 1e-12, 2)
-
-
-def floor_to_lot(shares: float, lot: int = 100) -> int:
-    if shares <= 0:
-        return 0
-    return int(math.floor(shares / lot) * lot)
+__all__ = ["floor_to_lot", "round_price"]
