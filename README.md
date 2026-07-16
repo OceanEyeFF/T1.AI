@@ -38,6 +38,9 @@ pip install -e ".[dev]"
 # 最小回测
 python scripts/run_backtest.py --symbols 600519,000333 --start 20220101 --end 20241231 --top-n 3
 
+# 本地限价模拟盘回放（见 docs/guides/sim_paper_trading_guide.md）
+python scripts/run_sim_replay.py --symbol 600519 --start 20240101 --end 20240630 --cash 20000
+
 # 全量测试
 pytest tests/
 ```
