@@ -2,16 +2,12 @@
 
 ## U-L3 — stock_basic 加载 + merge 接入 DataLake
 
-**Status:** deferred (not implemented in Phase 1 DataLake)
+**Status:** done (WT-INFRA-001.5 / 2026-07-17)
 
-**Current state:**
-- Canonical lifecycle merge lives in `ashare_infra.guard.scope` / FetchGate override path
-- Fixture helper: `tests.support.infra_a.load_stock_basic` / `symbol_lifecycle_map`
-- `DataLake` has **no** `load_stock_basic` / meta API yet
+**Delivered:**
+- Canonical local path: `{cache_dir}/meta/stock_basic.{csv,parquet}`
+- `ashare_infra.lake.meta` helpers + `DataLake.load_stock_basic` /
+  `load_symbol_lifecycle_map` / `with_stock_basic_meta` (fill-missing)
+- Unit: `tests/unit/infra/test_datalake_stock_basic.py` (tradable parity with U-G1)
 
-**Follow-up:**
-- Add `DataLake.load_stock_basic(cache_dir/meta/...)` thin wrapper
-- Wire optional auto-merge into `DataScope` factory when meta missing
-- Unit test: fixture CSV → lifecycle map → tradable matrix parity with U-G1
-
-**Out of scope for TQA:** network TuShare `stock_basic` pull
+**Still out of scope:** network TuShare `stock_basic` pull (optional follow-up / R4)

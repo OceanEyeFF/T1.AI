@@ -10,8 +10,14 @@ from typing import Literal
 
 import pandas as pd
 
-from ashare_infra.guard.scope import DataScope
+from ashare_infra.guard.scope import DataScope, SymbolLifecycle
 from ashare_infra.guard.temporal import truncate_as_of
+from ashare_infra.lake.meta import (
+    read_stock_basic,
+    resolve_stock_basic_path,
+    stock_basic_stem_path,
+    stock_basic_to_lifecycle_map,
+)
 
 SourceKind = Literal["akshare", "tushare", "odp", "smoke"]
 
@@ -28,6 +34,9 @@ class DataLake:
 
     For smoke / CI, pass ``loader=...`` (and usually ``default_source="smoke"``)
     so no network clients are touched — see ``ashare_infra.lake.smoke``.
+
+    Meta (``stock_basic``) is local-cache only in WT-INFRA-001.5 — see
+    ``load_stock_basic`` / ``ashare_infra.lake.meta``.
     """
 
     cache_dir: Path
@@ -37,6 +46,54 @@ class DataLake:
 
     def __post_init__(self) -> None:
         self.cache_dir = Path(self.cache_dir)
+
+    def stock_basic_path(self) -> Path:
+        """Canonical stem path ``{cache_dir}/meta/stock_basic`` (no suffix)."""
+        return stock_basic_stem_path(self.cache_dir)
+
+    def load_stock_basic(self, path: Path | str | None = None) -> pd.DataFrame:
+        """Load local ``stock_basic`` meta (CSV or parquet). Never hits the network.
+
+        Default path resolution: ``{cache_dir}/meta/stock_basic.{csv,parquet}``.
+        """
+        resolved = resolve_stock_basic_path(self.cache_dir, path)
+        return read_stock_basic(resolved)
+
+    def load_symbol_lifecycle_map(
+        self,
+        path: Path | str | None = None,
+        *,
+        source_kind: str = "stock_basic",
+    ) -> dict[str, SymbolLifecycle]:
+        """Build ``SymbolLifecycle`` map from local stock_basic meta."""
+        resolved = resolve_stock_basic_path(self.cache_dir, path)
+        df = read_stock_basic(resolved)
+        return stock_basic_to_lifecycle_map(
+            df, evidence_ref=str(resolved), source_kind=source_kind
+        )
+
+    def with_stock_basic_meta(
+        self,
+        scope: DataScope,
+        *,
+        path: Path | str | None = None,
+        fill_missing_only: bool = True,
+    ) -> DataScope:
+        """Attach stock_basic lifecycle into ``scope.symbol_meta``.
+
+        When ``fill_missing_only`` (default), only symbols without existing meta
+        are filled. Merge priority for lifecycle sources remains in
+        ``ashare_infra.guard.scope.merge_symbol_lifecycle`` / FetchGate.
+        """
+        basic_map = self.load_symbol_lifecycle_map(path=path)
+        new_meta = dict(scope.symbol_meta)
+        for symbol in scope.symbols:
+            if fill_missing_only and symbol in new_meta:
+                continue
+            lifecycle = basic_map.get(symbol)
+            if lifecycle is not None:
+                new_meta[symbol] = lifecycle
+        return scope.with_meta(new_meta)
 
     def load_daily_bars(
         self,

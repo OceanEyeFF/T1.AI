@@ -1,6 +1,6 @@
 # Repo 目录结构与维护指南
 
-> 维护者：OceanEyeFF | 更新：2026-06-23 | MS-R2-001
+> 维护者：OceanEyeFF | 更新：2026-07-17 | MS-R2-001 + ashare_infra Phase 1 / 1.5
 
 ## 设计理念：三区模型
 
@@ -34,18 +34,24 @@ T1.AI/
 │       ├── data_source.toml        #   数据源配置
 │       └── protocol.yaml           #   协议定义
 │
-├── src/ashare_lab/                 # Y 轴：模型代码（独立一级）
-│   ├── data/                       # 数据适配器（AkShare/TuShare/ODP）
+├── src/ashare_infra/               # 基础设施包（湖 / sim / guard）— Phase 1+
+│   ├── lake/                       #   DataLake 唯一取数入口 + smoke + meta(stock_basic)
+│   ├── data/                       #   akshare / tushare / odp / index 适配器
+│   ├── guard/                      #   DataScope / FetchGate / metrics / temporal
+│   └── sim/                        #   日频 paper broker + replay
+│
+├── src/ashare_lab/                 # 研究/业务包（可经 shim 兼容旧 import）
+│   ├── data/                       # 兼容 shim → ashare_infra.data（勿新写直调 load_or_fetch_*）
 │   ├── stock_pool/                 # 选股策略（StockPoolStrategy ABC）
 │   ├── dataset/                    # 数据集构建（序列/市场状态 builder）
 │   ├── features/                   # 技术特征（Return/RSI/MACD/Bollinger...）
 │   ├── labels/                     # 标签生成（3d/5d/10d forward return）
 │   ├── models/                     # 模型架构（Transformer/LSTM/XGBoost + ModelABC）
 │   ├── training/                   # 训练器（early stopping/checkpoint）
-│   ├── evaluation/                 # 评估指标（IC/RankIC/月胜率）
+│   ├── evaluation/                 # 评估指标（shim → guard.metrics 为主）
 │   ├── pipeline/                   # 日频流水线编排器（5阶段）
 │   ├── recommendation/             # 推荐引擎 + 持久化 + 验证
-│   ├── backtest/                   # 回测引擎（T+1/涨跌停约束）
+│   ├── backtest/                   # 兼容 shim → ashare_infra.sim / backtest
 │   ├── trend_schema.py             # 趋势预测 schema
 │   ├── universe.py                 # 股票池过滤规则
 │   ├── reporting.py                # 报告生成
@@ -119,3 +125,22 @@ T1.AI/
 | `output/reports/` | `outputs/reports/` | 评估报告 |
 | `experiments/` | 已删除 | 设计文档归入 docs/research/ |
 | `data/datasets/` | 已删除 | 旧 AkShare 数据集，后续 TuShare 重建 |
+
+## `ashare_infra` vs `ashare_lab`
+
+| 包 | 职责 | 调用约定 |
+|----|------|----------|
+| `ashare_infra` | 数据湖、sim/paper、guard（scope/gate/metrics） | **唯一取数入口**是 `ashare_infra.lake.DataLake`；生命周期/交易边界走 `ashare_infra.guard` |
+| `ashare_lab` | 研究与业务（dataset / models / recommendation / pool…） | 可通过历史 shim 兼容旧 `ashare_lab.data` / `sim` import；**新业务代码不要直调** `load_or_fetch_*`（Phase 2 会加约定测） |
+
+### Meta：`stock_basic`（WT-INFRA-001.5）
+
+- Canonical 本地路径：`{cache_dir}/meta/stock_basic.csv` 或 `.parquet`
+- API：`DataLake.load_stock_basic` / `load_symbol_lifecycle_map` / `with_stock_basic_meta`
+- **本阶段不拉网**；与 MS-R4 对齐时可改常量或补 live pull，但不在 1.5 必过范围内
+- 夹具参考：`tests/fixtures/infra_a/meta/stock_basic.csv`
+
+### Shim 保留策略
+
+- Phase 1 已把 data/sim/backtest 迁到 `ashare_infra`，`ashare_lab` 侧保留兼容 shim
+- 在 Phase 2（消费方切到 DataLake/guard）完成并验收前，**不删除** shim、不强制改完所有业务 import

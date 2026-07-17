@@ -36,7 +36,7 @@
 | U-G7 temporal + as_of | ✅ | `tests/unit/guard/test_temporal.py` + `tests/unit/infra/test_datalake.py` (`test_datalake_*as_of*`) |
 | U-G8 execution | ✅ | `tests/unit/guard/test_execution.py` + `period_return` helper |
 | U-L2 maintain 增量 | ✅ | `tests/unit/infra/test_datalake_maintain.py` |
-| U-L3 stock_basic→DataLake | 🟡 | deferred — see `WT-INFRA-001-tqa-todos.md` |
+| U-L3 stock_basic→DataLake | ✅ | `tests/unit/infra/test_datalake_stock_basic.py` (WT-INFRA-001.5; local meta only) |
 | U-S1 no-peek | ✅ | already in `tests/unit/sim/test_replay.py` (`test_replay_no_lookahead_*`; no new test) |
 | I4 stockpool → maintain | ✅ | `test_i4_stockpool_triggers_maintain` |
 | I5 sanity on infra_a panel | ✅ | `test_i5_guard_sanity_on_infra_a_panel` |
@@ -51,6 +51,7 @@
 - `tests/unit/guard/test_temporal.py`
 - `tests/unit/guard/test_execution.py`
 - `tests/unit/infra/test_datalake_maintain.py`
+- `tests/unit/infra/test_datalake_stock_basic.py` (WT-INFRA-001.5 / U-L3)
 - `tests/contract/infra/test_smoke_json_schema.py`
 - `tests/contract/infra/test_sim_replay_smoke.py`
 - `.servo/worktrack/WT-INFRA-001-tqa-gap-report.md`
@@ -62,15 +63,18 @@
 - `scripts/run_tests_infra_a.sh` — include `tests/contract/infra/`
 - `docs/guides/testing_guide.md` — Infra A checklist status
 - `src/ashare_infra/guard/execution.py` — added `period_return` helper for U-G8
+- `src/ashare_infra/lake/__init__.py` — `load_stock_basic` / lifecycle / `with_stock_basic_meta` (001.5)
+- `src/ashare_infra/lake/meta.py` — local stock_basic resolve/normalize (001.5)
 - `src/ashare_infra/lake/smoke.py` — `simulate_add_stocks` already logs `add_symbols` before `gate.add_symbols` (download follows); verified present, no further edit needed
+- `docs/architecture/repo_structure_guide.md` — infra vs lab + meta path (001.5)
 
 ## Intentionally deferred
 
 | Item | Reason |
 |------|--------|
-| U-L3 `DataLake.load_stock_basic` | Phase 1 DataLake has no meta API; lifecycle merge already covered via Guard/scope fixtures. Tracked in `WT-INFRA-001-tqa-todos.md`. |
-| Real TuShare network IT | Out of scope for Infra A (no-network lane). |
-| strategy / advanced / validator→guard | Explicitly out of WT-INFRA-001-TQA. |
+| Live TuShare `stock_basic` network pull | Out of WT-INFRA-001.5; local meta API landed in `ashare_infra.lake.meta` / `DataLake.load_stock_basic`. |
+| Real TuShare network IT (bars/etc.) | Out of scope for Infra A (no-network lane). |
+| strategy / advanced / validator→guard | Explicitly out of WT-INFRA-001-TQA; belongs to Phase 2 (WT-INFRA-002). |
 
 ## Coverage note
 
