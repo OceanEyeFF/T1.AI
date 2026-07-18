@@ -31,7 +31,8 @@ class PlanProvider(Protocol):
 @dataclass(frozen=True)
 class ReplayConfig:
     sim: SimConfig = field(default_factory=SimConfig)
-    # AkShare/TuShare daily volume is usually in lots (手 = 100 shares).
+    # AkShare/TuShare daily volume is in lots (手 = 100 shares);
+    # ODP/yfinance volume is already in shares → set False for odp frames.
     volume_in_lots: bool = True
 
 
@@ -182,15 +183,9 @@ class ReplayEngine:
                     }
                 )
 
+            # Holdings without today's bar (e.g. suspension) contribute 0 to the
+            # mark — the equity curve dips on those days and recovers after.
             equity = broker.mark_to_market(bars, price_attr="close") if bars else broker.cash
-            # If some holdings lack today's bar, mark missing names at 0 contribution
-            # (conservative); cash always included via mark_to_market/cash.
-            if bars:
-                held = set(broker.book.symbols())
-                missing = [s for s in held if s not in bars and broker.book.total_shares(s) > 0]
-                if missing:
-                    # Fall back: equity = cash + sum known marks only (already).
-                    pass
             equity_rows.append({"date": today, "equity": float(equity), "cash": float(broker.cash)})
 
         equity_curve = pd.DataFrame(equity_rows).set_index("date")

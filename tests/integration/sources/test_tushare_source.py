@@ -118,8 +118,14 @@ def test_partition_cache_and_incremental(tmp_path: Path, monkeypatch: pytest.Mon
         if req.end_date == "20240102":
             calls.append(first_df)
             return first_df
-        calls.append(second_df)
-        return second_df
+        # qfq 扩窗改为整段重取（复权基准一致性）：返回请求全区间
+        full = pd.concat([first_df, second_df]).sort_index()
+        result = full.loc[
+            (full.index >= pd.to_datetime(req.start_date))
+            & (full.index <= pd.to_datetime(req.end_date))
+        ]
+        calls.append(result)
+        return result
 
     monkeypatch.setattr(ts_src, "fetch_tushare_daily_bars", fake_fetch)
     # 第一次：写入缓存
@@ -128,7 +134,7 @@ def test_partition_cache_and_incremental(tmp_path: Path, monkeypatch: pytest.Mon
     assert len(df1) == 2
     assert (cache_dir / "tushare_qfq" / symbol / "year=2024" / "part.parquet").exists()
 
-    # 第二次：增量追加并去重
+    # 第二次：qfq 扩窗 → 整段重取并去重
     req2 = TushareDailyBarsRequest(symbol=symbol, start_date="20240101", end_date="20240104")
     df2 = load_or_fetch_daily_bars(req2, cache_dir=cache_dir)
     assert len(df2) == 4

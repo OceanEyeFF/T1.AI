@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from datetime import date
 from enum import Enum
+from types import MappingProxyType
 from typing import Mapping
 from uuid import uuid4
 
@@ -84,8 +85,9 @@ class DataScope:
                 f"window_end {self.window_end} < window_start {self.window_start}"
             )
         object.__setattr__(self, "symbols", frozenset(self.symbols))
-        # Freeze nested mapping view
-        object.__setattr__(self, "symbol_meta", dict(self.symbol_meta))
+        # Read-only mapping view: in-place mutation must go through
+        # with_meta/fork or FetchGate.override_lifecycle (evidence-gated).
+        object.__setattr__(self, "symbol_meta", MappingProxyType(dict(self.symbol_meta)))
 
     def contains_symbol(self, symbol: str) -> bool:
         return symbol in self.symbols

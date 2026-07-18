@@ -3,11 +3,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
+from ashare_infra.guard.scope import MissingBarPolicy
 from ashare_infra.sim.book import PositionBook
 from ashare_infra.sim.fill_model import match_limit_daily_ohlc
 from ashare_infra.sim.types import DailyBar, DayMatchResult, LimitOrder, Reject
 from ashare_infra.types import Fill
 from ashare_infra.utils import floor_to_lot
+
+
+class MissingBarError(RuntimeError):
+    """Raised when ``MissingBarPolicy.RAISE`` hits an ordered symbol without a bar."""
 
 
 @dataclass(frozen=True)
@@ -28,13 +33,23 @@ class PaperBroker:
     --------------------
     Orders are fixed before the session (morning/afternoon plan). This broker does
     not support revise/cancel during the bar; unmatched day orders expire at EOD.
+
+    ``missing_bar_policy`` follows ``DataScope.missing_bar_policy`` semantics:
+    REJECT records a reject (default), SKIP drops the order silently,
+    RAISE raises ``MissingBarError``. ``TestSession`` syncs this from its scope.
     """
 
-    def __init__(self, config: SimConfig | None = None) -> None:
+    def __init__(
+        self,
+        config: SimConfig | None = None,
+        *,
+        missing_bar_policy: MissingBarPolicy = MissingBarPolicy.REJECT,
+    ) -> None:
         self._config = config or SimConfig()
         self._cash = float(self._config.initial_cash)
         self._book = PositionBook()
         self._pending: list[LimitOrder] = []
+        self.missing_bar_policy = missing_bar_policy
 
     @property
     def cash(self) -> float:
@@ -96,6 +111,12 @@ class PaperBroker:
         for order in orders:
             bar = bars.get(order.symbol)
             if bar is None:
+                if self.missing_bar_policy is MissingBarPolicy.SKIP:
+                    continue
+                if self.missing_bar_policy is MissingBarPolicy.RAISE:
+                    raise MissingBarError(
+                        f"missing bar for {order.symbol} on {trade_date}"
+                    )
                 result.rejects.append(Reject(order=order, reason="missing_bar"))
                 continue
 

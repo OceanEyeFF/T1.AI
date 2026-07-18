@@ -95,8 +95,10 @@ def match_limit_daily_ohlc(
     if price <= 0:
         return TouchFill(shares=0, price=0.0, reason_if_zero="invalid_bar")
 
-    vol_cap = floor_to_lot(bar.volume * max_participation, lot=lot_size)
-    fill_shares = min(shares, vol_cap) if max_participation < 1.0 else shares
+    # max_participation >= 1.0 仍受当日成交量约束，不得放开为无限量
+    effective_participation = min(float(max_participation), 1.0)
+    vol_cap = floor_to_lot(bar.volume * effective_participation, lot=lot_size)
+    fill_shares = min(shares, vol_cap)
     if fill_shares <= 0:
         return TouchFill(shares=0, price=price, reason_if_zero="insufficient_volume")
 

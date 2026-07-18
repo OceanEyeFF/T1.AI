@@ -167,17 +167,23 @@ def calculate_daily_ic(
     predictions: pd.DataFrame,
     labels: pd.DataFrame,
     date_col: str = "date",
+    value_col: str = "label",
 ) -> pd.DataFrame:
     """计算每日IC和RankIC
 
     Args:
-        predictions: 包含预测值的DataFrame（必须有date_col和预测值列）
-        labels: 包含真实标签的DataFrame（必须有date_col和标签列）
+        predictions: 包含预测值的DataFrame（必须有 date_col、symbol 和 value_col 列）
+        labels: 包含真实标签的DataFrame（必须有 date_col、symbol 和 value_col 列）
         date_col: 日期列名
+        value_col: 预测/标签共用的取值列名（merge 后为 ``{value_col}_pred/_true``）
 
     Returns:
         每日IC和RankIC的DataFrame
     """
+    for name, frame in (("predictions", predictions), ("labels", labels)):
+        if value_col not in frame.columns:
+            raise ValueError(f"{name} 缺少取值列 {value_col!r}；可用 value_col 参数指定")
+
     # 合并预测和标签
     merged = pd.merge(
         predictions,
@@ -189,16 +195,16 @@ def calculate_daily_ic(
     # 按日期分组计算IC
     daily_metrics = []
 
-    for date, group in merged.groupby(date_col):
-        preds = group["label_pred"].values
-        labels = group["label_true"].values
+    for day, group in merged.groupby(date_col):
+        preds = group[f"{value_col}_pred"].values
+        label_vals = group[f"{value_col}_true"].values
 
-        ic = information_coefficient(preds, labels)
-        rank_ic = rank_information_coefficient(preds, labels)
+        ic = information_coefficient(preds, label_vals)
+        rank_ic = rank_information_coefficient(preds, label_vals)
 
         daily_metrics.append(
             {
-                date_col: date,
+                date_col: day,
                 "ic": ic,
                 "rank_ic": rank_ic,
                 "n_samples": len(group),
@@ -212,19 +218,24 @@ def calculate_daily_cs_ic(
     predictions: pd.Series,
     labels: pd.Series,
     method: str = "pearson",
+    min_symbols_per_day: int = 2,
 ) -> pd.Series:
     """逐日计算横截面 IC（Cross-Sectional IC）
 
     每个交易日内，计算所有股票的预测值与真实值之间的相关系数。
     这是评估因子/模型预测能力的核心指标。
 
+    退化日（有效样本 < min_symbols_per_day，或截面上预测/标签为常数）记为 NaN，
+    由 ``summarize_daily_cs`` 的 dropna 剔除，不再以 0.0 稀释 mean_ic / ICIR。
+
     Args:
         predictions: 预测值 Series，索引为 (date, symbol) 的 MultiIndex
         labels: 真实标签 Series，索引为 (date, symbol) 的 MultiIndex
         method: 相关系数计算方法，"pearson" 或 "spearman"
+        min_symbols_per_day: 单日最少有效样本数，低于该值记 NaN
 
     Returns:
-        每日 IC 的 Series，索引为 date
+        每日 IC 的 Series，索引为 date（退化日为 NaN）
 
     示例:
         >>> preds = pd.Series([0.1, 0.2, -0.1], index=pd.MultiIndex.from_tuples([
@@ -253,23 +264,34 @@ def calculate_daily_cs_ic(
     grouped_preds = aligned_preds.groupby(level=date_level)
     grouped_labels = aligned_labels.groupby(level=date_level)
 
+    if method not in ("pearson", "spearman"):
+        raise ValueError(f"不支持的 method: {method}，仅支持 'pearson' 或 'spearman'")
+
+    min_n = max(2, int(min_symbols_per_day))
     daily_ic_list = []
     for date in sorted(aligned_preds.index.get_level_values(date_level).unique()):
         try:
-            pred_day = grouped_preds.get_group(date).values
-            label_day = grouped_labels.get_group(date).values
-
-            if method == "pearson":
-                ic = information_coefficient(pred_day, label_day)
-            elif method == "spearman":
-                ic = rank_information_coefficient(pred_day, label_day)
-            else:
-                raise ValueError(f"不支持的 method: {method}，仅支持 'pearson' 或 'spearman'")
-
-            daily_ic_list.append({"date": date, "ic": ic})
+            pred_day = np.asarray(grouped_preds.get_group(date).values, dtype=float)
+            label_day = np.asarray(grouped_labels.get_group(date).values, dtype=float)
         except KeyError:
             # 该日期在某个 Series 中不存在，跳过
             continue
+
+        mask = ~(np.isnan(pred_day) | np.isnan(label_day))
+        n_valid = int(mask.sum())
+        # 常数截面用 allclose 判定（严格 std==0 会被浮点噪声绕过）
+        degenerate = n_valid < min_n or (
+            np.allclose(pred_day[mask], pred_day[mask][0])
+            or np.allclose(label_day[mask], label_day[mask][0])
+        )
+        if degenerate:
+            ic = float("nan")
+        elif method == "pearson":
+            ic = information_coefficient(pred_day, label_day)
+        else:
+            ic = rank_information_coefficient(pred_day, label_day)
+
+        daily_ic_list.append({"date": date, "ic": ic})
 
     if not daily_ic_list:
         return pd.Series(dtype=float, name="ic")

@@ -264,12 +264,16 @@ def load_or_fetch_historical_bars(
     start = pd.to_datetime(req.start_date)
     end = pd.to_datetime(req.end_date)
 
-    cached = pd.DataFrame(columns=list(SUPPORTED_FIELDS)) if refresh else _read_cached(cache_path)
-    has_cover = (not cached.empty) and (start >= cached.index.min()) and (end <= cached.index.max())
-    if has_cover:
-        return cached.loc[(cached.index >= start) & (cached.index <= end)].copy()
+    cached = _read_cached(cache_path)
+    if not refresh:
+        has_cover = (
+            (not cached.empty) and (start >= cached.index.min()) and (end <= cached.index.max())
+        )
+        if has_cover:
+            return cached.loc[(cached.index >= start) & (cached.index <= end)].copy()
 
     fetched = fetch_odp_historical_bars(req)
+    # refresh 强制重取请求区间，但保留区间外已缓存行（fetched 在后 → keep="last" 覆盖旧行）
     frames = [x for x in (cached, fetched) if x is not None and not x.empty]
     merged = (
         pd.concat(frames).sort_index() if frames else pd.DataFrame(columns=list(SUPPORTED_FIELDS))
@@ -279,6 +283,9 @@ def load_or_fetch_historical_bars(
         merged.index.name = "date"
         _write_cached(merged, cache_path)
 
+    if merged.empty:
+        merged.index.name = "date"
+        return merged.copy()
     return merged.loc[(merged.index >= start) & (merged.index <= end)].copy()
 
 

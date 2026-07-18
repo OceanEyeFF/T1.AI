@@ -71,14 +71,16 @@ def test_datalake_two_fetch_rounds_second_only_gap(
     monkeypatch.setattr(ts, "_retry_with_backoff", lambda fn, retries=3, base_delay=0.5: fn())
 
     lake = DataLake(cache_dir=tmp_path, default_source="tushare")
+    # raw 模式保留增量维护语义；qfq/hfq 因复权基准一致性改为整段重取
+    # （见 test_phase1_audit_fixes.test_h2_qfq_incremental_refetches_full_span）
     # Round 1: empty cache → full window
-    df1 = lake.load_daily_bars("600000", date(2024, 1, 2), date(2024, 1, 5))
+    df1 = lake.load_daily_bars("600000", date(2024, 1, 2), date(2024, 1, 5), adjust="raw")
     assert not df1.empty
     assert fetch_calls == [("20240102", "20240105")]
 
     # Round 2: extend end — only missing tail should be fetched
     fetch_calls.clear()
-    df2 = lake.load_daily_bars("600000", date(2024, 1, 2), date(2024, 1, 10))
+    df2 = lake.load_daily_bars("600000", date(2024, 1, 2), date(2024, 1, 10), adjust="raw")
     assert not df2.empty
     assert len(fetch_calls) == 1
     assert fetch_calls[0][0] == "20240106"

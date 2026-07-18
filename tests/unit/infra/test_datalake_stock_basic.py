@@ -92,3 +92,79 @@ def test_with_stock_basic_meta_fill_missing_only(tmp_path: Path) -> None:
     filled = lake.with_stock_basic_meta(partial, fill_missing_only=True)
     assert filled.symbol_meta["600001"].list_date == date(2099, 1, 1)
     assert filled.symbol_meta["600000"].list_date == date(2020, 1, 1)
+
+
+def test_normalize_symbol_zero_pads_numeric_code() -> None:
+    import pandas as pd
+
+    from ashare_infra.lake.meta import _normalize_symbol, normalize_stock_basic
+
+    assert _normalize_symbol(1) == "000001"
+    assert _normalize_symbol("1") == "000001"
+    assert _normalize_symbol("000001.SZ") == "000001"
+    assert _normalize_symbol("600000") == "600000"
+
+    df = normalize_stock_basic(
+        pd.DataFrame(
+            {
+                "code": [1, 600000],
+                "list_date": ["2020-01-01", "2020-01-01"],
+            }
+        )
+    )
+    assert set(df["symbol"]) == {"000001", "600000"}
+
+
+def test_normalize_stock_basic_rejects_blank_list_date() -> None:
+    import pandas as pd
+
+    from ashare_infra.lake.meta import normalize_stock_basic
+
+    with pytest.raises(ValueError, match="missing required list_date"):
+        normalize_stock_basic(
+            pd.DataFrame(
+                {
+                    "symbol": ["600000"],
+                    "list_date": [""],
+                }
+            )
+        )
+
+
+def test_normalize_stock_basic_rejects_duplicate_symbol() -> None:
+    import pandas as pd
+
+    from ashare_infra.lake.meta import normalize_stock_basic
+
+    with pytest.raises(ValueError, match="duplicate stock_basic symbol"):
+        normalize_stock_basic(
+            pd.DataFrame(
+                {
+                    "symbol": ["600000", "600000"],
+                    "list_date": ["2020-01-01", "2021-01-01"],
+                }
+            )
+        )
+
+
+def test_load_stock_basic_numeric_code_parquet(tmp_path: Path) -> None:
+    import pandas as pd
+
+    dest_dir = tmp_path / "meta"
+    dest_dir.mkdir(parents=True)
+    pd.DataFrame(
+        {
+            "code": [1],
+            "list_date": ["2020-01-01"],
+            "delist_date": [None],
+        }
+    ).to_parquet(dest_dir / "stock_basic.parquet", index=False)
+
+    lake = DataLake(cache_dir=tmp_path)
+    df = lake.load_stock_basic()
+    assert df.iloc[0]["symbol"] == "000001"
+
+    scope = lake.with_stock_basic_meta(
+        fx.make_scope(symbols={"000001"}, include_meta=False)
+    )
+    assert scope.symbol_meta["000001"].list_date == date(2020, 1, 1)

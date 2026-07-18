@@ -301,6 +301,14 @@ def _date_ranges_to_fetch(
     return [(s, e) for s, e in ranges if s <= e]
 
 
+def _slice_result(combined: pd.DataFrame, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
+    """返回请求区间内的数据；空帧直接返回（占位 RangeIndex 无法比较 Timestamp）。"""
+    combined.index.name = "date"
+    if combined.empty:
+        return combined.copy()
+    return combined.loc[(combined.index >= start) & (combined.index <= end)].copy()
+
+
 def load_or_fetch_daily_bars(
     req: TushareDailyBarsRequest,
     cache_dir: Path,
@@ -308,19 +316,33 @@ def load_or_fetch_daily_bars(
     retries: int = 3,
     backoff_base: float = 0.5,
 ) -> pd.DataFrame:
-    """加载或获取 TuShare 日线数据，带分区缓存与增量去重"""
+    """加载或获取 TuShare 日线数据，带分区缓存与增量去重。
+
+    - ``refresh=True`` 强制重取请求区间，但保留区间外已缓存行（合并后整体重写，
+      不会把年度分区截成只剩请求区间）。
+    - 复权模式（qfq/hfq）下，若需要增量抓取且已有缓存，则改为整段重取：
+      增量拼接会让新旧两段使用不同的复权基准，在接缝处产生假跳价。
+    """
     adjust_mode = _normalize_adjust_mode(req.adjust)
     cache_ns = "tushare" if adjust_mode == "raw" else f"tushare_{adjust_mode}"
     symbol_dir = cache_dir / cache_ns / req.symbol
     start = pd.to_datetime(req.start_date)
     end = pd.to_datetime(req.end_date)
 
-    if refresh:
-        existing = pd.DataFrame(columns=SUPPORTED_FIELDS)
-    else:
-        existing = _read_cached_partitions(symbol_dir)
+    existing = _read_cached_partitions(symbol_dir)
 
-    ranges = _date_ranges_to_fetch(existing, start, end)
+    if refresh:
+        ranges = [(start, end)] if start <= end else []
+    else:
+        ranges = _date_ranges_to_fetch(existing, start, end)
+
+    # qfq/hfq：任何需要抓取的情形都整段重取（覆盖旧缓存 span ∪ 请求区间），
+    # 保证整个缓存序列共享同一个复权基准。
+    if ranges and adjust_mode != "raw" and not existing.empty:
+        span_start = min(start, existing.index.min())
+        span_end = max(end, existing.index.max())
+        ranges = [(span_start, span_end)]
+        existing = pd.DataFrame(columns=SUPPORTED_FIELDS)
 
     fetched_frames: list[pd.DataFrame] = []
     for fetch_start, fetch_end in ranges:
@@ -342,14 +364,11 @@ def load_or_fetch_daily_bars(
     if fetched_frames:
         frames = [df for df in [existing, *fetched_frames] if not df.empty]
         combined = pd.concat(frames).sort_index() if frames else existing
+        # fetched 在 existing 之后 → keep="last" 时以新抓取为准
         combined = combined[~combined.index.duplicated(keep="last")]
         _write_partitioned(combined, symbol_dir)
 
-    combined.index.name = "date"
-
-    # 返回请求区间内的数据
-    result = combined.loc[(combined.index >= start) & (combined.index <= end)].copy()
-    return result
+    return _slice_result(combined, start, end)
 
 
 def load_or_fetch_daily_basic(
@@ -364,12 +383,11 @@ def load_or_fetch_daily_basic(
     start = pd.to_datetime(req.start_date)
     end = pd.to_datetime(req.end_date)
 
+    existing = _read_cached_partitions(symbol_dir)
     if refresh:
-        existing = pd.DataFrame(columns=list(SUPPORTED_DAILY_BASIC_FIELDS))
+        ranges = [(start, end)] if start <= end else []
     else:
-        existing = _read_cached_partitions(symbol_dir)
-
-    ranges = _date_ranges_to_fetch(existing, start, end)
+        ranges = _date_ranges_to_fetch(existing, start, end)
 
     fetched_frames: list[pd.DataFrame] = []
     for fetch_start, fetch_end in ranges:
@@ -393,8 +411,7 @@ def load_or_fetch_daily_basic(
         combined = combined[~combined.index.duplicated(keep="last")]
         _write_partitioned(combined, symbol_dir)
 
-    combined.index.name = "date"
-    result = combined.loc[(combined.index >= start) & (combined.index <= end)].copy()
+    result = _slice_result(combined, start, end)
     return result.reindex(columns=list(SUPPORTED_DAILY_BASIC_FIELDS))
 
 
@@ -410,12 +427,11 @@ def load_or_fetch_moneyflow(
     start = pd.to_datetime(req.start_date)
     end = pd.to_datetime(req.end_date)
 
+    existing = _read_cached_partitions(symbol_dir)
     if refresh:
-        existing = pd.DataFrame(columns=list(SUPPORTED_MONEYFLOW_FIELDS))
+        ranges = [(start, end)] if start <= end else []
     else:
-        existing = _read_cached_partitions(symbol_dir)
-
-    ranges = _date_ranges_to_fetch(existing, start, end)
+        ranges = _date_ranges_to_fetch(existing, start, end)
 
     fetched_frames: list[pd.DataFrame] = []
     for fetch_start, fetch_end in ranges:
@@ -439,6 +455,5 @@ def load_or_fetch_moneyflow(
         combined = combined[~combined.index.duplicated(keep="last")]
         _write_partitioned(combined, symbol_dir)
 
-    combined.index.name = "date"
-    result = combined.loc[(combined.index >= start) & (combined.index <= end)].copy()
+    result = _slice_result(combined, start, end)
     return result.reindex(columns=list(SUPPORTED_MONEYFLOW_FIELDS))

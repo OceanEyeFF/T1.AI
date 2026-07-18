@@ -29,6 +29,7 @@ def truncate_as_of(
         work.index = pd.to_datetime(work.index)
 
     end = pd.Timestamp(as_of)
+    # 布尔掩码而非 label slice：无序索引下 .loc[:end] 按位置解析，会泄漏 as_of 之后的行
     if inclusive:
-        return work.loc[:end].copy()
+        return work.loc[work.index <= end].copy()
     return work.loc[work.index < end].copy()

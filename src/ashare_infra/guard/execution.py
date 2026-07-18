@@ -41,7 +41,7 @@ def period_return(
 
     Mirrors ``recommendation.validator`` price anchors:
     - ``close_to_close``: close(end) / close(start) - 1
-    - ``next_open_to_open``: open(next(start)) / open(next(end)) - 1
+    - ``next_open_to_open``: open(next(end)) / open(next(start)) - 1
       where next(d) is the first trade day in ``bars`` strictly after d.
 
     Missing anchors or zero/NaN start price → NaN.

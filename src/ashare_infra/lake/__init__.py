@@ -13,6 +13,7 @@ import pandas as pd
 from ashare_infra.guard.scope import DataScope, SymbolLifecycle
 from ashare_infra.guard.temporal import truncate_as_of
 from ashare_infra.lake.meta import (
+    _normalize_symbol,
     read_stock_basic,
     resolve_stock_basic_path,
     stock_basic_stem_path,
@@ -81,16 +82,27 @@ class DataLake:
     ) -> DataScope:
         """Attach stock_basic lifecycle into ``scope.symbol_meta``.
 
+        Scope symbols may be bare 6-digit codes or ts_code style (``600519.SH``);
+        lookup normalizes both to the bare form used by the lifecycle map.
+
         When ``fill_missing_only`` (default), only symbols without existing meta
-        are filled. Merge priority for lifecycle sources remains in
-        ``ashare_infra.guard.scope.merge_symbol_lifecycle`` / FetchGate.
+        are filled. ``fill_missing_only=False`` still never overwrites
+        ``scope_override`` meta (META_MERGE_PRIORITY: override > stock_basic).
         """
         basic_map = self.load_symbol_lifecycle_map(path=path)
         new_meta = dict(scope.symbol_meta)
         for symbol in scope.symbols:
-            if fill_missing_only and symbol in new_meta:
+            existing = new_meta.get(symbol)
+            if existing is not None:
+                if fill_missing_only:
+                    continue
+                if existing.source.kind == "scope_override":
+                    continue
+            try:
+                lookup_key = _normalize_symbol(symbol)
+            except ValueError:
                 continue
-            lifecycle = basic_map.get(symbol)
+            lifecycle = basic_map.get(lookup_key)
             if lifecycle is not None:
                 new_meta[symbol] = lifecycle
         return scope.with_meta(new_meta)
@@ -105,7 +117,13 @@ class DataLake:
         adjust: str = "qfq",
         as_of: date | None = None,
     ) -> pd.DataFrame:
-        """Load (or fetch+cache) daily OHLCV for one symbol."""
+        """Load (or fetch+cache) daily OHLCV for one symbol.
+
+        Symbol convention is per-source: tushare expects ts_code (``600519.SH``),
+        akshare/odp expect bare codes. Volume units also differ: akshare/tushare
+        report lots (手), odp/yfinance reports shares — set
+        ``ReplayConfig.volume_in_lots=False`` when replaying odp frames.
+        """
         src = source or self.default_source
         start_s = _yyyymmdd(start)
         end_s = _yyyymmdd(end)
@@ -189,8 +207,10 @@ class DataLake:
             )
 
             req = ODPDailyBarsRequest(symbol=symbol, start_date=start, end_date=end)
+            # odp_source 自带 odp/ 命名空间；不要再嵌套一层，否则与直调该
+            # adapter 的缓存分裂成两份
             return load_or_fetch_daily_bars(
-                req, cache_dir=self.cache_dir / "odp", refresh=self.refresh
+                req, cache_dir=self.cache_dir, refresh=self.refresh
             )
 
         raise ValueError(f"unsupported source: {source}")

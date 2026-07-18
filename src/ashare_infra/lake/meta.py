@@ -80,7 +80,19 @@ def _normalize_symbol(value: object) -> str:
     # Accept ts_code like 600000.SH → 600000
     if "." in text:
         text = text.split(".", 1)[0]
+    # Parquet / numeric code columns may arrive as 1 instead of 000001
+    if text.isdigit() and len(text) < 6:
+        text = text.zfill(6)
     return text
+
+
+def _require_list_date(value: object, *, symbol: str) -> date:
+    parsed = _parse_day(value)
+    if parsed is None:
+        raise ValueError(
+            f"stock_basic row for {symbol!r} missing required list_date; got {value!r}"
+        )
+    return parsed
 
 
 def normalize_stock_basic(df: pd.DataFrame) -> pd.DataFrame:
@@ -105,11 +117,16 @@ def normalize_stock_basic(df: pd.DataFrame) -> pd.DataFrame:
         )
 
     rows: list[dict[str, object]] = []
+    seen: set[str] = set()
     for _, row in frame.iterrows():
+        symbol = _normalize_symbol(row[symbol_col])
+        if symbol in seen:
+            raise ValueError(f"duplicate stock_basic symbol: {symbol!r}")
+        seen.add(symbol)
         rows.append(
             {
-                "symbol": _normalize_symbol(row[symbol_col]),
-                "list_date": _parse_day(row[list_col]),
+                "symbol": symbol,
+                "list_date": _require_list_date(row[list_col], symbol=symbol),
                 "delist_date": (
                     _parse_day(row[delist_col]) if delist_col is not None else None
                 ),
@@ -139,11 +156,17 @@ def stock_basic_to_lifecycle_map(
     evidence_ref: str,
     source_kind: str = "stock_basic",
 ) -> dict[str, SymbolLifecycle]:
-    """Map normalized stock_basic rows to ``SymbolLifecycle``."""
+    """Map normalized stock_basic rows to ``SymbolLifecycle``.
+
+    Raises ``ValueError`` on duplicate symbols (normalize_stock_basic enforces).
+    """
     normalized = normalize_stock_basic(df)
     out: dict[str, SymbolLifecycle] = {}
     for row in normalized.itertuples(index=False):
-        out[str(row.symbol)] = SymbolLifecycle(
+        symbol = str(row.symbol)
+        if symbol in out:
+            raise ValueError(f"duplicate stock_basic symbol: {symbol!r}")
+        out[symbol] = SymbolLifecycle(
             list_date=row.list_date,
             delist_date=row.delist_date,
             source=MetaSource(kind=source_kind, evidence_ref=evidence_ref),

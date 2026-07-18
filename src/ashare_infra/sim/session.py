@@ -36,6 +36,8 @@ class TestSession:
             self.gate = FetchGate(scope=self.scope)
         else:
             self.scope = self.gate.scope
+        # Scope declares the policy; session enforces it on the broker.
+        self.broker.missing_bar_policy = self.scope.missing_bar_policy
 
     @classmethod
     def for_ic(
