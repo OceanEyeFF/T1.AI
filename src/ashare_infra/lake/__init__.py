@@ -173,7 +173,8 @@ class DataLake:
             return self.loader(symbol, start, end, adjust)
 
         # tushare nests its own cache_ns (tushare_qfq/…) under cache_dir;
-        # akshare/odp use a dedicated subfolder to avoid collisions.
+        # akshare uses cache_dir/akshare/; odp_source self-namespaces under
+        # cache_dir/odp/ (pass cache_dir unmodified — do not add another odp/).
         if source == "akshare":
             from ashare_infra.data.akshare_source import (
                 AkshareDailyBarsRequest,

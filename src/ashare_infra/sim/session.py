@@ -19,8 +19,11 @@ from ashare_infra.sim.replay import PlanProvider, ReplayConfig, ReplayEngine, Re
 class TestSession:
     """Bound a DataScope + PaperBroker for IC eval or paper replay.
 
-    - IC evaluation default: ``ListingPolicy.EXCLUDE_DAY``
-    - Sim default: ``EXCLUDE_DAY`` + ``MissingBarPolicy.REJECT`` (matches PaperBroker)
+    - IC evaluation default: ``ListingPolicy.EXCLUDE_DAY`` (eval-side; not
+      auto-enforced by PaperBroker — see ListingPolicy docstring)
+    - Missing bars: ``for_ic`` / ``for_sim`` both default to ``REJECT`` so
+      replay matches historical PaperBroker behaviour; set SKIP/RAISE explicitly
+      on scope when needed
     - ``score_ic()`` always delegates to ``ashare_infra.guard.metrics``
     """
 
@@ -53,7 +56,9 @@ class TestSession:
             window_start=window_start,
             window_end=window_end,
             listing_policy=ListingPolicy.EXCLUDE_DAY,
-            missing_bar_policy=MissingBarPolicy.SKIP,
+            # REJECT preserves pre-audit PaperBroker behaviour for any accidental
+            # for_ic().run_replay(...); score_ic does not use missing-bar policy.
+            missing_bar_policy=MissingBarPolicy.REJECT,
         )
         broker = PaperBroker(sim_config or SimConfig())
         return cls(scope=scope, broker=broker)

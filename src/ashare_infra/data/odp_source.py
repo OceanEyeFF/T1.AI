@@ -250,6 +250,19 @@ def _write_cached(df: pd.DataFrame, path: Path) -> None:
     out.to_parquet(path, index=False)
 
 
+def _odp_cache_paths(cache_dir: Path, endpoint: str, cache_name: str) -> tuple[Path, Path | None]:
+    """Canonical cache path + optional legacy double-nested path.
+
+    Pre-fix DataLake passed ``cache_dir/odp`` into the adapter which already
+    prefixes ``odp/``, producing ``{cache}/odp/odp/...``. Reads still fall back
+    to that legacy location; writes always go to the canonical path.
+    """
+    ep = endpoint.replace("/", "_")
+    canonical = cache_dir / "odp" / ep / cache_name
+    legacy = cache_dir / "odp" / "odp" / ep / cache_name
+    return canonical, legacy if legacy != canonical else None
+
+
 def load_or_fetch_historical_bars(
     req: ODPHistoricalRequest,
     cache_dir: Path,
@@ -257,14 +270,16 @@ def load_or_fetch_historical_bars(
 ) -> pd.DataFrame:
     """加载或获取 ODP 历史行情（按 symbol/provider/interval 持久化缓存）。"""
     ep = _normalize_endpoint(req.endpoint)
-    cache_root = cache_dir / "odp" / ep.replace("/", "_")
     cache_name = f"{_safe_symbol_for_path(req.symbol)}_{req.provider}_{req.interval}.parquet"
-    cache_path = cache_root / cache_name
+    cache_path, legacy_path = _odp_cache_paths(cache_dir, ep, cache_name)
 
     start = pd.to_datetime(req.start_date)
     end = pd.to_datetime(req.end_date)
 
     cached = _read_cached(cache_path)
+    if cached.empty and legacy_path is not None:
+        cached = _read_cached(legacy_path)
+
     if not refresh:
         has_cover = (
             (not cached.empty) and (start >= cached.index.min()) and (end <= cached.index.max())

@@ -11,7 +11,12 @@ from uuid import uuid4
 
 
 class ListingPolicy(str, Enum):
-    """How to treat symbols outside list/delist bounds or with missing bars."""
+    """How to treat symbols outside list/delist bounds.
+
+    Declared on ``DataScope`` for callers/evaluation. PaperBroker / ReplayEngine
+    do **not** yet enforce this enum (deferred; use ``is_tradable`` / FetchGate
+    or filter bars before matching). Do not assume sim honor these values.
+    """
 
     EXCLUDE_DAY = "exclude_day"
     """Drop the (symbol, day) from evaluation / matching for that day."""
@@ -24,13 +29,17 @@ class ListingPolicy(str, Enum):
 
 
 class MissingBarPolicy(str, Enum):
-    """Sim / backtest behaviour when a bar is absent for a held or ordered symbol."""
+    """Sim / backtest behaviour when a bar is absent for an **ordered** symbol.
+
+    Enforced by ``PaperBroker`` when set via constructor or ``TestSession``
+    (session copies ``scope.missing_bar_policy`` onto the broker).
+    """
 
     REJECT = "reject"
-    """Reject the order (existing PaperBroker missing_bar behaviour)."""
+    """Reject the order (default PaperBroker / ``TestSession.for_sim``)."""
 
     SKIP = "skip"
-    """Silently skip matching for that symbol-day."""
+    """Silently skip matching for that symbol-day (no reject row)."""
 
     RAISE = "raise"
 

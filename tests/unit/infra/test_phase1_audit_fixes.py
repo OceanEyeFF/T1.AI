@@ -230,11 +230,45 @@ def test_m4_missing_bar_raise() -> None:
 def test_m4_session_syncs_policy_from_scope() -> None:
     from ashare_infra.sim.session import TestSession
 
+    # for_ic keeps REJECT (historical PaperBroker behaviour); SKIP is opt-in
     session = TestSession.for_ic({"600000"}, date(2024, 1, 2), date(2024, 1, 15))
-    assert session.broker.missing_bar_policy is MissingBarPolicy.SKIP
+    assert session.broker.missing_bar_policy is MissingBarPolicy.REJECT
 
     session2 = TestSession.for_sim({"600000"}, date(2024, 1, 2), date(2024, 1, 15))
     assert session2.broker.missing_bar_policy is MissingBarPolicy.REJECT
+
+
+def test_odp_reads_legacy_double_nested_cache(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Pre-fix DataLake nested odp/odp; reads must still hit that path."""
+    import ashare_infra.data.odp_source as odp
+
+    idx = pd.to_datetime(["2024-01-02", "2024-01-03", "2024-01-04"])
+    frame = pd.DataFrame(
+        {"open": 1.0, "high": 1.0, "low": 1.0, "close": 1.0, "volume": 1.0, "amount": 1.0},
+        index=idx,
+    )
+    frame.index.name = "date"
+    legacy = (
+        tmp_path
+        / "odp"
+        / "odp"
+        / "equity_price_historical"
+        / "600000.SS_yfinance_1d.parquet"
+    )
+    legacy.parent.mkdir(parents=True)
+    frame.reset_index().to_parquet(legacy, index=False)
+
+    monkeypatch.setattr(
+        odp,
+        "fetch_odp_historical_bars",
+        lambda req: (_ for _ in ()).throw(AssertionError("must not fetch when legacy covers")),
+    )
+    req = odp.ODPDailyBarsRequest(symbol="600000", start_date="20240102", end_date="20240104")
+    df = odp.load_or_fetch_daily_bars(req, cache_dir=tmp_path)
+    assert len(df) == 3
+    assert list(df.index.date) == [date(2024, 1, 2), date(2024, 1, 3), date(2024, 1, 4)]
 
 
 # --- M5: degenerate days must be NaN, not IC=0.0 counted as valid ---
