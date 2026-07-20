@@ -57,3 +57,50 @@ def test_missing_anchor_returns_nan() -> None:
         ReturnConvention.CLOSE_TO_CLOSE,
     )
     assert math.isnan(ret)
+
+
+def test_period_return_empty_bars_is_nan() -> None:
+    import pandas as pd
+
+    ret = period_return(
+        pd.DataFrame(),
+        date(2024, 1, 2),
+        date(2024, 1, 3),
+        ReturnConvention.CLOSE_TO_CLOSE,
+    )
+    assert math.isnan(ret)
+
+
+def test_period_return_date_column_index() -> None:
+    import pandas as pd
+
+    bars = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2024-01-02", "2024-01-03"]),
+            "close": [10.0, 11.0],
+            "open": [10.0, 10.5],
+        }
+    )
+    ret = period_return(
+        bars,
+        date(2024, 1, 2),
+        date(2024, 1, 3),
+        ReturnConvention.CLOSE_TO_CLOSE,
+    )
+    assert ret == pytest.approx(0.1)
+
+
+def test_period_return_zero_start_price_is_nan() -> None:
+    import pandas as pd
+
+    bars = pd.DataFrame(
+        {"close": [0.0, 11.0], "open": [0.0, 10.5]},
+        index=pd.to_datetime(["2024-01-02", "2024-01-03"]),
+    )
+    ret = period_return(
+        bars,
+        date(2024, 1, 2),
+        date(2024, 1, 3),
+        ReturnConvention.CLOSE_TO_CLOSE,
+    )
+    assert math.isnan(ret)

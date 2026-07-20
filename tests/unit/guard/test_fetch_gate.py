@@ -144,3 +144,13 @@ def test_merge_lifecycle_priority() -> None:
 
     m3, warn3 = merge_symbol_lifecycle(infer_from_bars=inferred)
     assert m3 is inferred and warn3 is not None
+
+
+def test_data_scope_rejects_inverted_window() -> None:
+    with pytest.raises(ValueError):
+        DataScope(
+            symbols=frozenset({"600000"}),
+            window_start=date(2024, 6, 1),
+            window_end=date(2024, 1, 1),
+            listing_policy=ListingPolicy.EXCLUDE_DAY,
+        )

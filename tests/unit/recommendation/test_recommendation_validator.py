@@ -681,3 +681,106 @@ def test_validator_default_return_mode() -> None:
     )
 
     assert result.return_mode == "close_to_close"
+
+
+# --- WT-INFRA-002 cutover locks (DataLake + guard.metrics) ---
+
+
+def test_adapters_reuse_single_datalake(tmp_path: Path) -> None:
+    from ashare_infra.lake import DataLake
+
+    ak = v.AkshareSourceAdapter(cache_dir=tmp_path)
+    ts = v.TushareSourceAdapter(cache_dir=tmp_path)
+    odp = v.ODPSourceAdapter(cache_dir=tmp_path)
+    cal = v.HS300IndexCalendarSource(cache_dir=tmp_path)
+
+    for adapter in (ak, ts, odp):
+        assert isinstance(adapter._lake, DataLake)
+    assert isinstance(cal._lake, DataLake)
+    assert ak._lake is not ts._lake
+
+
+def test_akshare_adapter_fetch_goes_through_datalake(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    adapter = v.AkshareSourceAdapter(cache_dir=tmp_path)
+    calls: list[tuple[str, str, str]] = []
+
+    def fake_load(symbol, start, end, *, source="akshare", adjust="qfq"):
+        calls.append((symbol, start, end))
+        _ = source, adjust
+        return _df_with_close(["2025-01-02"], [10.0])
+
+    monkeypatch.setattr(adapter._lake, "load_daily_bars", fake_load)
+    bars = adapter.fetch_daily_bars(["600000"], "2025-01-02", "2025-01-03")
+    assert calls == [("600000", "20250102", "20250103")]
+    assert "600000" in bars
+    lake_id = id(adapter._lake)
+    adapter.fetch_daily_bars(["000001"], "2025-01-02", "2025-01-03")
+    assert id(adapter._lake) == lake_id
+
+
+def test_hs300_calendar_goes_through_datalake(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cal = v.HS300IndexCalendarSource(cache_dir=tmp_path)
+    calls: list[str] = []
+
+    def fake_index(symbol, start, end, *, as_of=None):
+        _ = as_of
+        calls.append(symbol)
+        return _df_with_close(["2025-01-02", "2025-01-03"], [1.0, 1.1])
+
+    monkeypatch.setattr(cal._lake, "load_index_daily", fake_index)
+    df = cal.fetch_hs300_daily("2025-01-02", "2025-01-03")
+    assert calls == ["000300"]
+    assert not df.empty
+
+
+def test_validate_uses_guard_metrics_module(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """IC/RankIC must call ashare_infra.guard.metrics (Phase 2 T1 acceptance)."""
+    import ashare_infra.guard.metrics as guard_metrics
+
+    hs300 = _df_with_close(
+        ["2025-01-02", "2025-01-03", "2025-01-06", "2025-01-07", "2025-01-08"],
+        [1.0, 1.0, 1.0, 1.0, 1.0],
+    )
+    bars = {
+        "A": _df_with_close(
+            ["2025-01-02", "2025-01-03", "2025-01-06", "2025-01-07", "2025-01-08"],
+            [10.0, 10.5, 11.0, 11.5, 12.0],
+        ),
+        "B": _df_with_close(
+            ["2025-01-02", "2025-01-03", "2025-01-06", "2025-01-07", "2025-01-08"],
+            [20.0, 19.5, 19.0, 18.5, 18.0],
+        ),
+    }
+    ic_calls: list[int] = []
+    rank_calls: list[int] = []
+
+    def fake_ic(x, y):
+        ic_calls.append(len(x))
+        return 0.42
+
+    def fake_rank(x, y):
+        rank_calls.append(len(x))
+        return 0.41
+
+    monkeypatch.setattr(guard_metrics, "information_coefficient", fake_ic)
+    monkeypatch.setattr(guard_metrics, "rank_information_coefficient", fake_rank)
+
+    validator = v.RecommendationValidator(
+        data_source=_FakeDailyBarsSource(bars),
+        calendar_source=_FakeCalendarSource(hs300),
+    )
+    result = validator.validate(
+        [{"symbol": "A", "score": 0.5}, {"symbol": "B", "score": -0.2}],
+        validation_horizon=2,
+        recommendation_date="2025-01-02",
+        return_mode="close_to_close",
+    )
+    assert ic_calls and rank_calls
+    assert result.ic == pytest.approx(0.42)
+    assert result.rank_ic == pytest.approx(0.41)

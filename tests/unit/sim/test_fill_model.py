@@ -73,6 +73,16 @@ def test_buy_blocked_at_limit_up_open() -> None:
     assert touch.reason_if_zero == "buy_blocked_limit_up"
 
 
+def test_sell_blocked_at_limit_down_open() -> None:
+    order = LimitOrder(symbol="600000", side="SELL", shares=100, limit_price=9.00)
+    touch = match_limit_daily_ohlc(
+        order,
+        _bar(open_=9.00, high=9.00, low=9.00, close=9.00, prev_close=10.00),
+    )
+    assert touch.shares == 0
+    assert touch.reason_if_zero == "sell_blocked_limit_down"
+
+
 def test_volume_participation_caps_fill() -> None:
     order = LimitOrder(symbol="600000", side="BUY", shares=10_000, limit_price=10.00)
     # 5% of 10_000 volume = 500 -> lot floor 500

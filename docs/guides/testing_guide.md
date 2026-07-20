@@ -55,6 +55,10 @@ bash scripts/run_tests_cov.sh
 白盒 Guard/Lake/Sim + 跨层 I* + 入口 C/Smoke。详见
 `.servo/worktrack/WT-INFRA-001-tqa-gap-report.md`。
 
+Phase 1–2 白盒索引与每文件配套文档：
+[docs/guides/infra_phase12_whitebox.md](infra_phase12_whitebox.md)
+（测试旁同名 `.md`：purpose / SUT / cases / invariants / out-of-scope）。
+
 | ID | 状态 |
 |----|------|
 | U-G1..G5, U-S2, I1..I3, C1, Smoke | ✅ 基线 |
@@ -62,6 +66,7 @@ bash scripts/run_tests_cov.sh
 | U-L2 maintain 增量 / U-S1 no-peek / I4 stockpool / I5 sanity / C2..C4 | ✅ |
 | U-L3 stock_basic→DataLake | ✅ WT-INFRA-001.5（本地 meta；无网） |
 | Phase 2 no-direct-`load_or_fetch` | ✅ `tests/contract/infra/test_no_direct_load_or_fetch.py`（+ scripts） |
+| Phase 1–2 白盒补强 | ✅ listing / DatasetBuilder lake / validator DataLake+IC 入口锁（见索引） |
 
 Coverage `source` 已含 `src/ashare_infra`（`pyproject.toml`）。
 

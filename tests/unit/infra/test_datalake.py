@@ -160,3 +160,58 @@ def test_datalake_akshare_reads_legacy_flat_cache(tmp_path: Path) -> None:
     df = lake.load_daily_bars("600519", "20240101", "20240105", source="akshare")
     assert len(df) == 2
     assert float(df.iloc[-1]["close"]) == 11.0
+
+
+def test_datalake_smoke_without_loader_raises(tmp_path: Path) -> None:
+    lake = DataLake(cache_dir=tmp_path, default_source="smoke")
+    with pytest.raises(RuntimeError, match="requires an injected loader"):
+        lake.load_daily_bars("600000", "20240101", "20240105", source="smoke")
+
+
+def test_datalake_unsupported_source_raises(tmp_path: Path) -> None:
+    lake = DataLake(cache_dir=tmp_path)
+    with pytest.raises(ValueError, match="unsupported source"):
+        lake.load_daily_bars(
+            "600000", "20240101", "20240105", source="not-a-source"  # type: ignore[arg-type]
+        )
+
+
+def test_datalake_akshare_refresh_skips_legacy_flat(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """refresh=True must not short-circuit via legacy flat CSV."""
+    import ashare_infra.data.akshare_source as ak
+
+    legacy_path = tmp_path / "600519_daily_qfq_20240101_20240105.csv"
+    pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2024-01-02"]),
+            "open": [10.0],
+            "high": [11.0],
+            "low": [9.5],
+            "close": [10.5],
+            "volume": [1000.0],
+        }
+    ).to_csv(legacy_path, index=False)
+
+    called: list[bool] = []
+
+    def fake_load(req, cache_dir, refresh=False):
+        _ = req, cache_dir
+        called.append(refresh)
+        return pd.DataFrame(
+            {
+                "open": [99.0],
+                "high": [99.0],
+                "low": [99.0],
+                "close": [99.0],
+                "volume": [1.0],
+            },
+            index=pd.to_datetime(["2024-01-02"]),
+        )
+
+    monkeypatch.setattr(ak, "load_or_fetch_daily_bars", fake_load)
+    lake = DataLake(cache_dir=tmp_path, default_source="akshare", refresh=True)
+    df = lake.load_daily_bars("600519", "20240101", "20240105", source="akshare")
+    assert called == [True]
+    assert float(df.iloc[0]["close"]) == 99.0
