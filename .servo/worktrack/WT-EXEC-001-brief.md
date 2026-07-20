@@ -4,9 +4,9 @@ artifact_type: "worktrack-brief"
 worktrack_id: "WT-EXEC-001"
 phase: "Phase 3"
 track: "Infra B / execution strategy"
-updated: "2026-07-20T14:45:00+08:00"
+updated: "2026-07-20T16:20:00+08:00"
 owner: "OceanEyeFF"
-status: "b0_gate_ready"
+status: "knife2_gate_ready"
 prerequisite: "WT-INFRA-001 + 001.5 + 002 complete (DataLake/guard consumer cutover)"
 suggested_branch: "cursor/exec-001-ashare-exec"
 approval:
@@ -119,9 +119,11 @@ src/ashare_exec/
 
 **刀 2 Gate（建议）**
 
-- [ ] 机械与 stub 均经同一 Mapper/适配路径跑通 `BacktestEngine`（或单测等价）
-- [ ] 无 Decision 直接写最终权重的旁路（除非日后显式开例外）
-- [ ] 文档写清：`ashare_exec` vs `ashare_infra` vs `ashare_lab`；执行策略 ≠ `stock_pool` 选股策略
+- [x] 机械与 stub 均经同一 Mapper/适配路径跑通 `BacktestEngine`（或单测等价）
+- [x] 无 Decision 直接写最终权重的旁路（除非日后显式开例外）
+- [x] 文档写清：`ashare_exec` vs `ashare_infra` vs `ashare_lab`；执行策略 ≠ `stock_pool` 选股策略
+
+> 刀 2 证据：`tests/unit/exec/test_decision_seam.py` + `tests/contract/exec/test_decision_no_weight_bypass.py`；文档 `docs/guides/ashare_exec_guide.md`。
 
 ## Non-goals（本 WT 全程）
 

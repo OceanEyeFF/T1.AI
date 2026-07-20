@@ -67,6 +67,7 @@ Phase 1–2 白盒索引与每文件配套文档：
 | U-L3 stock_basic→DataLake | ✅ WT-INFRA-001.5（本地 meta；无网） |
 | Phase 2 no-direct-`load_or_fetch` | ✅ `tests/contract/infra/test_no_direct_load_or_fetch.py`（+ scripts） |
 | Phase 1–2 白盒补强 | ✅ listing / DatasetBuilder lake / validator DataLake+IC 入口锁（见索引） |
+| WT-EXEC-001 B0/刀2 | ✅ `tests/unit/exec/` + `tests/contract/exec/`；指南 [ashare_exec_guide.md](ashare_exec_guide.md) |
 
 Coverage `source` 已含 `src/ashare_infra`（`pyproject.toml`）。
 

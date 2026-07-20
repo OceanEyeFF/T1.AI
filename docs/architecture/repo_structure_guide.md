@@ -41,7 +41,10 @@ T1.AI/
 │   └── sim/                        #   日频 paper broker + replay + BacktestEngine
 │
 ├── src/ashare_exec/                # 执行策略包（Phase 3 / WT-EXEC-001）
-│   └── strategies/                 #   机械 Strategy（B0: MomentumTopN）；刀2 再加 Decision/Mapper
+│   ├── decision.py                 #   SimpleDecisionAPI：scores / ranked（可扩展 extras）
+│   ├── weight_mapper.py            #   唯一权重产生点
+│   ├── adapt.py                    #   Decision + Mapper → Strategy
+│   └── strategies/                 #   MomentumTopN（走同一缝）；刀2 已含 ML stub
 │
 ├── src/ashare_lab/                 # 研究/业务包（可经 shim 兼容旧 import）
 │   ├── data/                       # 兼容 shim → ashare_infra.data（勿新写直调 load_or_fetch_*）
@@ -134,7 +137,7 @@ T1.AI/
 | 包 | 职责 | 调用约定 |
 |----|------|----------|
 | `ashare_infra` | 数据湖、sim/paper、guard（scope/gate/metrics） | **唯一取数入口**是 `ashare_infra.lake.DataLake`；生命周期/交易边界走 `ashare_infra.guard`；引擎只认 `sim.engine.Strategy` |
-| `ashare_exec` | 执行策略：机械/Decision →（刀2）WeightMapper → `Strategy.target_weights` | `scripts/run_backtest` 等从本包取策略；**不等于** `stock_pool` 选股 |
+| `ashare_exec` | 执行策略：Decision → **WeightMapper** → `Strategy.target_weights` | 见 [ashare_exec_guide.md](../guides/ashare_exec_guide.md)；**≠** `stock_pool` 选股 |
 | `ashare_lab` | 研究与业务（dataset / models / recommendation / pool…） | 可通过历史 shim 兼容旧 `ashare_lab.data` / `sim` import；**业务代码不要直调** `load_or_fetch_*`（见约定测）；旧 `strategy/`/`strategies/` 已删（WT-EXEC-001） |
 
 ### Meta：`stock_basic`（WT-INFRA-001.5）
