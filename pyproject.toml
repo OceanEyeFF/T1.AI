@@ -33,7 +33,7 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["ashare_lab*", "ashare_infra*"]
+include = ["ashare_lab*", "ashare_infra*", "ashare_exec*"]
 
 [tool.ruff]
 line-length = 100
@@ -50,7 +50,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["src/ashare_lab", "src/ashare_infra"]
+source = ["src/ashare_lab", "src/ashare_infra", "src/ashare_exec"]
 omit = [
   "scripts/build_dataset.py",
   "scripts/build_dataset_multi_stock.py",

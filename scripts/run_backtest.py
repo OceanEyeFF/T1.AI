@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pandas as pd
 
+from ashare_exec.strategies.momentum import MomentumTopNStrategy
 from ashare_infra.lake import DataLake
 from ashare_lab.backtest.engine import BacktestConfig, BacktestEngine
 from ashare_lab.reporting import align_equity_and_benchmark, summarize_excess
-from ashare_lab.strategies.momentum import MomentumTopNStrategy
 from ashare_lab.universe import is_allowed_a_share_symbol
 
 

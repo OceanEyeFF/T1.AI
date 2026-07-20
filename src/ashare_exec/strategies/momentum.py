@@ -1,3 +1,10 @@
+"""Mechanical lookback-momentum Top-N strategy (B0).
+
+Implements ``ashare_infra.sim.engine.Strategy.target_weights`` directly.
+Knife-2 will route the same logic through DecisionAPI + WeightMapper; this
+monolith is intentional for B0 stand-up only.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -8,6 +15,20 @@ import pandas as pd
 
 @dataclass(frozen=True)
 class MomentumTopNStrategy:
+    """Equal-weight the top-N symbols by lookback return.
+
+    Parameters
+    ----------
+    top_n:
+        Max names to hold (fewer if not enough eligible symbols).
+    lookback:
+        Bars between past and current close for the momentum score.
+    min_history:
+        Require at least this many non-NaN closes (also at least ``lookback + 1``).
+    rebalance_threshold:
+        Reserved for knife-2 / future turnover logic; unused in B0.
+    """
+
     top_n: int = 3
     lookback: int = 20
     min_history: int = 60
@@ -18,6 +39,7 @@ class MomentumTopNStrategy:
         today: pd.Timestamp,
         history: dict[str, pd.DataFrame],
     ) -> dict[str, float]:
+        _ = today
         scores: list[tuple[str, float]] = []
         for symbol, df in history.items():
             if "close" not in df.columns:

@@ -243,7 +243,7 @@ def test_reporting_align_and_summarize_excess() -> None:
 
 
 def test_momentum_strategy_filters_and_weights() -> None:
-    from ashare_lab.strategies.momentum import MomentumTopNStrategy
+    from ashare_exec.strategies.momentum import MomentumTopNStrategy
 
     today = pd.Timestamp("2026-01-10")
     strat = MomentumTopNStrategy(top_n=2, lookback=2, min_history=4)

@@ -38,7 +38,10 @@ T1.AI/
 │   ├── lake/                       #   DataLake 唯一取数入口 + smoke + meta(stock_basic)
 │   ├── data/                       #   akshare / tushare / odp / index 适配器
 │   ├── guard/                      #   DataScope / FetchGate / metrics / temporal
-│   └── sim/                        #   日频 paper broker + replay
+│   └── sim/                        #   日频 paper broker + replay + BacktestEngine
+│
+├── src/ashare_exec/                # 执行策略包（Phase 3 / WT-EXEC-001）
+│   └── strategies/                 #   机械 Strategy（B0: MomentumTopN）；刀2 再加 Decision/Mapper
 │
 ├── src/ashare_lab/                 # 研究/业务包（可经 shim 兼容旧 import）
 │   ├── data/                       # 兼容 shim → ashare_infra.data（勿新写直调 load_or_fetch_*）
@@ -126,12 +129,13 @@ T1.AI/
 | `experiments/` | 已删除 | 设计文档归入 docs/research/ |
 | `data/datasets/` | 已删除 | 旧 AkShare 数据集，后续 TuShare 重建 |
 
-## `ashare_infra` vs `ashare_lab`
+## `ashare_infra` vs `ashare_lab` vs `ashare_exec`
 
 | 包 | 职责 | 调用约定 |
 |----|------|----------|
-| `ashare_infra` | 数据湖、sim/paper、guard（scope/gate/metrics） | **唯一取数入口**是 `ashare_infra.lake.DataLake`；生命周期/交易边界走 `ashare_infra.guard` |
-| `ashare_lab` | 研究与业务（dataset / models / recommendation / pool…） | 可通过历史 shim 兼容旧 `ashare_lab.data` / `sim` import；**业务代码不要直调** `load_or_fetch_*`（见约定测） |
+| `ashare_infra` | 数据湖、sim/paper、guard（scope/gate/metrics） | **唯一取数入口**是 `ashare_infra.lake.DataLake`；生命周期/交易边界走 `ashare_infra.guard`；引擎只认 `sim.engine.Strategy` |
+| `ashare_exec` | 执行策略：机械/Decision →（刀2）WeightMapper → `Strategy.target_weights` | `scripts/run_backtest` 等从本包取策略；**不等于** `stock_pool` 选股 |
+| `ashare_lab` | 研究与业务（dataset / models / recommendation / pool…） | 可通过历史 shim 兼容旧 `ashare_lab.data` / `sim` import；**业务代码不要直调** `load_or_fetch_*`（见约定测）；旧 `strategy/`/`strategies/` 已删（WT-EXEC-001） |
 
 ### Meta：`stock_basic`（WT-INFRA-001.5）
 

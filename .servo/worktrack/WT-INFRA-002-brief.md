@@ -28,9 +28,11 @@ approval:
 ## Non-goals（刻意不做）
 
 - 删除 `ashare_lab.data` / `sim` / `backtest` / evaluation shim
-- 迁 `stock_pool` / `models` / `pipeline` / `strategy` 包结构（Phase 3）
+- 迁 `stock_pool` / `models` / `pipeline` 包结构（Product / Research — 另开）
 - lab 内去重（sequence_builder 双份等，Phase 4）
 - 真实 TuShare 网络 IT（默认无网夹具）
+
+> **Phase 3 Infra B（执行策略）已另开：** `.servo/worktrack/WT-EXEC-001-brief.md`（新建 `ashare_exec`，B0 → 刀2）。
 
 ## Prerequisite check
 
