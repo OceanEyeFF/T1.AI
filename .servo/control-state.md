@@ -71,9 +71,9 @@ owner: "OceanEyeFF"
 - branch_context_guard_status: pass_with_caveat
 - branch_context_required_ref: refs/heads/milestone/MS-R4-001-tushare-datalake
 - active_milestone_branch: milestone/MS-R4-001-tushare-datalake
-- active_milestone_branch_sync_state: tip Close A1 writeback (pending SHA after commit); behind develop@7453daa (Infra/EXEC)
+- active_milestone_branch_sync_state: tip 16ef565 (A1 Close); behind develop@7453daa (Infra/EXEC)
 - worktrack_branch: milestone/MS-R4-001-tushare-datalake
-- observed_checkout: milestone/MS-R4-001-tushare-datalake
+- observed_checkout: milestone/MS-R4-001-tushare-datalake @ 16ef565
 
 ## Current Next Action
 
@@ -257,11 +257,11 @@ owner: "OceanEyeFF"
 > 记录最近一次 worktrack 关闭后的已验证基线，供后续续跑时快速定位。
 
 - last_verified_checkpoint: 5cb94b40c89f4ee30a332aeb65ab60068453288d
-- latest_observed_checkpoint: pending_A1_close_commit
+- latest_observed_checkpoint: 16ef565ca26e1141ec362ff3b8249d73cd35fa8c
 - last_doc_catch_up_checkpoint: 5cb94b40c89f4ee30a332aeb65ab60068453288d
 - milestone_input_checkpoint: WT-R4-A1-close-2026-07-20T21:22:00+08:00
 - checkpoint_type: git_commit
-- checkpoint_ref: pending_A1_close_commit
+- checkpoint_ref: 16ef565ca26e1141ec362ff3b8249d73cd35fa8c
 - verified_at: 2026-07-20T21:22:00+08:00
 - if_no_commit_reason: N/A — Close commit in progress this round
 - alternative_traceability:

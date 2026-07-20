@@ -29,7 +29,7 @@ node_type: "docs"
 - pool_binding: custom_research_liquidity_quality_v1@1 (61)
 - branch: milestone/MS-R4-001-tushare-datalake
 - checkpoint_base_ref: 5cb94b40c89f4ee30a332aeb65ab60068453288d
-- close_writeback_commit: this Close commit on milestone branch
+- close_writeback_commit: 16ef565
 - push: not requested (local commit only unless later approved)
 - next_worktrack: WT-R4-A2 intake (opened; Init not auto)
 - out_of_scope_held: no lake fill; no train; no Phase4; no EXEC-002
@@ -70,7 +70,7 @@ closeout_record:
   worktrack_id: WT-R4-A1
   branch: milestone/MS-R4-001-tushare-datalake
   base_ref: 5cb94b40c89f4ee30a332aeb65ab60068453288d
-  head_ref: Close writeback commit (same as this Close)
+  head_ref: 16ef565
   merge_commit: N/A (docs on milestone branch; develop merge at milestone close)
   pr: none
   acceptance_result: accepted
