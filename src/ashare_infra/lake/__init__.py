@@ -219,8 +219,20 @@ class DataLake:
             req = AkshareDailyBarsRequest(
                 symbol=symbol, start_date=start, end_date=end, adjust=adjust
             )
+            canonical_dir = self.cache_dir / "akshare"
+            cache_name = f"{symbol}_daily_{adjust}_{start}_{end}.csv"
+            # Backward-compat: pre-DataLake code wrote flat CSVs directly under
+            # cache_dir/. Read those only when the canonical file is absent;
+            # canonical hits are served by load_or_fetch_daily_bars itself so we
+            # do not duplicate its cache-read logic here.
+            if not self.refresh:
+                canonical_path = canonical_dir / cache_name
+                legacy_path = self.cache_dir / cache_name
+                if not canonical_path.exists() and legacy_path.exists():
+                    frame = pd.read_csv(legacy_path, parse_dates=["date"])
+                    return frame.set_index("date").sort_index()
             return load_or_fetch_daily_bars(
-                req, cache_dir=self.cache_dir / "akshare", refresh=self.refresh
+                req, cache_dir=canonical_dir, refresh=self.refresh
             )
 
         if source == "tushare":

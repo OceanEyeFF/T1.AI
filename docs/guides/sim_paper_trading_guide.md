@@ -38,7 +38,16 @@ src/ashare_lab/sim/
 
 ## 快速开始（CLI）
 
-依赖已缓存的日线数据（与 `run_backtest.py` 同源，默认 AkShare → `inputs/data/cache/`）：
+依赖已缓存的日线数据（与 `run_backtest.py` 同源，经 `DataLake` → AkShare）：
+
+**缓存布局**（`--cache-dir`，默认 `inputs/data/cache`）：
+
+| 类型 | 路径 |
+|------|------|
+| AkShare 日线（canonical） | `{cache_dir}/akshare/{symbol}_daily_qfq_{start}_{end}.csv` |
+| AkShare legacy flat | `{cache_dir}/{symbol}_daily_qfq_...csv`（仍可读，新写入走 `akshare/`） |
+| 指数（HS300 等） | `{cache_dir}/index_{code}_daily_{start}_{end}.csv` |
+| TuShare 分区 | `{cache_dir}/tushare_qfq/{ts_code}/year=YYYY/part.parquet` |
 
 ```bash
 conda activate py311-private
@@ -197,8 +206,11 @@ SimConfig(
 ## 与数据湖 / 回测的关系
 
 ```
-inputs/data/cache/     ← 日线事实（与 run_backtest 共用）
-        ↓
+inputs/data/cache/
+  akshare/           ← AkShare 日线（canonical）
+  index_*.csv        ← 指数日线
+  tushare_qfq/       ← TuShare 分区湖
+        ↓ DataLake
 ReplayEngine + PlanProvider
         ↓
 outputs/sim/           ← 模拟账户流水（fills / equity / rejects）

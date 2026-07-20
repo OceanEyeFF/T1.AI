@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -16,7 +17,10 @@ from tests.support.paths import REPO_ROOT
 @pytest.mark.contract
 def test_run_sim_replay_seeded_cache(tmp_path: Path) -> None:
     out_dir = tmp_path / "sim_out"
-    cache = fx.seeded_cache_dir() / "akshare"
+    # Copy the seeded cache into tmp so a cache miss can never write real
+    # (network) data back into the committed fixture tree.
+    cache = tmp_path / "cache"
+    shutil.copytree(fx.seeded_cache_dir() / "akshare", cache)
     proc = subprocess.run(
         [
             sys.executable,

@@ -54,6 +54,15 @@ class TestIsAllowedAShareSymbol:
         for symbol in beijing_symbols:
             assert not is_allowed_a_share_symbol(symbol), f"应该排除北交所: {symbol}"
 
+    def test_b_share_board(self) -> None:
+        """测试沪市 B 股代码（9*）应被排除（非 A 股）"""
+        b_share_symbols = [
+            "900901",
+            "900948",
+        ]
+        for symbol in b_share_symbols:
+            assert not is_allowed_a_share_symbol(symbol), f"应该排除 B 股: {symbol}"
+
     def test_invalid_format(self) -> None:
         """测试无效格式应被排除"""
         invalid_symbols = [

@@ -61,7 +61,7 @@ bash scripts/run_tests_cov.sh
 | U-G6 sanity / U-G7 temporal+as_of / U-G8 execution | ✅ |
 | U-L2 maintain 增量 / U-S1 no-peek / I4 stockpool / I5 sanity / C2..C4 | ✅ |
 | U-L3 stock_basic→DataLake | ✅ WT-INFRA-001.5（本地 meta；无网） |
-| Phase 2 no-direct-`load_or_fetch` | ✅ `tests/contract/infra/test_no_direct_load_or_fetch.py` |
+| Phase 2 no-direct-`load_or_fetch` | ✅ `tests/contract/infra/test_no_direct_load_or_fetch.py`（+ scripts） |
 
 Coverage `source` 已含 `src/ashare_infra`（`pyproject.toml`）。
 

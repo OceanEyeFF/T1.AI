@@ -41,6 +41,8 @@ backup/
 # 训练日志 & 产物
 outputs/predictions/
 outputs/reports/
+# 旧路径本地运行产物（勿上云；规范输出区为 outputs/）
+output/
 
 # 数据集（本地构建产物，不跟踪）
 data/datasets/

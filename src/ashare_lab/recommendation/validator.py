@@ -91,54 +91,8 @@ def _ensure_daily_schema(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def _symbol_to_ts_code(symbol: str) -> str:
-    """将 6 位数字股票代码转换为 TuShare 的 ts_code（如 600519.SH）。"""
-    s = str(symbol).strip().upper()
-    if not s:
-        raise ValueError("symbol 不能为空")
-    if "." in s:
-        return s
-    if len(s) != 6 or not s.isdigit():
-        raise ValueError(f"不支持的股票代码格式: {symbol}")
-
-    if s.startswith("6"):
-        suffix = "SH"
-    elif s.startswith(("0", "3")):
-        suffix = "SZ"
-    elif s.startswith(("8", "4")):
-        suffix = "BJ"
-    else:
-        raise ValueError(f"无法识别交易所后缀: {symbol}")
-    return f"{s}.{suffix}"
-
-
-def _symbol_to_odp_equity_symbol(symbol: str, provider: str = "yfinance") -> str:
-    """将 A 股代码转换为 ODP equity 接口可识别的 symbol（默认 yfinance 口径）。"""
-    raw = str(symbol).strip().upper()
-    if not raw:
-        raise ValueError("symbol 不能为空")
-
-    if "." in raw:
-        code, suffix = raw.split(".", 1)
-        suffix = suffix.upper()
-        if str(provider).lower() == "yfinance":
-            if suffix == "SH":
-                return f"{code}.SS"
-            if suffix in {"SZ", "SS", "BJ"}:
-                return f"{code}.{suffix}"
-        return raw
-
-    if len(raw) != 6 or not raw.isdigit():
-        raise ValueError(f"不支持的股票代码格式: {symbol}")
-
-    if str(provider).lower() == "yfinance":
-        if raw.startswith(("6", "9")):
-            return f"{raw}.SS"
-        if raw.startswith(("0", "3")):
-            return f"{raw}.SZ"
-        if raw.startswith(("8", "4")):
-            return f"{raw}.BJ"
-    return raw
+from ashare_lab.symbols import symbol_to_odp_equity_symbol as _symbol_to_odp_equity_symbol
+from ashare_lab.symbols import symbol_to_ts_code as _symbol_to_ts_code
 
 
 class AkshareSourceAdapter:
@@ -153,6 +107,13 @@ class AkshareSourceAdapter:
         self.cache_dir = cache_dir or Path("inputs/data/cache")
         self.adjust = adjust
         self.refresh = refresh
+        from ashare_infra.lake import DataLake
+
+        self._lake = DataLake(
+            cache_dir=self.cache_dir,
+            default_source="akshare",
+            refresh=self.refresh,
+        )
 
     def fetch_daily_bars(
         self,
@@ -160,20 +121,13 @@ class AkshareSourceAdapter:
         start_date: str,
         end_date: str,
     ) -> dict[str, pd.DataFrame]:
-        from ashare_infra.lake import DataLake
-
-        lake = DataLake(
-            cache_dir=self.cache_dir,
-            default_source="akshare",
-            refresh=self.refresh,
-        )
         start = _to_yyyymmdd(start_date)
         end = _to_yyyymmdd(end_date)
 
         out: dict[str, pd.DataFrame] = {}
         for symbol in symbols:
             sym = str(symbol)
-            df = lake.load_daily_bars(
+            df = self._lake.load_daily_bars(
                 sym, start, end, source="akshare", adjust=self.adjust
             )
             out[sym] = _ensure_daily_schema(df)
@@ -194,6 +148,14 @@ class TushareSourceAdapter:
         self.adjust = adjust
         self.refresh = refresh
         self.token = token
+        from ashare_infra.lake import DataLake
+
+        self._lake = DataLake(
+            cache_dir=self.cache_dir,
+            default_source="tushare",
+            refresh=self.refresh,
+            tushare_token=self.token,
+        )
 
     def fetch_daily_bars(
         self,
@@ -201,14 +163,6 @@ class TushareSourceAdapter:
         start_date: str,
         end_date: str,
     ) -> dict[str, pd.DataFrame]:
-        from ashare_infra.lake import DataLake
-
-        lake = DataLake(
-            cache_dir=self.cache_dir,
-            default_source="tushare",
-            refresh=self.refresh,
-            tushare_token=self.token,
-        )
         start = _to_yyyymmdd(start_date)
         end = _to_yyyymmdd(end_date)
 
@@ -216,7 +170,7 @@ class TushareSourceAdapter:
         for symbol in symbols:
             sym = str(symbol)
             ts_code = _symbol_to_ts_code(sym)
-            df = lake.load_daily_bars(
+            df = self._lake.load_daily_bars(
                 ts_code, start, end, source="tushare", adjust=self.adjust
             )
             out[sym] = _ensure_daily_schema(df)
@@ -241,16 +195,9 @@ class ODPSourceAdapter:
         self.refresh = refresh
         self.base_url = base_url
         self.prefer_rest = prefer_rest
-
-    def fetch_daily_bars(
-        self,
-        symbols: Sequence[str],
-        start_date: str,
-        end_date: str,
-    ) -> dict[str, pd.DataFrame]:
         from ashare_infra.lake import DataLake
 
-        lake = DataLake(
+        self._lake = DataLake(
             cache_dir=self.cache_dir,
             default_source="odp",
             refresh=self.refresh,
@@ -259,6 +206,13 @@ class ODPSourceAdapter:
             odp_base_url=self.base_url,
             odp_prefer_rest=self.prefer_rest,
         )
+
+    def fetch_daily_bars(
+        self,
+        symbols: Sequence[str],
+        start_date: str,
+        end_date: str,
+    ) -> dict[str, pd.DataFrame]:
         start = _to_yyyymmdd(start_date)
         end = _to_yyyymmdd(end_date)
 
@@ -266,7 +220,7 @@ class ODPSourceAdapter:
         for symbol in symbols:
             sym = str(symbol)
             odp_symbol = _symbol_to_odp_equity_symbol(sym, provider=self.provider)
-            df = lake.load_daily_bars(odp_symbol, start, end, source="odp")
+            df = self._lake.load_daily_bars(odp_symbol, start, end, source="odp")
             out[sym] = _ensure_daily_schema(df)
         return out
 
@@ -277,14 +231,14 @@ class HS300IndexCalendarSource:
     def __init__(self, cache_dir: Path | None = None, refresh: bool = False) -> None:
         self.cache_dir = cache_dir or Path("inputs/data/cache")
         self.refresh = refresh
+        from ashare_infra.lake import DataLake
+
+        self._lake = DataLake(cache_dir=self.cache_dir, refresh=self.refresh)
 
     def fetch_hs300_daily(self, start_date: str, end_date: str) -> pd.DataFrame:
         import pandas as pd
 
-        from ashare_infra.lake import DataLake
-
-        lake = DataLake(cache_dir=self.cache_dir, refresh=self.refresh)
-        df = lake.load_index_daily(
+        df = self._lake.load_index_daily(
             "000300",
             _to_yyyymmdd(start_date),
             _to_yyyymmdd(end_date),

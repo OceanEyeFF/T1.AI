@@ -18,6 +18,7 @@ import yaml
 from ashare_infra.lake import DataLake
 from ashare_lab.features.base import BaseFeature
 from ashare_lab.labels.excess_return import ExcessReturnLabel, ForwardReturnLabel
+from ashare_lab.symbols import symbol_to_odp_equity_symbol, symbol_to_ts_code
 
 logger = logging.getLogger(__name__)
 
@@ -101,8 +102,9 @@ class DatasetBuilder:
 
         for symbol in self.config.symbols:
             try:
+                lake_symbol = self._resolve_lake_symbol(symbol, source)
                 df = self._lake.load_daily_bars(
-                    symbol,
+                    lake_symbol,
                     self.config.start_date,
                     self.config.end_date,
                     source=source,
@@ -117,6 +119,13 @@ class DatasetBuilder:
                 logger.error(f"加载股票 {symbol} 数据失败: {e}")
 
         logger.info(f"成功加载 {len(self.stock_data)} 只股票数据")
+
+    def _resolve_lake_symbol(self, symbol: str, source: SourceKind) -> str:
+        if source == "tushare":
+            return symbol_to_ts_code(symbol)
+        if source == "odp":
+            return symbol_to_odp_equity_symbol(symbol)
+        return symbol
 
     def _load_benchmark_data(self) -> None:
         """加载基准数据（沪深300）"""

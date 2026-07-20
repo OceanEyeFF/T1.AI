@@ -145,7 +145,8 @@ T1.AI/
 - **唯一取数入口**：`ashare_infra.lake.DataLake`（含 `load_daily_bars` / `load_scope_bars` / `load_index_daily` / meta）
 - **IC / RankIC**：`ashare_infra.guard.metrics`（`ashare_lab.evaluation.metrics` 仅为 shim）
 - **禁止**：新业务代码 `from … import load_or_fetch_*`（适配器实现与 `ashare_infra.data.*` 内部除外）
-- 约定测：`tests/contract/infra/test_no_direct_load_or_fetch.py`（扫描 validator / DatasetBuilder / `run_sim_replay`）
+- 约定测：`tests/contract/infra/test_no_direct_load_or_fetch.py`（validator / DatasetBuilder / 主要 scripts）
+- **AkShare 缓存布局**：canonical `{cache_dir}/akshare/`；`DataLake` 仍会回读 legacy 根目录 flat CSV（WT-INFRA-002 脚注修复）
 
 ### Shim 保留策略
 

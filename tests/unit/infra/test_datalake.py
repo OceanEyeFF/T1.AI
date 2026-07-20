@@ -140,3 +140,23 @@ def test_datalake_load_index_daily_as_of(tmp_path: Path, monkeypatch: pytest.Mon
     lake = DataLake(cache_dir=tmp_path)
     df = lake.load_index_daily("000300", "20240101", "20240131", as_of=date(2024, 1, 3))
     assert list(df.index.date) == [date(2024, 1, 2), date(2024, 1, 3)]
+
+
+def test_datalake_akshare_reads_legacy_flat_cache(tmp_path: Path) -> None:
+    """WT-INFRA-002: flat pre-DataLake AkShare CSV under cache root still resolves."""
+    legacy_path = tmp_path / "600519_daily_qfq_20240101_20240105.csv"
+    pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2024-01-02", "2024-01-03"]),
+            "open": [10.0, 10.5],
+            "high": [11.0, 11.5],
+            "low": [9.5, 10.0],
+            "close": [10.5, 11.0],
+            "volume": [1000.0, 1100.0],
+        }
+    ).to_csv(legacy_path, index=False)
+
+    lake = DataLake(cache_dir=tmp_path, default_source="akshare")
+    df = lake.load_daily_bars("600519", "20240101", "20240105", source="akshare")
+    assert len(df) == 2
+    assert float(df.iloc[-1]["close"]) == 11.0

@@ -86,6 +86,15 @@ approval:
 - focused: validator + dataset builder + datalake + convention → 50 passed
 - `scripts/run_tests_fast.sh` → 383 passed
 
+## Review follow-ups (2026-07-20)
+
+- [x] AkShare legacy flat cache fallback in `DataLake._load_or_fetch` (read root if `akshare/` miss)
+- [x] Validator adapters reuse single `DataLake` instance per adapter
+- [x] `DatasetBuilder` TuShare/ODP symbol normalization via `ashare_lab.symbols`
+- [x] Scripts migrated: `run_backtest`, `generate_daily_recommendations`, `build_sequence_dataset`
+- [x] Convention test expanded; `build_sequence_dataset_market_state` deferred (needs daily_basic/moneyflow APIs)
+- [x] Docs: `repo_structure_guide` + `sim_paper_trading_guide` cache layout
+
 ## Relation to MS-R4
 
 - R4 = pool + reproducible lake contract

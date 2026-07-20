@@ -9,14 +9,21 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
-# Locked Phase 2 must-change surfaces (see WT-INFRA-002-brief.md).
+# Phase 2 must-change + script anti-regression surfaces (WT-INFRA-002-brief.md).
 SCAN_TARGETS = (
     REPO_ROOT / "src/ashare_lab/recommendation/validator.py",
     REPO_ROOT / "src/ashare_lab/dataset/builder.py",
     REPO_ROOT / "scripts/run_sim_replay.py",
+    REPO_ROOT / "scripts/run_backtest.py",
+    REPO_ROOT / "scripts/generate_daily_recommendations.py",
+    REPO_ROOT / "scripts/build_sequence_dataset.py",
 )
 
-# Only lake + data adapters may call load_or_fetch_* (adapters are infra-internal).
+# Still deferred: needs DataLake APIs for daily_basic / moneyflow / ODP historical.
+DEFERRED_SCAN_TARGETS = (
+    REPO_ROOT / "scripts/build_sequence_dataset_market_state.py",
+)
+
 ALLOWED_PREFIXES = (
     "ashare_infra.lake",
     "ashare_infra.data",
@@ -48,3 +55,10 @@ def test_no_direct_load_or_fetch_import(path: Path) -> None:
     assert path.is_file(), f"missing scan target: {path}"
     hits = _imported_load_or_fetch_names(path)
     assert hits == [], f"{path.name} still imports load_or_fetch_*: {hits}"
+
+
+@pytest.mark.parametrize("path", DEFERRED_SCAN_TARGETS, ids=lambda p: p.name)
+def test_deferred_targets_still_documented(path: Path) -> None:
+    """Deferred scripts are listed in this module until DataLake grows extra APIs."""
+    assert path.is_file()
+    assert path in DEFERRED_SCAN_TARGETS

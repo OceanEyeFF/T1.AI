@@ -426,6 +426,57 @@ class TestDatasetBuilderEdgeCases:
         assert train_df["symbol"].iloc[0] == "600519"
 
 
+def test_builder_with_tushare_bare_symbol(
+    sample_benchmark_cache: Path,
+    temp_output_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """TuShare source accepts bare 6-digit symbols via symbol_to_ts_code."""
+    import ashare_infra.data.tushare_source as ts_src
+
+    symbol = "600000"
+    dates = pd.date_range("2024-01-01", periods=5, freq="D")
+    fake_df = pd.DataFrame(
+        {
+            "open": [1, 1.1, 1.2, 1.3, 1.4],
+            "high": [1.1, 1.2, 1.3, 1.4, 1.5],
+            "low": [0.9, 1.0, 1.1, 1.2, 1.3],
+            "close": [1.05, 1.15, 1.25, 1.35, 1.45],
+            "volume": [100, 110, 120, 130, 140],
+            "amount": [1000, 1100, 1200, 1300, 1400],
+        },
+        index=dates,
+    )
+    calls: list[str] = []
+
+    def fake_loader(req, cache_dir, refresh=False):
+        _ = cache_dir, refresh
+        calls.append(req.symbol)
+        return fake_df
+
+    monkeypatch.setattr(ts_src, "load_or_fetch_daily_bars", fake_loader)
+
+    config = DatasetConfig(
+        name="test_tushare_bare_symbol",
+        symbols=[symbol],
+        start_date="20240101",
+        end_date="20240105",
+        features=[Return1D()],
+        label_type="forward_return",
+        train_end_date="20240103",
+        valid_end_date="20240104",
+        cache_dir=sample_benchmark_cache,
+        output_dir=temp_output_dir,
+        source="tushare",
+    )
+
+    builder = DatasetBuilder(config)
+    output_path = builder.build()
+
+    assert (output_path / "train.parquet").exists()
+    assert calls == ["600000.SH"]
+
+
 def test_builder_with_tushare_source(
     sample_benchmark_cache: Path,
     temp_output_dir: Path,
@@ -527,4 +578,4 @@ def test_builder_with_odp_source(
     output_path = builder.build()
 
     assert (output_path / "train.parquet").exists()
-    assert calls == [symbol]
+    assert calls == ["600519.SS"]
