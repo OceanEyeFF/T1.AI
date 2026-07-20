@@ -34,9 +34,11 @@ def temp_output_dir(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def sample_stock_cache(temp_cache_dir: Path) -> Path:
-    """创建测试股票数据缓存"""
+    """创建测试股票数据缓存（DataLake akshare 布局：cache/akshare/）。"""
     # 创建 30 天的测试数据（足够计算 20 日动量）
     dates = pd.date_range("2024-01-01", periods=30, freq="D")
+    ak_dir = temp_cache_dir / "akshare"
+    ak_dir.mkdir(parents=True, exist_ok=True)
 
     for symbol in ["600519", "000333"]:
         # 生成模拟价格数据
@@ -57,7 +59,7 @@ def sample_stock_cache(temp_cache_dir: Path) -> Path:
         )
 
         # 保存到缓存（模拟 akshare 缓存格式）
-        cache_file = temp_cache_dir / f"{symbol}_daily_qfq_20240101_20240130.csv"
+        cache_file = ak_dir / f"{symbol}_daily_qfq_20240101_20240130.csv"
         df.to_csv(cache_file, index=False)
 
     return temp_cache_dir
@@ -429,8 +431,8 @@ def test_builder_with_tushare_source(
     temp_output_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """验证数据源切换到 TuShare"""
-    from ashare_lab import dataset
+    """验证数据源切换到 TuShare（经 DataLake）。"""
+    import ashare_infra.data.tushare_source as ts_src
 
     symbol = "600000.SH"
     dates = pd.date_range("2024-01-01", periods=5, freq="D")
@@ -448,11 +450,12 @@ def test_builder_with_tushare_source(
 
     calls: list[str] = []
 
-    def fake_loader(req, cache_dir):
+    def fake_loader(req, cache_dir, refresh=False):
+        _ = cache_dir, refresh
         calls.append(req.symbol)
         return fake_df
 
-    monkeypatch.setattr(dataset.builder, "load_or_fetch_tushare_bars", fake_loader)
+    monkeypatch.setattr(ts_src, "load_or_fetch_daily_bars", fake_loader)
 
     config = DatasetConfig(
         name="test_tushare_source",
@@ -480,8 +483,8 @@ def test_builder_with_odp_source(
     temp_output_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """验证数据源切换到 ODP"""
-    from ashare_lab import dataset
+    """验证数据源切换到 ODP（经 DataLake）。"""
+    import ashare_infra.data.odp_source as odp_src
 
     symbol = "600519"
     dates = pd.date_range("2024-01-01", periods=5, freq="D")
@@ -499,12 +502,12 @@ def test_builder_with_odp_source(
 
     calls: list[str] = []
 
-    def fake_loader(req, cache_dir):
-        _ = cache_dir
+    def fake_loader(req, cache_dir, refresh=False):
+        _ = cache_dir, refresh
         calls.append(req.symbol)
         return fake_df
 
-    monkeypatch.setattr(dataset.builder, "load_or_fetch_odp_bars", fake_loader)
+    monkeypatch.setattr(odp_src, "load_or_fetch_daily_bars", fake_loader)
 
     config = DatasetConfig(
         name="test_odp_source",

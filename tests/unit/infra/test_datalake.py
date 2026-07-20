@@ -98,3 +98,45 @@ def test_datalake_scope_bars_as_of(tmp_path: Path) -> None:
     out = lake.load_scope_bars(scope, as_of=date(2024, 1, 5))
     assert set(out) == {"600000"}
     assert list(out["600000"].index.date) == [date(2024, 1, 2), date(2024, 1, 5)]
+
+
+def test_datalake_load_index_daily(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import ashare_infra.data.index_source as idx
+
+    frames = pd.DataFrame(
+        {
+            "open": [3000.0],
+            "high": [3010.0],
+            "low": [2990.0],
+            "close": [3005.0],
+            "volume": [1e9],
+        },
+        index=pd.to_datetime(["2024-01-02"]),
+    )
+    frames.index.name = "date"
+    seen: list[object] = []
+
+    def fake_load(req, cache_dir, refresh=False):
+        _ = cache_dir, refresh
+        seen.append(req)
+        return frames.copy()
+
+    monkeypatch.setattr(idx, "load_or_fetch_index_daily", fake_load)
+    lake = DataLake(cache_dir=tmp_path)
+    df = lake.load_index_daily("000300", "20240101", "20240131")
+    assert seen and getattr(seen[0], "symbol") == "000300"
+    assert float(df.iloc[0]["close"]) == 3005.0
+
+
+def test_datalake_load_index_daily_as_of(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import ashare_infra.data.index_source as idx
+
+    idx_frame = pd.DataFrame(
+        {"open": [1, 2, 9], "high": [1, 2, 9], "low": [1, 2, 9], "close": [1, 2, 9], "volume": [1, 2, 9]},
+        index=pd.to_datetime(["2024-01-02", "2024-01-03", "2024-01-10"]),
+    )
+
+    monkeypatch.setattr(idx, "load_or_fetch_index_daily", lambda *a, **k: idx_frame.copy())
+    lake = DataLake(cache_dir=tmp_path)
+    df = lake.load_index_daily("000300", "20240101", "20240131", as_of=date(2024, 1, 3))
+    assert list(df.index.date) == [date(2024, 1, 2), date(2024, 1, 3)]

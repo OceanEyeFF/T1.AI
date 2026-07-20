@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from ashare_lab.data.akshare_source import AkshareDailyBarsRequest, load_or_fetch_daily_bars
+from ashare_infra.lake import DataLake
 from ashare_lab.sim import LimitOrder, PaperBroker, ReplayConfig, ReplayEngine, SimConfig
 from ashare_lab.universe import is_allowed_a_share_symbol
 
@@ -83,14 +83,14 @@ def main() -> None:
     if not is_allowed_a_share_symbol(args.symbol):
         raise SystemExit(f"symbol not allowed: {args.symbol}")
 
-    cache_dir = Path(args.cache_dir)
-    req = AkshareDailyBarsRequest(
-        symbol=args.symbol,
-        start_date=args.start,
-        end_date=args.end,
-        adjust="qfq",
+    lake = DataLake(
+        cache_dir=Path(args.cache_dir),
+        default_source="akshare",
+        refresh=args.refresh,
     )
-    df = load_or_fetch_daily_bars(req, cache_dir=cache_dir, refresh=args.refresh)
+    df = lake.load_daily_bars(
+        args.symbol, args.start, args.end, source="akshare", adjust="qfq"
+    )
     if df.empty:
         raise SystemExit(f"empty data for {args.symbol}")
 

@@ -3,7 +3,7 @@
 本模块目标：
 - 通过"数据源适配器 + 交易日历注入"实现与外部数据源解耦；
 - 使用沪深300（HS300）指数日线的日期作为交易日历；
-- 对停牌/缺价等情况用 NaN 掩码处理，并复用 evaluation.metrics 的 IC/RankIC 计算；
+- 对停牌/缺价等情况用 NaN 掩码处理，并复用 ``ashare_infra.guard.metrics`` 的 IC/RankIC 计算；
 - 输出命中率、IC、RankIC、超额收益等核心指标。
 
 支持两种收益计算口径：
@@ -142,7 +142,7 @@ def _symbol_to_odp_equity_symbol(symbol: str, provider: str = "yfinance") -> str
 
 
 class AkshareSourceAdapter:
-    """AkShare 数据源适配器。"""
+    """AkShare 数据源适配器（经 DataLake）。"""
 
     def __init__(
         self,
@@ -160,25 +160,28 @@ class AkshareSourceAdapter:
         start_date: str,
         end_date: str,
     ) -> dict[str, pd.DataFrame]:
-        from ashare_lab.data.akshare_source import AkshareDailyBarsRequest
-        from ashare_lab.data.akshare_source import (
-            load_or_fetch_daily_bars as load_or_fetch_akshare_daily_bars,
-        )
+        from ashare_infra.lake import DataLake
 
+        lake = DataLake(
+            cache_dir=self.cache_dir,
+            default_source="akshare",
+            refresh=self.refresh,
+        )
         start = _to_yyyymmdd(start_date)
         end = _to_yyyymmdd(end_date)
 
         out: dict[str, pd.DataFrame] = {}
         for symbol in symbols:
             sym = str(symbol)
-            req = AkshareDailyBarsRequest(symbol=sym, start_date=start, end_date=end, adjust=self.adjust)
-            df = load_or_fetch_akshare_daily_bars(req, self.cache_dir, refresh=self.refresh)
+            df = lake.load_daily_bars(
+                sym, start, end, source="akshare", adjust=self.adjust
+            )
             out[sym] = _ensure_daily_schema(df)
         return out
 
 
 class TushareSourceAdapter:
-    """TuShare 数据源适配器（自动处理 symbol → ts_code）。"""
+    """TuShare 数据源适配器（自动处理 symbol → ts_code；经 DataLake）。"""
 
     def __init__(
         self,
@@ -198,11 +201,14 @@ class TushareSourceAdapter:
         start_date: str,
         end_date: str,
     ) -> dict[str, pd.DataFrame]:
-        from ashare_lab.data.tushare_source import TushareDailyBarsRequest
-        from ashare_lab.data.tushare_source import (
-            load_or_fetch_daily_bars as load_or_fetch_tushare_daily_bars,
-        )
+        from ashare_infra.lake import DataLake
 
+        lake = DataLake(
+            cache_dir=self.cache_dir,
+            default_source="tushare",
+            refresh=self.refresh,
+            tushare_token=self.token,
+        )
         start = _to_yyyymmdd(start_date)
         end = _to_yyyymmdd(end_date)
 
@@ -210,20 +216,15 @@ class TushareSourceAdapter:
         for symbol in symbols:
             sym = str(symbol)
             ts_code = _symbol_to_ts_code(sym)
-            req = TushareDailyBarsRequest(
-                symbol=ts_code,
-                start_date=start,
-                end_date=end,
-                adjust=self.adjust,
-                token=self.token,
+            df = lake.load_daily_bars(
+                ts_code, start, end, source="tushare", adjust=self.adjust
             )
-            df = load_or_fetch_tushare_daily_bars(req, self.cache_dir, refresh=self.refresh)
             out[sym] = _ensure_daily_schema(df)
         return out
 
 
 class ODPSourceAdapter:
-    """OpenBB ODP 数据源适配器（默认使用 yfinance provider）。"""
+    """OpenBB ODP 数据源适配器（默认使用 yfinance provider；经 DataLake）。"""
 
     def __init__(
         self,
@@ -247,11 +248,17 @@ class ODPSourceAdapter:
         start_date: str,
         end_date: str,
     ) -> dict[str, pd.DataFrame]:
-        from ashare_lab.data.odp_source import ODPDailyBarsRequest
-        from ashare_lab.data.odp_source import (
-            load_or_fetch_daily_bars as load_or_fetch_odp_daily_bars,
-        )
+        from ashare_infra.lake import DataLake
 
+        lake = DataLake(
+            cache_dir=self.cache_dir,
+            default_source="odp",
+            refresh=self.refresh,
+            odp_provider=self.provider,
+            odp_interval=self.interval,
+            odp_base_url=self.base_url,
+            odp_prefer_rest=self.prefer_rest,
+        )
         start = _to_yyyymmdd(start_date)
         end = _to_yyyymmdd(end_date)
 
@@ -259,22 +266,13 @@ class ODPSourceAdapter:
         for symbol in symbols:
             sym = str(symbol)
             odp_symbol = _symbol_to_odp_equity_symbol(sym, provider=self.provider)
-            req = ODPDailyBarsRequest(
-                symbol=odp_symbol,
-                start_date=start,
-                end_date=end,
-                provider=self.provider,
-                interval=self.interval,
-                base_url=self.base_url,
-                prefer_rest=self.prefer_rest,
-            )
-            df = load_or_fetch_odp_daily_bars(req, self.cache_dir, refresh=self.refresh)
+            df = lake.load_daily_bars(odp_symbol, start, end, source="odp")
             out[sym] = _ensure_daily_schema(df)
         return out
 
 
 class HS300IndexCalendarSource:
-    """基于 HS300（000300）指数日线的交易日历源。"""
+    """基于 HS300（000300）指数日线的交易日历源（经 DataLake）。"""
 
     def __init__(self, cache_dir: Path | None = None, refresh: bool = False) -> None:
         self.cache_dir = cache_dir or Path("inputs/data/cache")
@@ -283,15 +281,14 @@ class HS300IndexCalendarSource:
     def fetch_hs300_daily(self, start_date: str, end_date: str) -> pd.DataFrame:
         import pandas as pd
 
-        from ashare_lab.data.index_source import AkshareIndexDailyRequest
-        from ashare_lab.data.index_source import load_or_fetch_index_daily
+        from ashare_infra.lake import DataLake
 
-        req = AkshareIndexDailyRequest(
-            symbol="000300",
-            start_date=_to_yyyymmdd(start_date),
-            end_date=_to_yyyymmdd(end_date),
+        lake = DataLake(cache_dir=self.cache_dir, refresh=self.refresh)
+        df = lake.load_index_daily(
+            "000300",
+            _to_yyyymmdd(start_date),
+            _to_yyyymmdd(end_date),
         )
-        df = load_or_fetch_index_daily(req, self.cache_dir, refresh=self.refresh)
         if df is None or df.empty:
             out = pd.DataFrame(columns=list(_REQUIRED_DAILY_COLS))
             out.index.name = "date"
@@ -464,7 +461,7 @@ class RecommendationValidator:
         import numpy as np
         import pandas as pd
 
-        from ashare_lab.evaluation import metrics
+        import ashare_infra.guard.metrics as metrics
 
         raw_items, rec_date_str = _parse_recommendations_payload(
             recommendations, validation_horizon=validation_horizon, recommendation_date=recommendation_date

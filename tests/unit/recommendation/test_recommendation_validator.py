@@ -146,8 +146,8 @@ def test_hs300_index_calendar_source_uses_index_source(tmp_path: Path, monkeypat
 
 
 def test_hs300_index_calendar_source_empty_df(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_load(_req: Any, _cache_dir: Path, refresh: bool = False) -> pd.DataFrame:
-        _ = refresh
+    def fake_load(_req: Any, cache_dir: Path | None = None, refresh: bool = False) -> pd.DataFrame:
+        _ = cache_dir, refresh
         return pd.DataFrame()
 
     import ashare_lab.data.index_source as idx_src

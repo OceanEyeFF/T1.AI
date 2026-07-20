@@ -30,7 +30,7 @@ LakeLoader = Callable[[str, str, str, str], pd.DataFrame]
 class DataLake:
     """Thin façade over ``ashare_infra.data.*_source.load_or_fetch_*``.
 
-    Upper layers (strategy / advanced / pipeline) should only call DataLake,
+    Upper layers (lab consumers / scripts) should only call DataLake,
     never ``load_or_fetch_*`` directly.
 
     For smoke / CI, pass ``loader=...`` (and usually ``default_source="smoke"``)
@@ -44,6 +44,11 @@ class DataLake:
     default_source: SourceKind = "tushare"
     refresh: bool = False
     loader: LakeLoader | None = None
+    tushare_token: str | None = None
+    odp_provider: str = "yfinance"
+    odp_interval: str = "1d"
+    odp_base_url: str | None = None
+    odp_prefer_rest: bool = False
 
     def __post_init__(self) -> None:
         self.cache_dir = Path(self.cache_dir)
@@ -155,6 +160,36 @@ class DataLake:
                 out[symbol] = df
         return out
 
+    def load_index_daily(
+        self,
+        symbol: str,
+        start: date | str,
+        end: date | str,
+        *,
+        as_of: date | None = None,
+    ) -> pd.DataFrame:
+        """Load (or fetch+cache) index daily bars via ``index_source`` (AkShare).
+
+        Cache files live under ``{cache_dir}/index_{symbol}_daily_{start}_{end}.csv``
+        (same layout as the adapter; no extra nesting).
+        """
+        from ashare_infra.data.index_source import (
+            AkshareIndexDailyRequest,
+            load_or_fetch_index_daily,
+        )
+
+        start_s = _yyyymmdd(start)
+        end_s = _yyyymmdd(end)
+        req = AkshareIndexDailyRequest(
+            symbol=symbol, start_date=start_s, end_date=end_s
+        )
+        df = load_or_fetch_index_daily(
+            req, cache_dir=self.cache_dir, refresh=self.refresh
+        )
+        if as_of is not None and not df.empty:
+            df = truncate_as_of(df, as_of, inclusive=True)
+        return df
+
     def _load_or_fetch(
         self,
         source: SourceKind,
@@ -195,7 +230,11 @@ class DataLake:
             )
 
             req = TushareDailyBarsRequest(
-                symbol=symbol, start_date=start, end_date=end, adjust=adjust
+                symbol=symbol,
+                start_date=start,
+                end_date=end,
+                adjust=adjust,
+                token=self.tushare_token,
             )
             return load_or_fetch_daily_bars(
                 req, cache_dir=self.cache_dir, refresh=self.refresh
@@ -207,7 +246,15 @@ class DataLake:
                 load_or_fetch_daily_bars,
             )
 
-            req = ODPDailyBarsRequest(symbol=symbol, start_date=start, end_date=end)
+            req = ODPDailyBarsRequest(
+                symbol=symbol,
+                start_date=start,
+                end_date=end,
+                provider=self.odp_provider,
+                interval=self.odp_interval,
+                base_url=self.odp_base_url,
+                prefer_rest=self.odp_prefer_rest,
+            )
             # odp_source 自带 odp/ 命名空间；不要再嵌套一层，否则与直调该
             # adapter 的缓存分裂成两份
             return load_or_fetch_daily_bars(

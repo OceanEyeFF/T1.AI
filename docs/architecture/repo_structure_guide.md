@@ -131,7 +131,7 @@ T1.AI/
 | 包 | 职责 | 调用约定 |
 |----|------|----------|
 | `ashare_infra` | 数据湖、sim/paper、guard（scope/gate/metrics） | **唯一取数入口**是 `ashare_infra.lake.DataLake`；生命周期/交易边界走 `ashare_infra.guard` |
-| `ashare_lab` | 研究与业务（dataset / models / recommendation / pool…） | 可通过历史 shim 兼容旧 `ashare_lab.data` / `sim` import；**新业务代码不要直调** `load_or_fetch_*`（Phase 2 会加约定测） |
+| `ashare_lab` | 研究与业务（dataset / models / recommendation / pool…） | 可通过历史 shim 兼容旧 `ashare_lab.data` / `sim` import；**业务代码不要直调** `load_or_fetch_*`（见约定测） |
 
 ### Meta：`stock_basic`（WT-INFRA-001.5）
 
@@ -140,7 +140,14 @@ T1.AI/
 - **本阶段不拉网**；与 MS-R4 对齐时可改常量或补 live pull，但不在 1.5 必过范围内
 - 夹具参考：`tests/fixtures/infra_a/meta/stock_basic.csv`
 
+### 取数约定（WT-INFRA-002）
+
+- **唯一取数入口**：`ashare_infra.lake.DataLake`（含 `load_daily_bars` / `load_scope_bars` / `load_index_daily` / meta）
+- **IC / RankIC**：`ashare_infra.guard.metrics`（`ashare_lab.evaluation.metrics` 仅为 shim）
+- **禁止**：新业务代码 `from … import load_or_fetch_*`（适配器实现与 `ashare_infra.data.*` 内部除外）
+- 约定测：`tests/contract/infra/test_no_direct_load_or_fetch.py`（扫描 validator / DatasetBuilder / `run_sim_replay`）
+
 ### Shim 保留策略
 
 - Phase 1 已把 data/sim/backtest 迁到 `ashare_infra`，`ashare_lab` 侧保留兼容 shim
-- 在 Phase 2（消费方切到 DataLake/guard）完成并验收前，**不删除** shim、不强制改完所有业务 import
+- Phase 2 已将核心消费方切到 DataLake/guard；**仍不删除** shim，外部/脚本旧 import 可继续工作直到后续显式去 shim WT
