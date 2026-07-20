@@ -1,8 +1,8 @@
 ---
 title: "Worktrack Backlog"
 artifact_type: "worktrack-backlog"
-updated: "2026-07-20T19:16:00+08:00"
-updated_by: "cursor-gate-close-WT-R4-A0"
+updated: "2026-07-20T21:22:00+08:00"
+updated_by: "cursor-gate-close-WT-R4-A1"
 ---
 
 # Worktrack Backlog
@@ -10,6 +10,26 @@ updated_by: "cursor-gate-close-WT-R4-A0"
 > Closed and resolved worktracks are tracked here for Milestone progress and RepoScope refresh. Live per-worktrack execution details remain in `.servo/worktrack/*`.
 
 ## Done
+
+### WT-R4-A1
+
+- worktrack_id: WT-R4-A1
+- milestone_id: MS-R4-001
+- status: done
+- node_type: docs
+- scope: >
+  lake/source contract + cache inventory + schema draft + approved rate caps
+  (180 rpm / 80000 per API·day); zero live; frozen_for_A2.
+- branch: milestone/MS-R4-001-tushare-datalake
+- merge_commit: N/A (docs Close commit on milestone branch; develop at milestone close)
+- validation: N/A (docs); T5 consistency matrix consistent; inventory read-only
+- intake_route: milestone-derived
+- gate_verdict: pass
+- report_ref: .servo/worktrack/WT-R4-A1-closeout.md
+- gate_evidence_ref: .servo/worktrack/WT-R4-A1-gate-evidence.md
+- closeout_ref: .servo/worktrack/WT-R4-A1-closeout.md
+- closed_at: 2026-07-20T21:22:00+08:00
+- residual_risk: soft_target_80; index_510300; caps_not_in_inputs_configs; milestone_behind_develop
 
 ### WT-R4-A0
 

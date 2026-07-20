@@ -42,18 +42,22 @@ out_of_scope_explicit:
   - EXEC-002 / ashare_exec knife follow-ons
 milestone_review_gate_ready: true
 continuation_required: false
-next_route: Await programmer Init WT-R4-A1 (docs node); do not auto-Init
-contract_ref: pending_init
+next_route: Init completed; Dispatch R4-A1-T1 on request
+init_completed_at: 2026-07-20T19:43:00+08:00
+contract_ref: .servo/worktrack/WT-R4-A1-contract.md
+plan_task_queue_ref: .servo/worktrack/WT-R4-A1-plan-task-queue.md
+init_defaults_applied:
+  A1_Q1: recommend_band daily≈200–500 rpm≈40–80 (pending_approve at Gate)
+  A1_Q2: Y_510300_deferred
+  A1_Q3: Y_DataLake_sole_entry
 ```
 
 ## Request Summary
 
 ```yaml
 request_summary: >
-  After WT-R4-A0 Close, open A1 intake only: draft lake/source contract,
-  inventory existing TuShare cache vs approved pool, propose schema fields,
-  and recommend daily/RPM caps for programmer approval. No lake fill, no
-  training, no Phase 4, no EXEC-002.
+  WT-R4-A1 已 Init（docs）。contract + plan queue 已播种；
+  selected_next_action=R4-A1-T1（湖/源合同草案）。执行尚未开始。
 ```
 
 ## Repo Fundamentals
@@ -89,10 +93,10 @@ evidence_refs:
   - .servo/worktrack/WT-R4-A0-data-gaps.md
   - inputs/pools/research_liquidity_quality/config.toml
 caveat: >
-  A0 Close writeback is in working tree pending commit/push approval.
-  Milestone tip lags develop (Infra/EXEC already on develop); A1 Init should
-  use milestone branch policy and avoid pulling EXEC/Phase4 into R4 scope.
-refresh_required_after: approved_close_writeback_commit
+  A0 Close writeback committed locally as 5cb94b4 (push still optional/approval-gated).
+  Milestone tip lags develop (Infra/EXEC); A1 Init uses milestone branch and must
+  not pull EXEC/Phase4 into R4 scope.
+refresh_required_after: optional_push_milestone_branch
 ```
 
 ## Historical Conflict Risk
@@ -158,11 +162,11 @@ A1_Q3_datalake_binding: >
 ```yaml
 intake_review_verdict: ready_for_worktrack_init
 ready_for_worktrack_init: true
-needs_programmer_init: true
+init_completed: true
+init_completed_at: 2026-07-20T19:43:00+08:00
+needs_programmer_init: false
 auto_init: false
-next_programmer_actions:
-  - Approve commit/push of A0 Close writeback on milestone branch (separate)
-  - Optionally answer A1_Q1–Q3 then 「Init WT-R4-A1」
+next_route: Dispatch R4-A1-T1 (or programmer 「开始 T1」)
 stop_conditions:
   - no lake fill
   - no training
