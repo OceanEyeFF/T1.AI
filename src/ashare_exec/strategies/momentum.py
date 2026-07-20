@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import cached_property
 
 import pandas as pd
 
@@ -24,6 +25,7 @@ class MomentumTopNStrategy:
     min_history: int = 60
     rebalance_threshold: float = 0.05
 
+    @cached_property
     def _adapter(self) -> DecisionStrategy:
         _ = self.rebalance_threshold  # reserved; WeightMapper turnover is a later WT
         return as_strategy(
@@ -36,4 +38,4 @@ class MomentumTopNStrategy:
         today: pd.Timestamp,
         history: dict[str, pd.DataFrame],
     ) -> dict[str, float]:
-        return self._adapter().target_weights(today, history)
+        return self._adapter.target_weights(today, history)

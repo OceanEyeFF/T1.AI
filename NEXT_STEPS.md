@@ -15,7 +15,7 @@
 | **模型层** | ModelABC + registry，已注册 LSTM / XGBoost / Transformer 三种模型 |
 | **评估层** | Daily-CS IC 评估 pipeline 可用，trade-like panel 评估可用 |
 | **推荐层** | 趋势聚合 + 多 horizon 打分引擎可用 |
-| **回测层** | BacktestEngine + PortfolioManager 基础版本可用 |
+| **回测层** | `BacktestEngine` + `ashare_exec`（Decision → WeightMapper → Strategy）可用 |
 
 ### 当前未完成
 

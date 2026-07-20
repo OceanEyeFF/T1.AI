@@ -20,9 +20,7 @@ def test_decision_module_has_no_target_weights_or_map_weights() -> None:
 
 
 def test_decision_result_annotation_has_no_weights() -> None:
-    src = DECISION_FILE.read_text(encoding="utf-8")
-    # Soft lock: DecisionResult docstring / fields stay scores + ranked only.
-    assert "class DecisionResult" in src
-    assert "scores:" in src
-    assert "ranked:" in src
-    assert "weights:" not in src.split("class DecisionResult", 1)[1].split("class ", 1)[0]
+    from ashare_exec.decision import DecisionResult
+
+    assert set(DecisionResult.__dataclass_fields__) == {"scores", "ranked"}
+    assert "weights" not in DecisionResult.__dataclass_fields__

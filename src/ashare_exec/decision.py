@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Protocol
 
@@ -39,6 +40,61 @@ def _rank_scores(scores: dict[str, float]) -> list[tuple[str, float]]:
     return sorted(scores.items(), key=lambda x: x[1], reverse=True)
 
 
+def _normalize_symbol_key(symbol: Any) -> str:
+    """Normalize a score key to match string history keys.
+
+    Aligns with ``ashare_infra.lake.meta._normalize_symbol`` for numeric codes:
+
+    - ``int``/integral ``float`` → digit string (``600000``, ``600000.0`` → ``"600000"``)
+    - short digit codes are zero-padded to 6 (``1`` / ``"1"`` → ``"000001"``)
+    - ``ts_code``-style suffixes are stripped (``"600000.SH"`` → ``"600000"``)
+    - non-integral floats and other types fall back to a stripped ``str()``
+    """
+    if isinstance(symbol, bool):
+        return str(symbol)
+    if isinstance(symbol, int):
+        text = str(symbol)
+    elif isinstance(symbol, float):
+        text = str(int(symbol)) if symbol.is_integer() else str(symbol)
+    else:
+        text = str(symbol).strip()
+        if "." in text:
+            left = text.split(".", 1)[0]
+            if left.isdigit():
+                text = left
+    if text.isdigit() and len(text) < 6:
+        text = text.zfill(6)
+    return text
+
+
+def _merge_stub_scores(
+    history: Mapping[str, pd.DataFrame],
+    *mappings: Mapping[Any, float] | None,
+) -> dict[str, float]:
+    """Merge score mappings; later mappings override earlier per symbol.
+
+    - Symbol keys are normalized so numeric / ts_code forms match string
+      history keys (``1`` / ``"1"`` → ``"000001"``; ``"600000.SH"`` →
+      ``"600000"``; aligns with ``ashare_infra.lake.meta._normalize_symbol``).
+    - Only keys present in ``history`` are kept.
+    - Non-finite scores (NaN/Inf) are dropped, matching ``MomentumDecision``.
+    """
+    scores: dict[str, float] = {}
+    for mapping in mappings:
+        if not isinstance(mapping, Mapping):
+            continue
+        for symbol, score in mapping.items():
+            key = _normalize_symbol_key(symbol)
+            if key not in history:
+                continue
+            value = float(score)
+            if math.isfinite(value):
+                scores[key] = value
+            else:
+                scores.pop(key, None)
+    return scores
+
+
 @dataclass(frozen=True)
 class MomentumDecision:
     """Mechanical lookback-return scores (same formula as B0 MomentumTopN)."""
@@ -72,16 +128,8 @@ class MLStubDecision:
     model_scores: Mapping[str, float] = field(default_factory=dict)
 
     def decide(self, ctx: DecisionContext) -> DecisionResult:
-        scores: dict[str, float] = {
-            symbol: float(score)
-            for symbol, score in self.model_scores.items()
-            if symbol in ctx.history
-        }
         extra = ctx.extras.get("model_scores")
-        if isinstance(extra, Mapping):
-            for symbol, score in extra.items():
-                if symbol in ctx.history:
-                    scores[str(symbol)] = float(score)
+        scores = _merge_stub_scores(ctx.history, self.model_scores, extra)
         return DecisionResult(scores=scores, ranked=_rank_scores(scores))
 
 

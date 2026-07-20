@@ -84,7 +84,7 @@ def test_weight_mapper_equal_top_n() -> None:
 def test_momentum_top_n_uses_shared_seam() -> None:
     """MomentumTopNStrategy must delegate to DecisionStrategy (no weight bypass)."""
     strat = MomentumTopNStrategy(top_n=2, lookback=2, min_history=4)
-    adapter = strat._adapter()
+    adapter = strat._adapter
     assert isinstance(adapter.decision, MomentumDecision)
     assert isinstance(adapter.mapper, WeightMapper)
     assert adapter.mapper.top_n == 2
@@ -114,10 +114,73 @@ def test_mechanical_and_ml_stub_share_adapt_path() -> None:
     assert sum(w_stub.values()) == pytest.approx(1.0)
 
 
+def test_ml_stub_accepts_int_symbol_keys() -> None:
+    history = {"600000": _ohlcv([10.0] * 5)}
+    result = MLStubDecision(model_scores={600000: 0.9}).decide(
+        DecisionContext(today=pd.Timestamp("2024-01-10"), history=history)
+    )
+    assert result.scores == {"600000": pytest.approx(0.9)}
+    assert result.ranked[0][0] == "600000"
+
+
+def test_ml_stub_zero_pads_short_numeric_keys() -> None:
+    """``1`` / ``"1"`` must match history key ``"000001"`` (lake.meta parity)."""
+    history = {"000001": _ohlcv([10.0] * 5)}
+    for key in (1, 1.0, "1"):
+        result = MLStubDecision(model_scores={key: 0.8}).decide(
+            DecisionContext(today=pd.Timestamp("2024-01-10"), history=history)
+        )
+        assert result.scores == {"000001": pytest.approx(0.8)}, f"failed for key={key!r}"
+
+
+def test_ml_stub_strips_ts_code_suffix() -> None:
+    history = {"600000": _ohlcv([10.0] * 5)}
+    result = MLStubDecision(model_scores={"600000.SH": 0.6}).decide(
+        DecisionContext(today=pd.Timestamp("2024-01-10"), history=history)
+    )
+    assert result.scores == {"600000": pytest.approx(0.6)}
+
+
+def test_ml_stub_accepts_integral_float_symbol_keys() -> None:
+    """``600000.0`` must normalize to ``"600000"`` (not ``"600000.0"``)."""
+    history = {"600000": _ohlcv([10.0] * 5)}
+    result = MLStubDecision(model_scores={600000.0: 0.7}).decide(
+        DecisionContext(today=pd.Timestamp("2024-01-10"), history=history)
+    )
+    assert result.scores == {"600000": pytest.approx(0.7)}
+
+
+def test_ml_stub_drops_non_finite_scores() -> None:
+    """NaN/Inf stub scores must be dropped (parity with MomentumDecision)."""
+    history = {"A": _ohlcv([10.0] * 5), "B": _ohlcv([10.0] * 5), "C": _ohlcv([10.0] * 5)}
+    result = MLStubDecision(
+        model_scores={"A": float("nan"), "B": float("inf"), "C": 0.3}
+    ).decide(DecisionContext(today=pd.Timestamp("2024-01-10"), history=history))
+    assert result.scores == {"C": pytest.approx(0.3)}
+    assert [s for s, _ in result.ranked] == ["C"]
+
+
+def test_ml_stub_nan_override_removes_prior_score() -> None:
+    """A later NaN override invalidates an earlier finite score for that symbol."""
+    history = {"A": _ohlcv([10.0] * 5), "B": _ohlcv([10.0] * 5)}
+    stub = as_strategy(
+        MLStubDecision(model_scores={"A": 1.0, "B": 0.5}),
+        WeightMapper(top_n=2),
+        extras={"model_scores": {"A": float("nan")}},
+    )
+    w = stub.target_weights(pd.Timestamp("2024-01-10"), history)
+    assert set(w.keys()) == {"B"}
+
+
 def test_ml_stub_extras_override_scores() -> None:
     history = {"A": _ohlcv([10] * 5), "B": _ohlcv([10] * 5)}
-    stub = as_strategy(MLStubDecision(model_scores={"A": 1.0, "B": 0.0}), WeightMapper(top_n=1))
-    # Construction scores pick A; extras flip to B for this call path via DecisionStrategy.extras
+    stub = as_strategy(
+        MLStubDecision(model_scores={"A": 1.0, "B": 0.0}),
+        WeightMapper(top_n=1),
+    )
+    w_construction = stub.target_weights(pd.Timestamp("2024-01-10"), history)
+    assert list(w_construction.keys()) == ["A"]
+
     stub_extra = as_strategy(
         MLStubDecision(),
         WeightMapper(top_n=1),
@@ -125,7 +188,6 @@ def test_ml_stub_extras_override_scores() -> None:
     )
     w = stub_extra.target_weights(pd.Timestamp("2024-01-10"), history)
     assert list(w.keys()) == ["B"]
-    _ = stub  # constructed for API smoke
 
 
 def test_backtest_engine_mechanical_via_seam() -> None:

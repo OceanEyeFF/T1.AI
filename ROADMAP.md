@@ -41,7 +41,7 @@ T1.AI 的长期目标，不是单纯堆出一个更复杂的模型，而是建�
 ### 关键交付物
 
 - 换仓门槛、成本覆盖、风险禁买、成交阻断统计进入默认执行链；
-- `PortfolioManager` 与 `BacktestEngine` 的诊断字段闭环；
+- `ashare_exec`（Decision → WeightMapper）与 `BacktestEngine` 的诊断字段闭环；
 - 主线 `3d/5d/10d` 可信评估范式固定；
 - 主线伪信号 / 泄漏 / 过拟合排查进入默认门禁；
 - 主线 `3d/5d/10d` 默认配置、默认门禁、默认报告冻结；

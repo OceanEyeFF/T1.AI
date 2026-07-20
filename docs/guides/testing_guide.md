@@ -69,7 +69,7 @@ Phase 1–2 白盒索引与每文件配套文档：
 | Phase 1–2 白盒补强 | ✅ listing / DatasetBuilder lake / validator DataLake+IC 入口锁（见索引） |
 | WT-EXEC-001 B0/刀2 | ✅ `tests/unit/exec/` + `tests/contract/exec/`；指南 [ashare_exec_guide.md](ashare_exec_guide.md) |
 
-Coverage `source` 已含 `src/ashare_infra`（`pyproject.toml`）。
+Coverage `source` 已含 `src/ashare_infra` 与 `src/ashare_exec`（`pyproject.toml`）。
 
 等价 marker 选择：
 
