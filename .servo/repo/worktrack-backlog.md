@@ -1,8 +1,8 @@
 ---
 title: "Worktrack Backlog"
 artifact_type: "worktrack-backlog"
-updated: "2026-06-22T13:20:00+08:00"
-updated_by: "codex"
+updated: "2026-07-20T19:16:00+08:00"
+updated_by: "cursor-gate-close-WT-R4-A0"
 ---
 
 # Worktrack Backlog
@@ -10,6 +10,26 @@ updated_by: "codex"
 > Closed and resolved worktracks are tracked here for Milestone progress and RepoScope refresh. Live per-worktrack execution details remain in `.servo/worktrack/*`.
 
 ## Done
+
+### WT-R4-A0
+
+- worktrack_id: WT-R4-A0
+- milestone_id: MS-R4-001
+- status: done
+- node_type: feature
+- scope: >
+  research_liquidity_quality strategy + registry export ≤100 (61) +
+  diff vs low_manipulation; cache-first; no live.
+- branch: milestone/MS-R4-001-tushare-datalake
+- merge_commit: N/A (implementation 3807f81 is ancestor of develop)
+- validation: `pytest tests/unit/stock_pool/` → 15 passed (re-verified 2026-07-20); smoke 61≤100
+- intake_route: milestone-derived
+- gate_verdict: pass_with_accepted_residuals
+- report_ref: .servo/worktrack/WT-R4-A0-closeout.md
+- gate_evidence_ref: .servo/worktrack/WT-R4-A0-gate-evidence.md
+- closeout_ref: .servo/worktrack/WT-R4-A0-closeout.md
+- closed_at: 2026-07-20T19:16:00+08:00
+- residual_risk: soft_target_80_deficit; index_510300_empty; research_only until milestone Gate; Close writeback commit approval-gated
 
 ### WT-EXPAND-001
 
