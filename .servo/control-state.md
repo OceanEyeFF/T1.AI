@@ -13,25 +13,25 @@ owner: "OceanEyeFF"
 
 ## Metadata
 
-- updated: 2026-07-20T21:22:00+08:00
+- updated: 2026-07-21T09:50:00+08:00
 - owner: OceanEyeFF
-- refresh_note: WT-R4-A1 closed (Gate pass); A2 intake open; awaiting Init
+- refresh_note: WT-R4-A2 T2 done (make_r4_datalake + cutover); next T3 disk/schema contracts
 
 ## Current Control Level
 
 - repo_scope: active
-- worktrack_scope: idle_between_worktracks
+- worktrack_scope: active
 
 ## Active Worktrack
 
-- active_worktrack: none
-- worktrack_status: N/A
-- worktrack_contract: N/A
-- plan_task_queue: N/A
-- gate_evidence: worktrack/WT-R4-A1-gate-evidence.md
-- closeout_ref: worktrack/WT-R4-A1-closeout.md
-- active_task_window: N/A
-- selected_next_action_id: N/A
+- active_worktrack: WT-R4-A2
+- worktrack_status: t2_complete_t3_pending
+- worktrack_contract: worktrack/WT-R4-A2-contract.md
+- plan_task_queue: worktrack/WT-R4-A2-plan-task-queue.md
+- gate_evidence: N/A
+- closeout_ref: N/A
+- active_task_window: R4-A2-T3
+- selected_next_action_id: R4-A2-T3
 - worktrack_gate_verdict: N/A
 - worktrack_blocker: none
 - worktrack_residual_risk: soft_target_80; index_510300; caps_not_yet_in_inputs_configs; milestone_behind_develop
@@ -51,13 +51,13 @@ owner: "OceanEyeFF"
   - planned_count: 0
   - completed_count: 9
   - superseded_count: 0
-  - note: MS-R4-001 active; WT-R4-A0/A1 completed; WT-R4-A2 intake_open
+  - note: MS-R4-001 active; WT-R4-A0/A1 completed; WT-R4-A2 Init active (T1 pending)
 - milestone_review_gate_ready: true
 - latest_review_status: effective_pass
 - milestone_review_count: 1
 - latest_review_checkpoint: MS-R4-001-intake-ready-2026-07-15T00:10:00+08:00
 - effective_review_pass: true
-- next_milestone_route: WT-R4-A2 Init on request; no lake fill / train / Phase4 / EXEC-002
+- next_milestone_route: WT-R4-A2 T1–T5 then Gate; no lake fill / train / Phase4 / EXEC-002 / blind develop merge
 
 ## Baseline Branch
 
@@ -71,13 +71,13 @@ owner: "OceanEyeFF"
 - branch_context_guard_status: pass_with_caveat
 - branch_context_required_ref: refs/heads/milestone/MS-R4-001-tushare-datalake
 - active_milestone_branch: milestone/MS-R4-001-tushare-datalake
-- active_milestone_branch_sync_state: tip 16ef565 (A1 Close); behind develop@7453daa (Infra/EXEC)
+- active_milestone_branch_sync_state: tip adede39 (A1 Close pin); behind develop@7453daa (Infra/EXEC; DataLake on develop only)
 - worktrack_branch: milestone/MS-R4-001-tushare-datalake
-- observed_checkout: milestone/MS-R4-001-tushare-datalake @ 16ef565
+- observed_checkout: milestone/MS-R4-001-tushare-datalake @ adede39
 
 ## Current Next Action
 
-- WT-R4-A1 closed (Gate **pass**). A2 intake open (`ready_for_worktrack_init`). Next: Init WT-R4-A2 on request. Caps 180/80k approved; promote to fixed config in A2/A3.
+- WT-R4-A2 T2 done: `make_r4_datalake` + consumer cutover; no-direct contract green. Next: **R4-A2-T3** disk/schema contract tests.
 
 ## Linked Formal Documents
 
@@ -88,9 +88,9 @@ owner: "OceanEyeFF"
 - milestone_history: repo/milestone-history.md
 - pre_milestone_intake: repo/MS-R4-001-pre-milestone-intake-review.md
 - planned_worktrack_backlog: repo/worktrack-backlog.md
-- worktrack_contract: N/A (A1 closed; A2 not Init)
-- plan_task_queue: N/A
-- gate_evidence: worktrack/WT-R4-A1-gate-evidence.md
+- worktrack_contract: worktrack/WT-R4-A2-contract.md
+- plan_task_queue: worktrack/WT-R4-A2-plan-task-queue.md
+- gate_evidence: N/A
 - closeout_ref: worktrack/WT-R4-A1-closeout.md
 - worktrack_intake_review: worktrack/MS-R4-001-WT-R4-A2-intake-review.md
 - last_closed_worktrack_closeout: worktrack/WT-R4-A1-closeout.md
@@ -244,31 +244,31 @@ owner: "OceanEyeFF"
 
 ## Handback Guard
 
-- handoff_state: a1_closed_a2_intake_open
-- last_stop_reason: WT-R4-A1 Gate pass + Close; A2 intake ready; awaiting Init
-- last_handback_signature: WT-R4-A1/gate-close/2026-07-20T21:22:00+08:00
+- handoff_state: a2_t2_done_awaiting_t3
+- last_stop_reason: WT-R4-A2 T2 complete; next T3 disk/schema contracts; commit/push gated
+- last_handback_signature: WT-R4-A2/T2/2026-07-21T09:50:00+08:00
 - handback_reaffirmed_rounds: 0
 - stable_handback_threshold: 2
 - handback_lock_active: false
-- last_unlock_signal: programmer Gate/Close WT-R4-A1 + commit
+- last_unlock_signal: programmer Init WT-R4-A2
 
 ## Baseline Traceability
 
 > 记录最近一次 worktrack 关闭后的已验证基线，供后续续跑时快速定位。
 
-- last_verified_checkpoint: 5cb94b40c89f4ee30a332aeb65ab60068453288d
-- latest_observed_checkpoint: 16ef565ca26e1141ec362ff3b8249d73cd35fa8c
-- last_doc_catch_up_checkpoint: 5cb94b40c89f4ee30a332aeb65ab60068453288d
-- milestone_input_checkpoint: WT-R4-A1-close-2026-07-20T21:22:00+08:00
+- last_verified_checkpoint: 16ef565ca26e1141ec362ff3b8249d73cd35fa8c
+- latest_observed_checkpoint: adede390e14efdbf82b81da282da653cb83cc0a7
+- last_doc_catch_up_checkpoint: 16ef565ca26e1141ec362ff3b8249d73cd35fa8c
+- milestone_input_checkpoint: WT-R4-A2-init-2026-07-20T21:30:00+08:00
 - checkpoint_type: git_commit
-- checkpoint_ref: 16ef565ca26e1141ec362ff3b8249d73cd35fa8c
-- verified_at: 2026-07-20T21:22:00+08:00
-- if_no_commit_reason: N/A — Close commit in progress this round
+- checkpoint_ref: adede390e14efdbf82b81da282da653cb83cc0a7
+- verified_at: 2026-07-20T21:30:00+08:00
+- if_no_commit_reason: N/A for Init baseline; A2 Init artifacts uncommitted until programmer approve
 - alternative_traceability:
-  - A1 closeout: .servo/worktrack/WT-R4-A1-closeout.md
-  - A1 gate: .servo/worktrack/WT-R4-A1-gate-evidence.md
+  - A2 contract: .servo/worktrack/WT-R4-A2-contract.md
+  - A2 plan: .servo/worktrack/WT-R4-A2-plan-task-queue.md
   - A2 intake: .servo/worktrack/MS-R4-001-WT-R4-A2-intake-review.md
-  - A0 close: .servo/worktrack/WT-R4-A0-closeout.md
+  - A1 close: .servo/worktrack/WT-R4-A1-closeout.md
 
 ## Autonomy Ledger
 
@@ -295,14 +295,14 @@ owner: "OceanEyeFF"
 - completed_milestone_latest: MS-T1-001 广义测试体系清理 (accepted; merge develop@eed3e24)
 - last_active_milestone_initialized: MS-R4-001
 - planned_milestone_waiting: none (MS-R4-001 active)
-- worktrack_init_blocked_until: N/A (WT-R4-A2 intake ready; Init on request)
-- active_worktrack_initialized: none
+- worktrack_init_blocked_until: N/A (WT-R4-A2 active)
+- active_worktrack_initialized: WT-R4-A2
 - last_closed_worktrack: WT-R4-A1
 - worktrack_intake_review_ref: .servo/worktrack/MS-R4-001-WT-R4-A2-intake-review.md
-- worktrack_gate_evidence_ref: .servo/worktrack/WT-R4-A1-gate-evidence.md
+- worktrack_gate_evidence_ref: N/A
 - closeout_ref: .servo/worktrack/WT-R4-A1-closeout.md
 - environment_validation_report_ref: .servo/worktrack/environment-validation-report.md
-- current_stop_condition: A1 closed (pass); A2 intake open; Init on request; no lake fill / train / Phase4 / EXEC-002; push optional
+- current_stop_condition: A2 T2 done; next T3; no lake fill / train / Phase4 / EXEC-002 / blind develop merge; commit/push gated
 - active_intake_review_ref: .servo/worktrack/MS-R4-001-WT-R4-A2-intake-review.md
 - control_plane_refresh_ref: .servo/repo/refresh-report-MS-T1-001-close-2026-07-14.md
 - persistent_work_habits_updated: 2026-06-10

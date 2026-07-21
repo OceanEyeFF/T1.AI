@@ -1,6 +1,7 @@
 """数据集构建器
 
 负责加载数据、计算特征、生成标签、切分数据集。
+取数统一经 ``ashare_infra.lake.DataLake``（WT-INFRA-002）。
 """
 
 from __future__ import annotations
@@ -9,30 +10,20 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
 import pandas as pd
 import yaml
 
-from ashare_lab.data.akshare_source import (
-    AkshareDailyBarsRequest,
-    load_or_fetch_daily_bars,
-)
-from ashare_lab.data.tushare_source import (
-    TushareDailyBarsRequest,
-    load_or_fetch_daily_bars as load_or_fetch_tushare_bars,
-)
-from ashare_lab.data.index_source import (
-    AkshareIndexDailyRequest,
-    load_or_fetch_index_daily,
-)
-from ashare_lab.data.odp_source import (
-    ODPDailyBarsRequest,
-    load_or_fetch_daily_bars as load_or_fetch_odp_bars,
-)
+from ashare_infra.lake import DataLake
+from ashare_infra.lake.r4_contract import R4_ADJUST_DEFAULT, make_r4_datalake
 from ashare_lab.features.base import BaseFeature
 from ashare_lab.labels.excess_return import ExcessReturnLabel, ForwardReturnLabel
+from ashare_lab.symbols import symbol_to_odp_equity_symbol, symbol_to_ts_code
 
 logger = logging.getLogger(__name__)
+
+SourceKind = Literal["akshare", "tushare", "odp"]
 
 
 @dataclass
@@ -49,7 +40,7 @@ class DatasetConfig:
     split_method: str = "fixed_window"  # 'fixed_window' or 'rolling_window'
     train_end_date: str | None = None  # YYYYMMDD
     valid_end_date: str | None = None  # YYYYMMDD
-    source: str = "akshare"  # 'akshare' or 'tushare' or 'odp'
+    source: SourceKind = "tushare"  # R4/A1 primary; override for akshare/odp
     cache_dir: Path = field(default_factory=lambda: Path("inputs/data/cache"))
     output_dir: Path = field(default_factory=lambda: Path("workspace/datasets"))
     nan_threshold: float = 0.2  # 缺失数据阈值（超过警告）
@@ -71,6 +62,13 @@ class DatasetBuilder:
         self.stock_data: dict[str, pd.DataFrame] = {}
         self.benchmark_data: pd.DataFrame | None = None
         self.dataset: pd.DataFrame | None = None
+        if config.source == "tushare":
+            self._lake = make_r4_datalake(cache_dir=config.cache_dir)
+        else:
+            self._lake = DataLake(
+                cache_dir=config.cache_dir,
+                default_source=config.source,  # type: ignore[arg-type]
+            )
 
     def build(self) -> Path:
         """构建完整数据集
@@ -102,35 +100,20 @@ class DatasetBuilder:
     def _load_stock_data(self) -> None:
         """加载所有股票的行情数据"""
         logger.info(f"加载 {len(self.config.symbols)} 只股票数据...")
+        source = self.config.source
+        if source not in ("akshare", "tushare", "odp"):
+            raise ValueError(f"不支持的数据源: {source}")
 
         for symbol in self.config.symbols:
             try:
-                if self.config.source == "akshare":
-                    req = AkshareDailyBarsRequest(
-                        symbol=symbol,
-                        start_date=self.config.start_date,
-                        end_date=self.config.end_date,
-                        adjust="qfq",
-                    )
-                    df = load_or_fetch_daily_bars(req, self.config.cache_dir)
-                elif self.config.source == "tushare":
-                    req = TushareDailyBarsRequest(
-                        symbol=symbol,
-                        start_date=self.config.start_date,
-                        end_date=self.config.end_date,
-                        adjust="qfq",
-                    )
-                    df = load_or_fetch_tushare_bars(req, self.config.cache_dir)
-                elif self.config.source == "odp":
-                    req = ODPDailyBarsRequest(
-                        symbol=symbol,
-                        start_date=self.config.start_date,
-                        end_date=self.config.end_date,
-                    )
-                    df = load_or_fetch_odp_bars(req, self.config.cache_dir)
-                else:
-                    raise ValueError(f"不支持的数据源: {self.config.source}")
-
+                lake_symbol = self._resolve_lake_symbol(symbol, source)
+                df = self._lake.load_daily_bars(
+                    lake_symbol,
+                    self.config.start_date,
+                    self.config.end_date,
+                    source=source,
+                    adjust=R4_ADJUST_DEFAULT,
+                )
                 if df.empty:
                     logger.warning(f"股票 {symbol} 数据为空，跳过")
                     continue
@@ -141,6 +124,13 @@ class DatasetBuilder:
 
         logger.info(f"成功加载 {len(self.stock_data)} 只股票数据")
 
+    def _resolve_lake_symbol(self, symbol: str, source: SourceKind) -> str:
+        if source == "tushare":
+            return symbol_to_ts_code(symbol)
+        if source == "odp":
+            return symbol_to_odp_equity_symbol(symbol)
+        return symbol
+
     def _load_benchmark_data(self) -> None:
         """加载基准数据（沪深300）"""
         if self.config.label_type != "excess_return":
@@ -150,12 +140,11 @@ class DatasetBuilder:
         logger.info(f"加载基准数据: {self.config.benchmark_code}")
 
         try:
-            req = AkshareIndexDailyRequest(
-                symbol=self.config.benchmark_code,
-                start_date=self.config.start_date,
-                end_date=self.config.end_date,
+            self.benchmark_data = self._lake.load_index_daily(
+                self.config.benchmark_code,
+                self.config.start_date,
+                self.config.end_date,
             )
-            self.benchmark_data = load_or_fetch_index_daily(req, self.config.cache_dir)
             logger.info(f"基准数据加载完成，共 {len(self.benchmark_data)} 条记录")
         except Exception as e:
             logger.error(f"加载基准数据失败: {e}")

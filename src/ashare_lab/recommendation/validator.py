@@ -3,7 +3,7 @@
 本模块目标：
 - 通过"数据源适配器 + 交易日历注入"实现与外部数据源解耦；
 - 使用沪深300（HS300）指数日线的日期作为交易日历；
-- 对停牌/缺价等情况用 NaN 掩码处理，并复用 evaluation.metrics 的 IC/RankIC 计算；
+- 对停牌/缺价等情况用 NaN 掩码处理，并复用 ``ashare_infra.guard.metrics`` 的 IC/RankIC 计算；
 - 输出命中率、IC、RankIC、超额收益等核心指标。
 
 支持两种收益计算口径：
@@ -91,58 +91,12 @@ def _ensure_daily_schema(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def _symbol_to_ts_code(symbol: str) -> str:
-    """将 6 位数字股票代码转换为 TuShare 的 ts_code（如 600519.SH）。"""
-    s = str(symbol).strip().upper()
-    if not s:
-        raise ValueError("symbol 不能为空")
-    if "." in s:
-        return s
-    if len(s) != 6 or not s.isdigit():
-        raise ValueError(f"不支持的股票代码格式: {symbol}")
-
-    if s.startswith("6"):
-        suffix = "SH"
-    elif s.startswith(("0", "3")):
-        suffix = "SZ"
-    elif s.startswith(("8", "4")):
-        suffix = "BJ"
-    else:
-        raise ValueError(f"无法识别交易所后缀: {symbol}")
-    return f"{s}.{suffix}"
-
-
-def _symbol_to_odp_equity_symbol(symbol: str, provider: str = "yfinance") -> str:
-    """将 A 股代码转换为 ODP equity 接口可识别的 symbol（默认 yfinance 口径）。"""
-    raw = str(symbol).strip().upper()
-    if not raw:
-        raise ValueError("symbol 不能为空")
-
-    if "." in raw:
-        code, suffix = raw.split(".", 1)
-        suffix = suffix.upper()
-        if str(provider).lower() == "yfinance":
-            if suffix == "SH":
-                return f"{code}.SS"
-            if suffix in {"SZ", "SS", "BJ"}:
-                return f"{code}.{suffix}"
-        return raw
-
-    if len(raw) != 6 or not raw.isdigit():
-        raise ValueError(f"不支持的股票代码格式: {symbol}")
-
-    if str(provider).lower() == "yfinance":
-        if raw.startswith(("6", "9")):
-            return f"{raw}.SS"
-        if raw.startswith(("0", "3")):
-            return f"{raw}.SZ"
-        if raw.startswith(("8", "4")):
-            return f"{raw}.BJ"
-    return raw
+from ashare_lab.symbols import symbol_to_odp_equity_symbol as _symbol_to_odp_equity_symbol
+from ashare_lab.symbols import symbol_to_ts_code as _symbol_to_ts_code
 
 
 class AkshareSourceAdapter:
-    """AkShare 数据源适配器。"""
+    """AkShare 数据源适配器（经 DataLake）。"""
 
     def __init__(
         self,
@@ -153,6 +107,13 @@ class AkshareSourceAdapter:
         self.cache_dir = cache_dir or Path("inputs/data/cache")
         self.adjust = adjust
         self.refresh = refresh
+        from ashare_infra.lake import DataLake
+
+        self._lake = DataLake(
+            cache_dir=self.cache_dir,
+            default_source="akshare",
+            refresh=self.refresh,
+        )
 
     def fetch_daily_bars(
         self,
@@ -160,25 +121,21 @@ class AkshareSourceAdapter:
         start_date: str,
         end_date: str,
     ) -> dict[str, pd.DataFrame]:
-        from ashare_lab.data.akshare_source import AkshareDailyBarsRequest
-        from ashare_lab.data.akshare_source import (
-            load_or_fetch_daily_bars as load_or_fetch_akshare_daily_bars,
-        )
-
         start = _to_yyyymmdd(start_date)
         end = _to_yyyymmdd(end_date)
 
         out: dict[str, pd.DataFrame] = {}
         for symbol in symbols:
             sym = str(symbol)
-            req = AkshareDailyBarsRequest(symbol=sym, start_date=start, end_date=end, adjust=self.adjust)
-            df = load_or_fetch_akshare_daily_bars(req, self.cache_dir, refresh=self.refresh)
+            df = self._lake.load_daily_bars(
+                sym, start, end, source="akshare", adjust=self.adjust
+            )
             out[sym] = _ensure_daily_schema(df)
         return out
 
 
 class TushareSourceAdapter:
-    """TuShare 数据源适配器（自动处理 symbol → ts_code）。"""
+    """TuShare 数据源适配器（自动处理 symbol → ts_code；经 DataLake）。"""
 
     def __init__(
         self,
@@ -191,6 +148,13 @@ class TushareSourceAdapter:
         self.adjust = adjust
         self.refresh = refresh
         self.token = token
+        from ashare_infra.lake.r4_contract import make_r4_datalake
+
+        self._lake = make_r4_datalake(
+            cache_dir=self.cache_dir,
+            refresh=self.refresh,
+            tushare_token=self.token,
+        )
 
     def fetch_daily_bars(
         self,
@@ -198,11 +162,6 @@ class TushareSourceAdapter:
         start_date: str,
         end_date: str,
     ) -> dict[str, pd.DataFrame]:
-        from ashare_lab.data.tushare_source import TushareDailyBarsRequest
-        from ashare_lab.data.tushare_source import (
-            load_or_fetch_daily_bars as load_or_fetch_tushare_daily_bars,
-        )
-
         start = _to_yyyymmdd(start_date)
         end = _to_yyyymmdd(end_date)
 
@@ -210,20 +169,15 @@ class TushareSourceAdapter:
         for symbol in symbols:
             sym = str(symbol)
             ts_code = _symbol_to_ts_code(sym)
-            req = TushareDailyBarsRequest(
-                symbol=ts_code,
-                start_date=start,
-                end_date=end,
-                adjust=self.adjust,
-                token=self.token,
+            df = self._lake.load_daily_bars(
+                ts_code, start, end, source="tushare", adjust=self.adjust
             )
-            df = load_or_fetch_tushare_daily_bars(req, self.cache_dir, refresh=self.refresh)
             out[sym] = _ensure_daily_schema(df)
         return out
 
 
 class ODPSourceAdapter:
-    """OpenBB ODP 数据源适配器（默认使用 yfinance provider）。"""
+    """OpenBB ODP 数据源适配器（默认使用 yfinance provider；经 DataLake）。"""
 
     def __init__(
         self,
@@ -240,6 +194,17 @@ class ODPSourceAdapter:
         self.refresh = refresh
         self.base_url = base_url
         self.prefer_rest = prefer_rest
+        from ashare_infra.lake import DataLake
+
+        self._lake = DataLake(
+            cache_dir=self.cache_dir,
+            default_source="odp",
+            refresh=self.refresh,
+            odp_provider=self.provider,
+            odp_interval=self.interval,
+            odp_base_url=self.base_url,
+            odp_prefer_rest=self.prefer_rest,
+        )
 
     def fetch_daily_bars(
         self,
@@ -247,11 +212,6 @@ class ODPSourceAdapter:
         start_date: str,
         end_date: str,
     ) -> dict[str, pd.DataFrame]:
-        from ashare_lab.data.odp_source import ODPDailyBarsRequest
-        from ashare_lab.data.odp_source import (
-            load_or_fetch_daily_bars as load_or_fetch_odp_daily_bars,
-        )
-
         start = _to_yyyymmdd(start_date)
         end = _to_yyyymmdd(end_date)
 
@@ -259,39 +219,29 @@ class ODPSourceAdapter:
         for symbol in symbols:
             sym = str(symbol)
             odp_symbol = _symbol_to_odp_equity_symbol(sym, provider=self.provider)
-            req = ODPDailyBarsRequest(
-                symbol=odp_symbol,
-                start_date=start,
-                end_date=end,
-                provider=self.provider,
-                interval=self.interval,
-                base_url=self.base_url,
-                prefer_rest=self.prefer_rest,
-            )
-            df = load_or_fetch_odp_daily_bars(req, self.cache_dir, refresh=self.refresh)
+            df = self._lake.load_daily_bars(odp_symbol, start, end, source="odp")
             out[sym] = _ensure_daily_schema(df)
         return out
 
 
 class HS300IndexCalendarSource:
-    """基于 HS300（000300）指数日线的交易日历源。"""
+    """基于 HS300（000300）指数日线的交易日历源（经 DataLake）。"""
 
     def __init__(self, cache_dir: Path | None = None, refresh: bool = False) -> None:
         self.cache_dir = cache_dir or Path("inputs/data/cache")
         self.refresh = refresh
+        from ashare_infra.lake import DataLake
+
+        self._lake = DataLake(cache_dir=self.cache_dir, refresh=self.refresh)
 
     def fetch_hs300_daily(self, start_date: str, end_date: str) -> pd.DataFrame:
         import pandas as pd
 
-        from ashare_lab.data.index_source import AkshareIndexDailyRequest
-        from ashare_lab.data.index_source import load_or_fetch_index_daily
-
-        req = AkshareIndexDailyRequest(
-            symbol="000300",
-            start_date=_to_yyyymmdd(start_date),
-            end_date=_to_yyyymmdd(end_date),
+        df = self._lake.load_index_daily(
+            "000300",
+            _to_yyyymmdd(start_date),
+            _to_yyyymmdd(end_date),
         )
-        df = load_or_fetch_index_daily(req, self.cache_dir, refresh=self.refresh)
         if df is None or df.empty:
             out = pd.DataFrame(columns=list(_REQUIRED_DAILY_COLS))
             out.index.name = "date"
@@ -464,7 +414,7 @@ class RecommendationValidator:
         import numpy as np
         import pandas as pd
 
-        from ashare_lab.evaluation import metrics
+        import ashare_infra.guard.metrics as metrics
 
         raw_items, rec_date_str = _parse_recommendations_payload(
             recommendations, validation_horizon=validation_horizon, recommendation_date=recommendation_date

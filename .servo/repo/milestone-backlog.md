@@ -1,8 +1,8 @@
 ---
 title: "Milestone Backlog"
 artifact_type: "milestone-backlog"
-updated: "2026-07-20T21:22:00+08:00"
-updated_by: "cursor-gate-close-WT-R4-A1"
+updated: "2026-07-20T21:30:00+08:00"
+updated_by: "cursor-init-worktrack-WT-R4-A2"
 ---
 
 # Milestone Backlog
@@ -35,8 +35,8 @@ updated_by: "cursor-gate-close-WT-R4-A1"
 - created_at: 2026-06-23T03:00:00+08:00
 - activated_at: 2026-07-15T00:16:00+08:00
 - activated_by: OceanEyeFF
-- updated: 2026-07-20T21:22:00+08:00
-- updated_by: cursor-gate-close-WT-R4-A1
+- updated: 2026-07-20T21:30:00+08:00
+- updated_by: cursor-init-worktrack-WT-R4-A2
 - artifact: .servo/milestone/MS-R4-001.md
 - pre_milestone_intake: .servo/repo/MS-R4-001-pre-milestone-intake-review.md
 - handoff_from_t1: .servo/worktrack/WT-T1-A4-r4-handoff.md
@@ -45,16 +45,17 @@ updated_by: "cursor-gate-close-WT-R4-A1"
 - decisions_locked: D1=B, D1b=P1, D1c=C2, D2=L2, D3=R1, CG2=M1, D4=lake_qa, D5=tushare_primary
 - init_action: upserted_and_activated
 - completed_worktracks: [WT-R4-A0, WT-R4-A1]
-- active_worktrack: none (WT-R4-A2 intake_open; Init pending)
-- worktrack_intake_open: WT-R4-A2
+- active_worktrack: WT-R4-A2
+- worktrack_contract: .servo/worktrack/WT-R4-A2-contract.md
+- plan_task_queue: .servo/worktrack/WT-R4-A2-plan-task-queue.md
 - worktrack_intake_review: .servo/worktrack/MS-R4-001-WT-R4-A2-intake-review.md
 - a0_closeout: .servo/worktrack/WT-R4-A0-closeout.md
 - a0_gate: pass_with_accepted_residuals
 - a1_closeout: .servo/worktrack/WT-R4-A1-closeout.md
 - a1_gate: pass
 - note: >
-  WT-R4-A1 closed 2026-07-20 with Gate pass. D1–D3 frozen_for_A2; caps approved 180/80000.
-  Next: A2 intake → Init on request. No lake fill / train / Phase4 / EXEC-002.
+  WT-R4-A2 Init 2026-07-20. Next: R4-A2-T1 scoped ashare_infra land (DataLake).
+  No lake fill / train / Phase4 / EXEC-002 / blind develop merge. Commit/push gated.
 
 ## Planned
 

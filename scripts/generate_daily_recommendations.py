@@ -40,7 +40,7 @@ except Exception as exc:  # pragma: no cover - torch is expected in this repo
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from ashare_lab.data.tushare_source import load_or_fetch_daily_bars, TushareDailyBarsRequest  # noqa: E402
+from ashare_infra.lake.r4_contract import R4_ADJUST_DEFAULT, make_r4_datalake
 from ashare_lab.features import (  # noqa: E402
     AmountChange,
     Return1D,
@@ -57,6 +57,7 @@ from ashare_lab.features.technical import (  # noqa: E402
 from ashare_lab.features.price_slope import PriceSlope  # noqa: E402
 from ashare_lab.models.transformer import create_mtl_model  # noqa: E402
 from ashare_lab.recommendation.engine import Recommendation, RecommendationEngine  # noqa: E402
+from ashare_lab.symbols import symbol_to_ts_code  # noqa: E402
 from ashare_lab.universe import is_allowed_a_share_symbol  # noqa: E402
 
 
@@ -82,21 +83,16 @@ def _latest_cached_bars_path(symbol: str, cache_dir: Path) -> Path | None:
 
 
 def _load_cached_daily_bars(symbol: str, cache_dir: Path) -> pd.DataFrame:
-    """Load daily bars using TuShare format (Parquet with year partitions)."""
-    # TuShare format: cache_dir/tushare_{adjust}/{ts_code}/year={YYYY}/part.parquet
-    # Convert symbol to ts_code if needed
-    ts_code = symbol
-    if len(ts_code) == 6 and "." not in ts_code:
-        # Heuristic: 60/68/90/93 -> SH, others -> SZ
-        ts_code = f"{ts_code}.SH" if ts_code[:2] in {"60", "68", "90", "93"} else f"{ts_code}.SZ"
-
-    req = TushareDailyBarsRequest(symbol=ts_code, start_date="20000101", end_date="20991231", adjust="qfq")
-    df = load_or_fetch_daily_bars(req, cache_dir)
+    """Load daily bars via R4 DataLake (TuShare partitioned cache under cache_dir)."""
+    ts_code = symbol_to_ts_code(symbol)
+    lake = make_r4_datalake(cache_dir=cache_dir)
+    df = lake.load_daily_bars(
+        ts_code, "20000101", "20991231", source="tushare", adjust=R4_ADJUST_DEFAULT
+    )
 
     if df.empty:
         raise FileNotFoundError(f"missing cached daily bars for {symbol}")
 
-    # Ensure date index
     if "date" in df.columns:
         df = df.set_index("date")
     df = df.sort_index()

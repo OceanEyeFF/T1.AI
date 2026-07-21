@@ -6,11 +6,11 @@ from pathlib import Path
 
 import pandas as pd
 
+from ashare_infra.lake.r4_contract import R4_ADJUST_DEFAULT, make_r4_datalake
 from ashare_lab.backtest.engine import BacktestConfig, BacktestEngine
-from ashare_lab.data.akshare_source import AkshareDailyBarsRequest, load_or_fetch_daily_bars
-from ashare_lab.data.index_source import AkshareIndexDailyRequest, load_or_fetch_index_daily
 from ashare_lab.reporting import align_equity_and_benchmark, summarize_excess
 from ashare_lab.strategies.momentum import MomentumTopNStrategy
+from ashare_lab.symbols import symbol_to_ts_code
 from ashare_lab.universe import is_allowed_a_share_symbol
 
 
@@ -35,14 +35,15 @@ def main() -> None:
     bad = [s for s in symbols if not is_allowed_a_share_symbol(s)]
     if bad:
         raise SystemExit(f"symbols not allowed by constraints (ST/北交/科创/创业 excluded): {bad}")
-    cache_dir = Path(args.cache_dir)
+
+    lake = make_r4_datalake(cache_dir=args.cache_dir, refresh=args.refresh)
 
     data_by_symbol: dict[str, pd.DataFrame] = {}
     for symbol in symbols:
-        req = AkshareDailyBarsRequest(
-            symbol=symbol, start_date=args.start, end_date=args.end, adjust="qfq"
+        ts_code = symbol_to_ts_code(symbol)
+        df = lake.load_daily_bars(
+            ts_code, args.start, args.end, source="tushare", adjust=R4_ADJUST_DEFAULT
         )
-        df = load_or_fetch_daily_bars(req, cache_dir=cache_dir, refresh=args.refresh)
         if df.empty:
             raise SystemExit(f"empty data for {symbol}")
         data_by_symbol[symbol] = df
@@ -63,10 +64,7 @@ def main() -> None:
     out_dir = Path(args.out_dir) / ts
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    bench_req = AkshareIndexDailyRequest(
-        symbol=args.benchmark, start_date=args.start, end_date=args.end
-    )
-    bench = load_or_fetch_index_daily(bench_req, cache_dir=cache_dir, refresh=args.refresh)
+    bench = lake.load_index_daily(args.benchmark, args.start, args.end)
 
     result.equity_curve.to_csv(out_dir / "equity.csv")
     result.fills.to_csv(out_dir / "fills.csv", index=False)

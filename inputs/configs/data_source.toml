@@ -1,10 +1,12 @@
+# Global lab/scripts default (historical). MS-R4 lake work uses TuShare primary via
+# ashare_infra.lake.r4_contract.make_r4_datalake (see WT-R4-A1-lake-source-contract).
 default_source: "akshare"  # 可选: akshare, tushare, odp
 fallback: "akshare"
 sources:
   akshare:
-    description: "本地免费数据源，适合回测与开发"
+    description: "本地免费数据源，适合回测与开发；非 R4 主合同"
   tushare:
-    description: "TuShare Pro 数据源，需设置环境变量 TUSHARE_TOKEN"
+    description: "TuShare Pro — MS-R4 日频湖 primary（DataLake / make_r4_datalake）"
     token_env: "TUSHARE_TOKEN"
     cache_dir: "inputs/data/cache"
   odp:

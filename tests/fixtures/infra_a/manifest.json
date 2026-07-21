@@ -1,0 +1,80 @@
+{
+  "id": "infra_a",
+  "title": "Infra A — lake + sim + guard fixture pack",
+  "window": {
+    "start": "2024-01-02",
+    "end": "2024-01-15"
+  },
+  "calendar": [
+    "2024-01-02",
+    "2024-01-03",
+    "2024-01-04",
+    "2024-01-05",
+    "2024-01-08",
+    "2024-01-09",
+    "2024-01-10",
+    "2024-01-11",
+    "2024-01-12",
+    "2024-01-15"
+  ],
+  "symbols": {
+    "600000": {
+      "role": "normal",
+      "list_date": "2020-01-01",
+      "delist_date": null,
+      "notes": "Full bars; primary sim target"
+    },
+    "600001": {
+      "role": "late_list",
+      "list_date": "2024-01-08",
+      "delist_date": null,
+      "notes": "Bars only from list_date; EXCLUDE_DAY before"
+    },
+    "600002": {
+      "role": "early_delist",
+      "list_date": "2020-01-01",
+      "delist_date": "2024-01-10",
+      "notes": "No bars on/after delist_date"
+    },
+    "600003": {
+      "role": "missing_bar",
+      "list_date": "2020-01-01",
+      "delist_date": null,
+      "notes": "Missing bar on 2024-01-09 → sim REJECT"
+    },
+    "600004": {
+      "role": "limit_up",
+      "list_date": "2020-01-01",
+      "delist_date": null,
+      "notes": "2024-01-04 open == limit-up vs prev_close"
+    },
+    "000001": {
+      "role": "cs_peer",
+      "list_date": "2020-01-01",
+      "delist_date": null,
+      "notes": "Peer for daily cross-section IC (≥3 names)"
+    }
+  },
+  "policies": {
+    "ic_default": {"listing_policy": "exclude_day", "missing_bar_policy": "skip"},
+    "sim_default": {"listing_policy": "exclude_day", "missing_bar_policy": "reject"}
+  },
+  "flows": [
+    "U1_guard_scope_gate",
+    "U2_fill_broker_limit_up",
+    "U3_metrics_ic_panel",
+    "I1_lake_from_seeded_cache",
+    "I2_session_sim_freeze_replay",
+    "I3_session_score_ic",
+    "C1_lab_shim_identity"
+  ],
+  "expected": {
+    "tradable_on_2024-01-05": ["600000", "600002", "600003", "600004", "000001"],
+    "tradable_on_2024-01-08": ["600000", "600001", "600002", "600003", "600004", "000001"],
+    "tradable_on_2024-01-10": ["600000", "600001", "600003", "600004", "000001"],
+    "limit_up_buy_blocked_on": "2024-01-04",
+    "missing_bar_day": "2024-01-09",
+    "ic_panel_n_days": 5,
+    "ic_panel_min_symbols_per_day": 3
+  }
+}
