@@ -3,7 +3,7 @@ title: "WT-R4-A2 Plan / Task Queue"
 artifact_type: "worktrack-plan-task-queue"
 milestone_id: "MS-R4-001"
 worktrack_id: "WT-R4-A2"
-updated: "2026-07-22T10:05:00+08:00"
+updated: "2026-07-22T11:54:00+08:00"
 owner: "OceanEyeFF"
 ---
 
@@ -13,13 +13,15 @@ owner: "OceanEyeFF"
 
 - worktrack_id: WT-R4-A2
 - milestone_id: MS-R4-001
-- updated: 2026-07-22T10:05:00+08:00
-- current_phase: t5_complete_awaiting_gate
-- selected_next_action_id: GATE
-- selected_next_action: WorktrackScope.Judging then Close
-- selection_reason: T1–T5 complete; proposed gate pass
+- updated: 2026-07-22T11:54:00+08:00
+- current_phase: closed
+- selected_next_action_id: CLOSED
+- selected_next_action: none (worktrack closed)
+- selection_reason: Gate pass_with_residuals; Close complete
 - execution_not_started: false
 - t5_completed_at: 2026-07-22T10:05:00+08:00
+- closed_at: 2026-07-22T11:54:00+08:00
+- gate_verdict: pass_with_residuals
 - consistency_ref: .servo/worktrack/WT-R4-A2-consistency-matrix.md
 - closeout_ref: .servo/worktrack/WT-R4-A2-closeout.md
 - gate_evidence_ref: .servo/worktrack/WT-R4-A2-gate-evidence.md
@@ -31,13 +33,13 @@ owner: "OceanEyeFF"
 3. [x] Disk/schema contract tests — **R4-A2-T3** — completed
 4. [x] cache-hit / as_of + caps→configs — **R4-A2-T4** — completed
 5. [x] Doc consistency + closeout evidence — **R4-A2-T5** — completed
-6. [ ] Formal Gate + Close — **R4-A2-GATE** — pending
+6. [x] Formal Gate + Close — **R4-A2-GATE** — completed (pass_with_residuals)
 
 ## Current Next Action
 
-- selected_next_action_id: GATE
-- selected_next_action: Judging (proposed **pass**) → Close
-- selection_reason: Test-node deliverables + 40-pass re-verify + consistency green
+- selected_next_action_id: CLOSED
+- selected_next_action: none — handoff WT-R4-A3 intake
+- selection_reason: Gate accepted; Close writeback done
 - selected_task_stop_condition: commit/push approval-gated; no auto A3 Init
 - suggested_deliverable: gate verdict + close writeback
 

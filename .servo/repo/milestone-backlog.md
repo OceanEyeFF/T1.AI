@@ -1,8 +1,8 @@
 ---
 title: "Milestone Backlog"
 artifact_type: "milestone-backlog"
-updated: "2026-07-20T21:30:00+08:00"
-updated_by: "cursor-init-worktrack-WT-R4-A2"
+updated: "2026-07-22T11:54:00+08:00"
+updated_by: "cursor-gate-close-WT-R4-A2"
 ---
 
 # Milestone Backlog
@@ -35,8 +35,8 @@ updated_by: "cursor-init-worktrack-WT-R4-A2"
 - created_at: 2026-06-23T03:00:00+08:00
 - activated_at: 2026-07-15T00:16:00+08:00
 - activated_by: OceanEyeFF
-- updated: 2026-07-20T21:30:00+08:00
-- updated_by: cursor-init-worktrack-WT-R4-A2
+- updated: 2026-07-22T11:54:00+08:00
+- updated_by: cursor-gate-close-WT-R4-A2
 - artifact: .servo/milestone/MS-R4-001.md
 - pre_milestone_intake: .servo/repo/MS-R4-001-pre-milestone-intake-review.md
 - handoff_from_t1: .servo/worktrack/WT-T1-A4-r4-handoff.md
@@ -44,19 +44,20 @@ updated_by: "cursor-init-worktrack-WT-R4-A2"
 - milestone_branch: milestone/MS-R4-001-tushare-datalake
 - decisions_locked: D1=B, D1b=P1, D1c=C2, D2=L2, D3=R1, CG2=M1, D4=lake_qa, D5=tushare_primary
 - init_action: upserted_and_activated
-- completed_worktracks: [WT-R4-A0, WT-R4-A1]
-- active_worktrack: WT-R4-A2
-- worktrack_contract: .servo/worktrack/WT-R4-A2-contract.md
-- plan_task_queue: .servo/worktrack/WT-R4-A2-plan-task-queue.md
-- worktrack_intake_review: .servo/worktrack/MS-R4-001-WT-R4-A2-intake-review.md
+- completed_worktracks: [WT-R4-A0, WT-R4-A1, WT-R4-A2]
+- active_worktrack: none (A2 closed; A3 intake pending)
+- last_closed_worktrack: WT-R4-A2
 - a0_closeout: .servo/worktrack/WT-R4-A0-closeout.md
 - a0_gate: pass_with_accepted_residuals
 - a1_closeout: .servo/worktrack/WT-R4-A1-closeout.md
 - a1_gate: pass
+- a2_closeout: .servo/worktrack/WT-R4-A2-closeout.md
+- a2_gate: pass_with_residuals
 - note: >
-  WT-R4-A2 Init 2026-07-20. Next: R4-A2-T1 scoped ashare_infra land (DataLake).
-  No lake fill / train / Phase4 / EXEC-002 / blind develop merge. Commit/push gated.
+  WT-R4-A2 closed 2026-07-22 (pass_with_residuals). Next: WT-R4-A3 intake
+  (limited-live + caps enforce; Init not auto). No lake fill / train / Phase4 /
+  EXEC-002 until A3 scope. Commit/push still gated unless approved.
 
 ## Planned
 
-- none
+(none)

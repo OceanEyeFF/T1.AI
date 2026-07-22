@@ -3,11 +3,11 @@ title: "WT-R4-A2: Cache-first 加载路径与 contract/integration 测试（Arch
 artifact_type: "worktrack-contract"
 milestone_id: "MS-R4-001"
 worktrack_id: "WT-R4-A2"
-status: "active"
+status: "closed"
 node_type: "test"
 derived_from_milestone: true
 created: "2026-07-20T21:30:00+08:00"
-updated: "2026-07-22T10:05:00+08:00"
+updated: "2026-07-22T11:54:00+08:00"
 owner: "OceanEyeFF"
 ---
 
@@ -18,19 +18,22 @@ owner: "OceanEyeFF"
 - worktrack_id: WT-R4-A2
 - milestone_id: MS-R4-001
 - derived_from_milestone: true
-- status: active
-- implementation_status: complete_awaiting_gate_close
+- status: closed
+- implementation_status: closed
+- gate_verdict: pass_with_residuals
+- closed_at: 2026-07-22T11:54:00+08:00
 - node_type: test
 - goal_summary: >
   在 milestone 上落地 scoped `ashare_infra`/DataLake，按 A1 冻结合同实现 cache-first
   加载路径，并补齐 Arch-v1 contract/integration 测试；本 WT 不灌湖、不训、不 blind-merge develop。
 - execution_not_started: false
-- selected_next_action_id: GATE
+- selected_next_action_id: CLOSED
 - t5_status: completed
 - t5_completed_at: 2026-07-22T10:05:00+08:00
 - consistency_ref: .servo/worktrack/WT-R4-A2-consistency-matrix.md
 - closeout_ref: .servo/worktrack/WT-R4-A2-closeout.md
 - gate_evidence_ref: .servo/worktrack/WT-R4-A2-gate-evidence.md
+- code_review_checklist_ref: .servo/worktrack/WT-R4-A2-code-review-checklist.md
 - t1_status: completed
 - t1_notes: .servo/worktrack/WT-R4-A2-t1-notes.md
 - t2_status: completed
@@ -190,8 +193,8 @@ owner: "OceanEyeFF"
 
 ## 计划中的下一状态
 
-- 当前: Judging（proposed pass）→ Close
-- closeout 后: WT-R4-A3 intake/init
+- 当前: **closed** (Gate pass_with_residuals)
+- closeout 后: WT-R4-A3 intake（Init 不自动）
 
 ## 验收标准
 
