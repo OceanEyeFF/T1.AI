@@ -1,0 +1,22 @@
+# MS-R4 approved TuShare L2 rate caps (from WT-R4-A1 accept_recommended).
+# Applies to WT-R4-A3+ limited-live; A2 does not perform live pulls.
+# Source of truth for A1 decision: .servo/worktrack/WT-R4-A1-rate-limit-recommendations.md
+
+contract_id = "MS-R4-001-tushare-l2-caps-v1"
+status = "approved"
+approval_choice = "accept_recommended"
+account_points = 2000
+applies_to = "WT-R4-A3_and_later_limited_live"
+token_policy = "env_TUSHARE_TOKEN_only"
+
+[platform_limits_doc290]
+rpm = 200
+daily_per_api = 100000
+
+[approved_caps]
+rpm = 180
+daily_api_calls_per_api = 80000
+
+[policy]
+concurrency = 1
+burst_pause_on_freq_wall = true

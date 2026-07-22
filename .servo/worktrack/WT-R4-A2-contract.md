@@ -7,7 +7,7 @@ status: "active"
 node_type: "test"
 derived_from_milestone: true
 created: "2026-07-20T21:30:00+08:00"
-updated: "2026-07-20T21:30:00+08:00"
+updated: "2026-07-22T10:05:00+08:00"
 owner: "OceanEyeFF"
 ---
 
@@ -19,21 +19,30 @@ owner: "OceanEyeFF"
 - milestone_id: MS-R4-001
 - derived_from_milestone: true
 - status: active
-- implementation_status: t2_complete_t3_pending
+- implementation_status: complete_awaiting_gate_close
 - node_type: test
 - goal_summary: >
   在 milestone 上落地 scoped `ashare_infra`/DataLake，按 A1 冻结合同实现 cache-first
   加载路径，并补齐 Arch-v1 contract/integration 测试；本 WT 不灌湖、不训、不 blind-merge develop。
 - execution_not_started: false
-- selected_next_action_id: R4-A2-T3
+- selected_next_action_id: GATE
+- t5_status: completed
+- t5_completed_at: 2026-07-22T10:05:00+08:00
+- consistency_ref: .servo/worktrack/WT-R4-A2-consistency-matrix.md
+- closeout_ref: .servo/worktrack/WT-R4-A2-closeout.md
+- gate_evidence_ref: .servo/worktrack/WT-R4-A2-gate-evidence.md
 - t1_status: completed
 - t1_notes: .servo/worktrack/WT-R4-A2-t1-notes.md
-- t1_completed_at: 2026-07-20T22:30:00+08:00
-- t1_result: DataLake importable; ashare_exec excluded; 23+23 tests green
 - t2_status: completed
 - t2_notes: .servo/worktrack/WT-R4-A2-t2-notes.md
-- t2_completed_at: 2026-07-21T09:50:00+08:00
-- t2_result: make_r4_datalake + consumer cutover; 74 tests green; no ashare_exec
+- t3_status: completed
+- t3_notes: .servo/worktrack/WT-R4-A2-t3-notes.md
+- t3_result: test_r4_cache_schema_contract 11 passed (pool 61/61; 510300 empty)
+- t4_status: completed
+- t4_notes: .servo/worktrack/WT-R4-A2-t4-notes.md
+- t4_completed_at: 2026-07-22T09:00:00+08:00
+- t4_result: cache-hit/as_of integration + caps promoted to inputs/configs/tushare_rate_limits.toml
+- evidence_reverify: 40 passed (2026-07-22)
 - pool_binding: custom_research_liquidity_quality_v1 / version 1 (61 symbols)
 - upstream_a1:
   - .servo/worktrack/WT-R4-A1-lake-source-contract.md (frozen_for_A2)
@@ -181,17 +190,19 @@ owner: "OceanEyeFF"
 
 ## 计划中的下一状态
 
-- Init 后: Schedule → Dispatch R4-A2-T1（scoped ashare_infra land）
+- 当前: Judging（proposed pass）→ Close
 - closeout 后: WT-R4-A3 intake/init
 
 ## 验收标准
 
 - [x] `from ashare_infra.lake import DataLake` 在 milestone tip 可用
 - [x] Cache-first 默认路径绑定 A1 合同（tushare / qfq / pool v1 / history≥2023-01-01）via `make_r4_datalake`
-- [ ] Contract 测覆盖：布局、关键列、池 61 绑定、`510300` unavailable
-- [x] Integration/合同测覆盖：R4 面无直调 `load_or_fetch_*`（`test_no_direct_load_or_fetch`）；cache-hit/as_of 细节可在 T4 补
+- [x] Contract 测覆盖：布局、关键列、池 61 绑定、`510300` unavailable
+- [x] Integration/合同测覆盖：本地 cache-hit、`as_of`、R4 面无直调 `load_or_fetch_*`（无 live）
+- [x] Caps 升格：`inputs/configs/tushare_rate_limits.toml`（180 / 80000）
 - [x] 无 live / 无 token 入仓 / 无灌湖写盘（本切片）
 - [x] 明确 out-of-scope：Phase4 / EXEC-002 / training / blind full merge develop
+- [x] T5 一致性矩阵通过（`.servo/worktrack/WT-R4-A2-consistency-matrix.md`）
 
 ## 约束
 
@@ -210,9 +221,13 @@ owner: "OceanEyeFF"
 
 - plan_task_queue: .servo/worktrack/WT-R4-A2-plan-task-queue.md
 - intake_review: .servo/worktrack/MS-R4-001-WT-R4-A2-intake-review.md
+- consistency: .servo/worktrack/WT-R4-A2-consistency-matrix.md
+- closeout: .servo/worktrack/WT-R4-A2-closeout.md
+- gate_evidence: .servo/worktrack/WT-R4-A2-gate-evidence.md
 - upstream_a1_lake: .servo/worktrack/WT-R4-A1-lake-source-contract.md
 - upstream_a1_inventory: .servo/worktrack/WT-R4-A1-cache-inventory.md
 - upstream_a1_schema: .servo/worktrack/WT-R4-A1-schema-draft.md
 - upstream_a1_caps: .servo/worktrack/WT-R4-A1-rate-limit-recommendations.md
 - upstream_a1_closeout: .servo/worktrack/WT-R4-A1-closeout.md
+- caps_config: inputs/configs/tushare_rate_limits.toml
 - milestone: .servo/milestone/MS-R4-001.md

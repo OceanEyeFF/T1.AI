@@ -3,7 +3,7 @@ title: "WT-R4-A2 Plan / Task Queue"
 artifact_type: "worktrack-plan-task-queue"
 milestone_id: "MS-R4-001"
 worktrack_id: "WT-R4-A2"
-updated: "2026-07-21T09:50:00+08:00"
+updated: "2026-07-22T10:05:00+08:00"
 owner: "OceanEyeFF"
 ---
 
@@ -13,36 +13,38 @@ owner: "OceanEyeFF"
 
 - worktrack_id: WT-R4-A2
 - milestone_id: MS-R4-001
-- updated: 2026-07-21T09:50:00+08:00
-- current_phase: t2_complete_t3_pending
-- selected_next_action_id: R4-A2-T3
-- selected_next_action: Disk/schema contract tests vs A1 inventory+schema
-- selection_reason: T2 bound cache-first DataLake to A1; next disk contract
+- updated: 2026-07-22T10:05:00+08:00
+- current_phase: t5_complete_awaiting_gate
+- selected_next_action_id: GATE
+- selected_next_action: WorktrackScope.Judging then Close
+- selection_reason: T1–T5 complete; proposed gate pass
 - execution_not_started: false
-- t1_completed_at: 2026-07-20T22:30:00+08:00
-- t1_notes: .servo/worktrack/WT-R4-A2-t1-notes.md
-- t2_completed_at: 2026-07-21T09:50:00+08:00
-- t2_notes: .servo/worktrack/WT-R4-A2-t2-notes.md
+- t5_completed_at: 2026-07-22T10:05:00+08:00
+- consistency_ref: .servo/worktrack/WT-R4-A2-consistency-matrix.md
+- closeout_ref: .servo/worktrack/WT-R4-A2-closeout.md
+- gate_evidence_ref: .servo/worktrack/WT-R4-A2-gate-evidence.md
 
 ## Task List
 
-1. [x] Scoped `ashare_infra` land from develop — **R4-A2-T1** — completed
-2. [x] Cache-first DataLake path bound to A1 contract — **R4-A2-T2** — completed
-3. [ ] Disk/schema contract tests vs A1 inventory+schema (pool 61; 510300 unavailable) — **R4-A2-T3**
-4. [ ] Integration tests: cache-hit / as_of / no-direct (done partial); optional caps→configs — **R4-A2-T4**
-5. [ ] Gate evidence + closeout — **R4-A2-T5**
-6. [ ] Formal Gate + Close — **R4-A2-GATE**
+1. [x] Scoped `ashare_infra` land — **R4-A2-T1** — completed
+2. [x] Cache-first DataLake bound to A1 — **R4-A2-T2** — completed
+3. [x] Disk/schema contract tests — **R4-A2-T3** — completed
+4. [x] cache-hit / as_of + caps→configs — **R4-A2-T4** — completed
+5. [x] Doc consistency + closeout evidence — **R4-A2-T5** — completed
+6. [ ] Formal Gate + Close — **R4-A2-GATE** — pending
 
 ## Current Next Action
 
-- selected_next_action_id: R4-A2-T3
-- selected_next_action: Contract tests for cache layout / columns / pool 61 / 510300 gap
-- selection_reason: A1 inventory+schema frozen; path live
-- selected_task_stop_condition: no live; no fill; no ashare_exec; commit/push gated
-- suggested_deliverable: tests under tests/contract/… referencing A1 artifacts
+- selected_next_action_id: GATE
+- selected_next_action: Judging (proposed **pass**) → Close
+- selection_reason: Test-node deliverables + 40-pass re-verify + consistency green
+- selected_task_stop_condition: commit/push approval-gated; no auto A3 Init
+- suggested_deliverable: gate verdict + close writeback
 
 ## Schedule Handoff
 
-- suggested_next_route: WorktrackScope.Dispatch R4-A2-T3
-- t2_evidence: 74 passed; make_r4_datalake + consumer cutover + no-direct contract
-- note: no-direct-load_or_fetch landed in T2; T4 may add cache-hit/as_of integration + caps promote
+- suggested_next_route: WorktrackScope.Judging → Close
+- needs_approval: yes for commit/push; Gate/Close on programmer confirm
+- t5_completed_at: 2026-07-22T10:05:00+08:00
+- next_after_close: WT-R4-A3 intake/init
+- evidence_reverify: 40 passed (2026-07-22)

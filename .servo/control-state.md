@@ -13,9 +13,9 @@ owner: "OceanEyeFF"
 
 ## Metadata
 
-- updated: 2026-07-21T09:50:00+08:00
+- updated: 2026-07-22T10:05:00+08:00
 - owner: OceanEyeFF
-- refresh_note: WT-R4-A2 T2 done (make_r4_datalake + cutover); next T3 disk/schema contracts
+- refresh_note: WT-R4-A2 T5 done; gate proposed pass; awaiting Judging/Close
 
 ## Current Control Level
 
@@ -25,16 +25,16 @@ owner: "OceanEyeFF"
 ## Active Worktrack
 
 - active_worktrack: WT-R4-A2
-- worktrack_status: t2_complete_t3_pending
+- worktrack_status: implementation_complete_awaiting_gate_close
 - worktrack_contract: worktrack/WT-R4-A2-contract.md
 - plan_task_queue: worktrack/WT-R4-A2-plan-task-queue.md
-- gate_evidence: N/A
-- closeout_ref: N/A
-- active_task_window: R4-A2-T3
-- selected_next_action_id: R4-A2-T3
-- worktrack_gate_verdict: N/A
+- gate_evidence: worktrack/WT-R4-A2-gate-evidence.md
+- closeout_ref: worktrack/WT-R4-A2-closeout.md
+- active_task_window: GATE
+- selected_next_action_id: GATE
+- worktrack_gate_verdict: proposed_pass
 - worktrack_blocker: none
-- worktrack_residual_risk: soft_target_80; index_510300; caps_not_yet_in_inputs_configs; milestone_behind_develop
+- worktrack_residual_risk: soft_target_80; index_510300; milestone_behind_develop; t3_t5_may_be_uncommitted
 - worktrack_intake_review: worktrack/MS-R4-001-WT-R4-A2-intake-review.md
 - last_closed_worktrack: WT-R4-A1
 
@@ -51,13 +51,13 @@ owner: "OceanEyeFF"
   - planned_count: 0
   - completed_count: 9
   - superseded_count: 0
-  - note: MS-R4-001 active; WT-R4-A0/A1 completed; WT-R4-A2 Init active (T1 pending)
+  - note: MS-R4-001 active; WT-R4-A0/A1 completed; WT-R4-A2 T5 done awaiting Gate/Close
 - milestone_review_gate_ready: true
 - latest_review_status: effective_pass
 - milestone_review_count: 1
 - latest_review_checkpoint: MS-R4-001-intake-ready-2026-07-15T00:10:00+08:00
 - effective_review_pass: true
-- next_milestone_route: WT-R4-A2 T1–T5 then Gate; no lake fill / train / Phase4 / EXEC-002 / blind develop merge
+- next_milestone_route: WT-R4-A2 Gate/Close then WT-R4-A3; no lake fill / train / Phase4 / EXEC-002
 
 ## Baseline Branch
 
@@ -77,7 +77,7 @@ owner: "OceanEyeFF"
 
 ## Current Next Action
 
-- WT-R4-A2 T2 done: `make_r4_datalake` + consumer cutover; no-direct contract green. Next: **R4-A2-T3** disk/schema contract tests.
+- WT-R4-A2 T5 done (consistency + closeout). Gate proposed **pass** (40 tests re-verified). Next: Judging/Close.
 
 ## Linked Formal Documents
 
@@ -90,8 +90,8 @@ owner: "OceanEyeFF"
 - planned_worktrack_backlog: repo/worktrack-backlog.md
 - worktrack_contract: worktrack/WT-R4-A2-contract.md
 - plan_task_queue: worktrack/WT-R4-A2-plan-task-queue.md
-- gate_evidence: N/A
-- closeout_ref: worktrack/WT-R4-A1-closeout.md
+- gate_evidence: worktrack/WT-R4-A2-gate-evidence.md
+- closeout_ref: worktrack/WT-R4-A2-closeout.md
 - worktrack_intake_review: worktrack/MS-R4-001-WT-R4-A2-intake-review.md
 - last_closed_worktrack_closeout: worktrack/WT-R4-A1-closeout.md
 - completed_milestone_artifact: milestone/MS-T1-001.md
@@ -244,9 +244,9 @@ owner: "OceanEyeFF"
 
 ## Handback Guard
 
-- handoff_state: a2_t2_done_awaiting_t3
-- last_stop_reason: WT-R4-A2 T2 complete; next T3 disk/schema contracts; commit/push gated
-- last_handback_signature: WT-R4-A2/T2/2026-07-21T09:50:00+08:00
+- handoff_state: a2_ready_for_gate_close
+- last_stop_reason: WT-R4-A2 T5 complete; awaiting Gate/Close; commit/push gated
+- last_handback_signature: WT-R4-A2/T5/2026-07-22T10:05:00+08:00
 - handback_reaffirmed_rounds: 0
 - stable_handback_threshold: 2
 - handback_lock_active: false
@@ -302,7 +302,7 @@ owner: "OceanEyeFF"
 - worktrack_gate_evidence_ref: N/A
 - closeout_ref: .servo/worktrack/WT-R4-A1-closeout.md
 - environment_validation_report_ref: .servo/worktrack/environment-validation-report.md
-- current_stop_condition: A2 T2 done; next T3; no lake fill / train / Phase4 / EXEC-002 / blind develop merge; commit/push gated
+- current_stop_condition: A2 T5 done; awaiting Gate/Close; no lake fill / train / Phase4 / EXEC-002; commit/push gated
 - active_intake_review_ref: .servo/worktrack/MS-R4-001-WT-R4-A2-intake-review.md
 - control_plane_refresh_ref: .servo/repo/refresh-report-MS-T1-001-close-2026-07-14.md
 - persistent_work_habits_updated: 2026-06-10
