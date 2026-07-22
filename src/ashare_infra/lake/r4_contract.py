@@ -11,7 +11,8 @@ aligned with ``WT-R4-A1-lake-source-contract`` (frozen_for_A2):
 - refresh: False (R1 audit reuse; A3 owns limited-live)
 
 Approved L2 rate caps live in ``inputs/configs/tushare_rate_limits.toml``
-(promoted from WT-R4-A1 ``accept_recommended``).
+(promoted from WT-R4-A1 ``accept_recommended``). Runtime enforce is via
+``ashare_infra.data.tushare_rate_limit`` (wired into ``fetch_tushare_*``).
 """
 
 from __future__ import annotations

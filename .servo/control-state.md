@@ -13,9 +13,9 @@ owner: "OceanEyeFF"
 
 ## Metadata
 
-- updated: 2026-07-22T14:16:00+08:00
+- updated: 2026-07-22T17:45:00+08:00
 - owner: OceanEyeFF
-- refresh_note: WT-R4-A3 Init done; next Dispatch R4-A3-T1 (caps enforce; zero live)
+- refresh_note: WT-R4-A3 T2 done (freq-wall/resume); next T3 blocked on live-batch approve
 
 ## Current Control Level
 
@@ -25,7 +25,7 @@ owner: "OceanEyeFF"
 ## Active Worktrack
 
 - active_worktrack: WT-R4-A3
-- worktrack_status: initialized_awaiting_dispatch
+- worktrack_status: t2_complete_awaiting_live_approve
 - last_closed_worktrack: WT-R4-A2
 - worktrack_contract: worktrack/WT-R4-A3-contract.md
 - plan_task_queue: worktrack/WT-R4-A3-plan-task-queue.md
@@ -33,12 +33,12 @@ owner: "OceanEyeFF"
 - worktrack_init_result: worktrack/WT-R4-A3-init-result.md
 - gate_evidence: N/A
 - closeout_ref: N/A
-- active_task_window: R4-A3-T1
-- selected_next_action_id: R4-A3-T1
+- active_task_window: R4-A3-T3
+- selected_next_action_id: R4-A3-T3
 - worktrack_gate_verdict: N/A
-- worktrack_blocker: none
-- worktrack_residual_risk: soft80; 510300; caps_not_enforced_yet; live_needs_batch_approve
-- execution_not_started: true
+- worktrack_blocker: live_batch_approve_required
+- worktrack_residual_risk: soft80; 510300; live_needs_batch_approve
+- execution_not_started: false
 
 ## Active Milestone
 
@@ -53,13 +53,13 @@ owner: "OceanEyeFF"
   - planned_count: 0
   - completed_count: 9
   - superseded_count: 0
-  - note: MS-R4-001 active; WT-R4-A3 Init; next R4-A3-T1
+  - note: MS-R4-001 active; WT-R4-A3 T2 done; T3 awaits live-batch approve
 - milestone_review_gate_ready: true
 - latest_review_status: effective_pass
 - milestone_review_count: 1
 - latest_review_checkpoint: MS-R4-001-intake-ready-2026-07-15T00:10:00+08:00
 - effective_review_pass: true
-- next_milestone_route: Dispatch R4-A3-T1 then T2; live only after batch approve; no full-campaign / train / Phase4 / EXEC-002
+- next_milestone_route: R4-A3-T3 after live-batch approve; no full-campaign / train / Phase4 / EXEC-002
 
 ## Baseline Branch
 
@@ -79,7 +79,7 @@ owner: "OceanEyeFF"
 
 ## Current Next Action
 
-- WT-R4-A3 **Init complete**. Next: **R4-A3-T1** — wire caps into fetch limiter (**zero live**). T3+ needs explicit live batch approve.
+- WT-R4-A3 **T2 complete** (freq-wall/resume). Next: **R4-A3-T3** limited-live — **blocked until programmer live-batch approve**.
 
 ## Linked Formal Documents
 
@@ -247,9 +247,9 @@ owner: "OceanEyeFF"
 
 ## Handback Guard
 
-- handoff_state: a3_initialized_awaiting_t1
-- last_stop_reason: WT-R4-A3 Init complete; await Dispatch T1; no live; push gated
-- last_handback_signature: WT-R4-A3/Init/2026-07-22T14:16:00+08:00
+- handoff_state: a3_t2_done_awaiting_live_approve
+- last_stop_reason: WT-R4-A3 T2 complete; T3 blocked on live-batch approve; push gated
+- last_handback_signature: WT-R4-A3/T2/2026-07-22T17:45:00+08:00
 - handback_reaffirmed_rounds: 0
 - stable_handback_threshold: 2
 - handback_lock_active: false
@@ -306,7 +306,7 @@ owner: "OceanEyeFF"
 - worktrack_gate_evidence_ref: N/A
 - closeout_ref: .servo/worktrack/WT-R4-A2-closeout.md
 - environment_validation_report_ref: .servo/worktrack/environment-validation-report.md
-- current_stop_condition: A3 Init done; await T1 Dispatch; no live until batch approve; no full-campaign / train / Phase4 / EXEC-002; push gated
+- current_stop_condition: A3 T2 done; T3 awaits live-batch approve; no full-campaign / train / Phase4 / EXEC-002; push gated
 - active_intake_review_ref: .servo/worktrack/MS-R4-001-WT-R4-A3-intake-review.md
 - control_plane_refresh_ref: .servo/repo/refresh-report-MS-T1-001-close-2026-07-14.md
 - persistent_work_habits_updated: 2026-06-10

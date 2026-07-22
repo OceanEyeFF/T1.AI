@@ -140,6 +140,9 @@ def _normalize_tushare_table(df: pd.DataFrame, fields: Sequence[str]) -> pd.Data
     return out
 
 
+from ashare_infra.data.tushare_rate_limit import acquire_tushare_call
+
+
 def _get_tushare_pro(token: str | None = None):  # pragma: no cover - mostly integration
     import os
     import tushare as ts  # lazy import
@@ -158,6 +161,7 @@ def fetch_tushare_daily_bars(req: TushareDailyBarsRequest) -> pd.DataFrame:  # p
     pro = _get_tushare_pro(req.token)
     adjust_mode = _normalize_adjust_mode(req.adjust)
 
+    acquire_tushare_call("daily")
     raw = pro.daily(
         ts_code=req.symbol,
         start_date=req.start_date,
@@ -167,6 +171,7 @@ def fetch_tushare_daily_bars(req: TushareDailyBarsRequest) -> pd.DataFrame:  # p
     if adjust_mode == "raw":
         return daily
 
+    acquire_tushare_call("adj_factor")
     raw_adj = pro.adj_factor(
         ts_code=req.symbol,
         start_date=req.start_date,
@@ -179,6 +184,7 @@ def fetch_tushare_daily_bars(req: TushareDailyBarsRequest) -> pd.DataFrame:  # p
 def fetch_tushare_daily_basic(req: TushareDailyBasicRequest) -> pd.DataFrame:  # pragma: no cover
     """直接调用 TuShare daily_basic 接口。"""
     pro = _get_tushare_pro(req.token)
+    acquire_tushare_call("daily_basic")
     raw = pro.daily_basic(ts_code=req.symbol, start_date=req.start_date, end_date=req.end_date)
     return _normalize_tushare_table(raw, SUPPORTED_DAILY_BASIC_FIELDS)
 
@@ -186,6 +192,7 @@ def fetch_tushare_daily_basic(req: TushareDailyBasicRequest) -> pd.DataFrame:  #
 def fetch_tushare_moneyflow(req: TushareMoneyflowRequest) -> pd.DataFrame:  # pragma: no cover
     """直接调用 TuShare moneyflow 接口。"""
     pro = _get_tushare_pro(req.token)
+    acquire_tushare_call("moneyflow")
     raw = pro.moneyflow(ts_code=req.symbol, start_date=req.start_date, end_date=req.end_date)
     return _normalize_tushare_table(raw, SUPPORTED_MONEYFLOW_FIELDS)
 
@@ -193,6 +200,7 @@ def fetch_tushare_moneyflow(req: TushareMoneyflowRequest) -> pd.DataFrame:  # pr
 def fetch_tushare_adj_factor(req: TushareAdjFactorRequest) -> pd.DataFrame:  # pragma: no cover
     """直接调用 TuShare adj_factor 接口。"""
     pro = _get_tushare_pro(req.token)
+    acquire_tushare_call("adj_factor")
     raw = pro.adj_factor(ts_code=req.symbol, start_date=req.start_date, end_date=req.end_date)
     return _normalize_tushare_adj_factor(raw)
 

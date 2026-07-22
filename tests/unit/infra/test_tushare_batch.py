@@ -1,0 +1,172 @@
+"""WT-R4-A3-T2: frequency-wall pause + resume batch runner (no live)."""
+
+from __future__ import annotations
+
+from datetime import date
+from pathlib import Path
+
+import pytest
+
+from ashare_infra.data.tushare_batch import (
+    R4_MAX_BATCH_SYMBOLS,
+    BatchManifest,
+    BatchPolicyError,
+    R4BatchPolicy,
+    chunk_symbols,
+    dry_run_batch,
+    is_frequency_wall_error,
+    plan_batch,
+    resume_batch,
+    run_batch,
+)
+from ashare_infra.data.tushare_rate_limit import (
+    TushareRateLimiter,
+    reset_tushare_rate_limiter,
+    set_tushare_rate_limiter,
+)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_limiter() -> None:
+    reset_tushare_rate_limiter()
+    yield
+    reset_tushare_rate_limiter()
+
+
+def test_policy_from_r4_config() -> None:
+    pol = R4BatchPolicy.from_r4_config()
+    assert pol.concurrency == 1
+    assert pol.burst_pause_on_freq_wall is True
+    assert pol.max_batch_symbols == 50
+    assert pol.rpm == 180
+    assert pol.daily_api_calls_per_api == 80000
+
+
+def test_chunk_and_plan_rejects_oversize() -> None:
+    syms = [f"{i:06d}.SH" for i in range(51)]
+    assert len(chunk_symbols(syms)) == 2
+    with pytest.raises(BatchPolicyError, match="max_batch_symbols"):
+        plan_batch(syms, start_date="20230101", end_date="20230131")
+    m = plan_batch(
+        syms, start_date="20230101", end_date="20230131", allow_truncate=True
+    )
+    assert len({j.symbol for j in m.jobs}) == R4_MAX_BATCH_SYMBOLS
+
+
+def test_plan_estimates_and_dry_run(tmp_path: Path) -> None:
+    lim = TushareRateLimiter(
+        rpm=180,
+        daily_per_api=80000,
+        sleep=lambda _: None,
+        today=lambda: date(2026, 7, 22),
+    )
+    set_tushare_rate_limiter(lim)
+    m = plan_batch(
+        ["600000.SH", "000001.SZ"],
+        apis=("daily", "daily_basic"),
+        start_date="20230101",
+        end_date="20231231",
+        estimated_calls_per_job={"daily": 2, "daily_basic": 1},
+    )
+    assert len(m.jobs) == 4
+    assert m.estimate_total_calls() == 6  # 2*2 + 2*1
+    report = dry_run_batch(m, limiter=lim)
+    assert report["dry_run"] is True
+    assert report["blocking_apis"] == []
+    assert m.state == "dry_run"
+    path = m.save(tmp_path / "manifest.json")
+    loaded = BatchManifest.load(path)
+    assert loaded.manifest_id == m.manifest_id
+    assert len(loaded.jobs) == 4
+
+
+def test_freq_wall_pauses_without_tight_loop(tmp_path: Path) -> None:
+    lim = TushareRateLimiter(
+        rpm=180,
+        daily_per_api=80000,
+        sleep=lambda _: None,
+        today=lambda: date(2026, 7, 22),
+    )
+    m = plan_batch(
+        ["600000.SH", "000001.SZ", "600519.SH"],
+        apis=("daily",),
+        start_date="20240101",
+        end_date="20240131",
+    )
+    calls: list[str] = []
+
+    def _exec(job) -> None:  # noqa: ANN001
+        calls.append(job.symbol)
+        if job.symbol == "000001.SZ":
+            raise RuntimeError("code=2002 抱歉，您每分钟最多访问该接口180次")
+
+    path = tmp_path / "m.json"
+    result = run_batch(m, _exec, limiter=lim, manifest_path=path)
+    assert result.paused is True
+    assert result.pause_kind == "freq_wall"
+    assert m.state == "paused_freq_wall"
+    assert calls == ["600000.SH", "000001.SZ"]  # stopped; no tight retry of 000001
+    # first done, second failed, third still pending
+    assert m.jobs[0].status == "done"
+    assert m.jobs[1].status == "failed"
+    assert m.jobs[2].status == "pending"
+
+    # Resume after wall clears: remaining pending (+ do not re-run done)
+    calls.clear()
+
+    def _exec2(job) -> None:  # noqa: ANN001
+        calls.append(job.symbol)
+
+    result2 = resume_batch(path, _exec2, limiter=lim)
+    assert result2.paused is False
+    assert result2.manifest.state == "completed"
+    assert calls == ["600519.SH"]
+    assert BatchManifest.load(path).jobs[0].status == "done"
+
+
+def test_daily_cap_pauses(tmp_path: Path) -> None:
+    lim = TushareRateLimiter(
+        rpm=180,
+        daily_per_api=1,
+        sleep=lambda _: None,
+        today=lambda: date(2026, 7, 22),
+    )
+    # Simulate one call already used.
+    lim.acquire("daily")
+    m = plan_batch(
+        ["600000.SH", "000001.SZ"],
+        apis=("daily",),
+        start_date="20240101",
+        end_date="20240131",
+    )
+
+    def _exec(job) -> None:  # noqa: ANN001
+        raise AssertionError("executor must not run when unaffordable")
+
+    result = run_batch(m, _exec, limiter=lim, manifest_path=tmp_path / "cap.json")
+    assert result.paused is True
+    assert result.pause_kind == "daily_cap"
+    assert m.state == "paused_daily_cap"
+    assert all(j.status != "done" for j in m.jobs)
+
+
+def test_is_frequency_wall_heuristics() -> None:
+    assert is_frequency_wall_error("2002")
+    assert is_frequency_wall_error(RuntimeError("频率过高"))
+    assert not is_frequency_wall_error(RuntimeError("token invalid"))
+
+
+def test_run_batch_dry_run_skips_executor() -> None:
+    m = plan_batch(
+        ["600000.SH"],
+        start_date="20240101",
+        end_date="20240102",
+    )
+
+    def _boom(job) -> None:  # noqa: ANN001
+        raise AssertionError("no executor on dry_run")
+
+    result = run_batch(m, _boom, dry_run=True)
+    assert result.dry_run is True
+    assert result.processed == 0
+    assert m.jobs[0].status == "pending"
