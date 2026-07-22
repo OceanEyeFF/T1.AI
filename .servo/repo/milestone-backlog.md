@@ -1,8 +1,8 @@
 ---
 title: "Milestone Backlog"
 artifact_type: "milestone-backlog"
-updated: "2026-07-22T11:54:00+08:00"
-updated_by: "cursor-gate-close-WT-R4-A2"
+updated: "2026-07-22T14:16:00+08:00"
+updated_by: "cursor-init-worktrack-WT-R4-A3"
 ---
 
 # Milestone Backlog
@@ -35,8 +35,8 @@ updated_by: "cursor-gate-close-WT-R4-A2"
 - created_at: 2026-06-23T03:00:00+08:00
 - activated_at: 2026-07-15T00:16:00+08:00
 - activated_by: OceanEyeFF
-- updated: 2026-07-22T11:54:00+08:00
-- updated_by: cursor-gate-close-WT-R4-A2
+- updated: 2026-07-22T14:16:00+08:00
+- updated_by: cursor-init-worktrack-WT-R4-A3
 - artifact: .servo/milestone/MS-R4-001.md
 - pre_milestone_intake: .servo/repo/MS-R4-001-pre-milestone-intake-review.md
 - handoff_from_t1: .servo/worktrack/WT-T1-A4-r4-handoff.md
@@ -45,7 +45,10 @@ updated_by: "cursor-gate-close-WT-R4-A2"
 - decisions_locked: D1=B, D1b=P1, D1c=C2, D2=L2, D3=R1, CG2=M1, D4=lake_qa, D5=tushare_primary
 - init_action: upserted_and_activated
 - completed_worktracks: [WT-R4-A0, WT-R4-A1, WT-R4-A2]
-- active_worktrack: none (A2 closed; A3 intake pending)
+- active_worktrack: WT-R4-A3
+- worktrack_contract: .servo/worktrack/WT-R4-A3-contract.md
+- plan_task_queue: .servo/worktrack/WT-R4-A3-plan-task-queue.md
+- worktrack_intake_review: .servo/worktrack/MS-R4-001-WT-R4-A3-intake-review.md
 - last_closed_worktrack: WT-R4-A2
 - a0_closeout: .servo/worktrack/WT-R4-A0-closeout.md
 - a0_gate: pass_with_accepted_residuals
@@ -53,10 +56,10 @@ updated_by: "cursor-gate-close-WT-R4-A2"
 - a1_gate: pass
 - a2_closeout: .servo/worktrack/WT-R4-A2-closeout.md
 - a2_gate: pass_with_residuals
+- a3_init_defaults: A3_Q1=P1_caps_then_510300_staleness; A3_Q2=keep_v1_until_reselect; A3_Q3=defer_hygiene
 - note: >
-  WT-R4-A2 closed 2026-07-22 (pass_with_residuals). Next: WT-R4-A3 intake
-  (limited-live + caps enforce; Init not auto). No lake fill / train / Phase4 /
-  EXEC-002 until A3 scope. Commit/push still gated unless approved.
+  WT-R4-A3 Init 2026-07-22. Next: R4-A3-T1 caps enforce (zero live).
+  T3+ live needs explicit batch approve. No full-campaign / train / Phase4 / EXEC-002.
 
 ## Planned
 
