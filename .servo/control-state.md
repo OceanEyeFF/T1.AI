@@ -97,7 +97,11 @@ owner: "OceanEyeFF"
 - closeout_ref: N/A
 - worktrack_init_result: worktrack/WT-R4-A3-init-result.md
 - worktrack_intake_review: worktrack/MS-R4-001-WT-R4-A3-intake-review.md
-- last_closed_worktrack_closeout: worktrack/WT-R4-A2-closeout.md
+- last_closed_worktrack_closeout: worktrack/WT-R4-A3-closeout.md
+- worktrack_contract: N/A
+- plan_task_queue: N/A
+- gate_evidence: worktrack/WT-R4-A3-gate-evidence.md
+- closeout_ref: worktrack/WT-R4-A3-closeout.md
 - completed_milestone_artifact: milestone/MS-T1-001.md
 
 ## Approval Boundary
