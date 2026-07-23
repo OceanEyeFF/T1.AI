@@ -41,4 +41,6 @@ inputs/data/derived/
 ## 当前状态
 
 - T1：目录 + README + 常量/路径助手已冻结
-- T2+：实际 parquet 构建尚未落地
+- T2：cache-only builder 已落地（`ashare_lab.derived` + `r4_derived_io`）；本地可由 cache 重建 parquet
+- Parquet 分区（`**/year=*/`）默认不入仓（见 `.gitignore`）；README / 合同入仓
+- T3+：DataLake/load API 与 Arch-v1 强化
