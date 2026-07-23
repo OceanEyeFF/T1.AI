@@ -13,9 +13,9 @@ owner: "OceanEyeFF"
 
 ## Metadata
 
-- updated: 2026-07-23T17:47:00+08:00
+- updated: 2026-07-23T20:45:00+08:00
 - owner: OceanEyeFF
-- refresh_note: WT-R4-A4 initialized; next R4-A4-T1 on request (zero live; not auto Dispatch)
+- refresh_note: WT-R4-A4 T1 complete (derived schema frozen); next T2 on request (zero live)
 
 ## Current Control Level
 
@@ -25,7 +25,7 @@ owner: "OceanEyeFF"
 ## Active Worktrack
 
 - active_worktrack: WT-R4-A4
-- worktrack_status: initialized
+- worktrack_status: t1_complete
 - last_closed_worktrack: WT-R4-A3
 - worktrack_contract: worktrack/WT-R4-A4-contract.md
 - plan_task_queue: worktrack/WT-R4-A4-plan-task-queue.md
@@ -33,12 +33,12 @@ owner: "OceanEyeFF"
 - worktrack_init_result: worktrack/WT-R4-A4-init-result.md
 - gate_evidence: N/A
 - closeout_ref: N/A
-- active_task_window: R4-A4-T1
-- selected_next_action_id: R4-A4-T1
+- active_task_window: R4-A4-T2
+- selected_next_action_id: R4-A4-T2
 - worktrack_gate_verdict: N/A
 - worktrack_blocker: none
 - worktrack_residual_risk: soft80_accepted; 510300_basic_mf_na; 601989_trial_exclude; AO-O in A4 AC
-- execution_not_started: true
+- execution_not_started: false
 - active_worktrack_initialized: true
 
 ## Active Milestone
@@ -54,13 +54,13 @@ owner: "OceanEyeFF"
   - planned_count: 0
   - completed_count: 9
   - superseded_count: 0
-  - note: MS-R4-001 active; WT-R4-A4 initialized; next T1 on request
+  - note: MS-R4-001 active; WT-R4-A4 T1 done; next T2 on request
 - milestone_review_gate_ready: true
 - latest_review_status: effective_pass
 - milestone_review_count: 1
 - latest_review_checkpoint: MS-R4-001-intake-ready-2026-07-15T00:10:00+08:00
 - effective_review_pass: true
-- next_milestone_route: Dispatch R4-A4-T1 on request; no full-campaign / train / Phase4 / EXEC-002
+- next_milestone_route: Dispatch R4-A4-T2 on request; no full-campaign / train / Phase4 / EXEC-002
 
 ## Baseline Branch
 
@@ -80,7 +80,7 @@ owner: "OceanEyeFF"
 
 ## Current Next Action
 
-- WT-R4-A4 **initialized**. Next: **R4-A4-T1**（derived layout/schema；零 live）on request（不自动 Dispatch）。
+- WT-R4-A4 **T1 complete** (derived schema frozen). Next: **R4-A4-T2**（cache-only builder；零 live）on request。
 
 ## Linked Formal Documents
 
@@ -248,13 +248,13 @@ owner: "OceanEyeFF"
 
 ## Handback Guard
 
-- handoff_state: a4_initialized_awaiting_t1
-- last_stop_reason: WT-R4-A4 Init complete; await 「开始 T1」; zero live; push gated
-- last_handback_signature: WT-R4-A4/Init/2026-07-23T17:47:00+08:00
+- handoff_state: a4_t1_done_awaiting_t2
+- last_stop_reason: WT-R4-A4 T1 complete (derived schema); await 「开始 T2」; zero live; push gated
+- last_handback_signature: WT-R4-A4/T1/2026-07-23T20:45:00+08:00
 - handback_reaffirmed_rounds: 0
 - stable_handback_threshold: 2
 - handback_lock_active: false
-- last_unlock_signal: programmer Init WT-R4-A4
+- last_unlock_signal: programmer start WT-R4-A4-T1
 
 ## Baseline Traceability
 
@@ -307,7 +307,7 @@ owner: "OceanEyeFF"
 - worktrack_gate_evidence_ref: N/A
 - closeout_ref: .servo/worktrack/WT-R4-A3-closeout.md
 - environment_validation_report_ref: .servo/worktrack/environment-validation-report.md
-- current_stop_condition: A4 Init done; T1 on request; zero live; no full-campaign / train / Phase4 / EXEC-002; push gated
+- current_stop_condition: A4 T1 done; T2 on request; zero live; no full-campaign / train / Phase4 / EXEC-002; push gated
 - active_intake_review_ref: .servo/worktrack/MS-R4-001-WT-R4-A4-intake-review.md
 - control_plane_refresh_ref: .servo/repo/refresh-report-MS-T1-001-close-2026-07-14.md
 - persistent_work_habits_updated: 2026-06-10

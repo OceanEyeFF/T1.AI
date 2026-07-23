@@ -7,7 +7,7 @@ status: "active"
 node_type: "feature"
 derived_from_milestone: true
 created: "2026-07-23T17:47:00+08:00"
-updated: "2026-07-23T17:47:00+08:00"
+updated: "2026-07-23T20:45:00+08:00"
 owner: "OceanEyeFF"
 ---
 
@@ -19,14 +19,21 @@ owner: "OceanEyeFF"
 - milestone_id: MS-R4-001
 - derived_from_milestone: true
 - status: active
-- implementation_status: initialized
+- implementation_status: t1_complete
 - node_type: feature
 - goal_summary: >
   在已批准 cache（池 v1@1 / 61 + 510300 qfq）上落地 derived 最小合同与可复现
   load；交付 CS4 质量审计报告；按 Init 默认关闭 AO-O1/O2 hygiene；不训、不
   full-campaign、不 Phase4/EXEC-002、不 blind-merge develop。
-- execution_not_started: true
-- selected_next_action_id: R4-A4-T1
+- execution_not_started: false
+- selected_next_action_id: R4-A4-T2
+- t1_status: completed
+- t1_completed_at: 2026-07-23T20:45:00+08:00
+- t1_notes: .servo/worktrack/WT-R4-A4-t1-notes.md
+- t1_schema: .servo/worktrack/WT-R4-A4-derived-schema.md
+- t1_result: >
+  R4_DERIVED_* frozen (M1 ret+rsi; year parts); README + schema draft;
+  unit+contract green (zero live; no parquet build)
 - pool_binding: custom_research_liquidity_quality_v1 / version 1 (61 symbols)
 - live_policy: zero_live (cache-only); any live requires explicit M1/normal batch
 - upstream_a3:

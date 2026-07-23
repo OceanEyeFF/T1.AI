@@ -13,6 +13,10 @@ aligned with ``WT-R4-A1-lake-source-contract`` (frozen_for_A2):
 Approved L2 rate caps live in ``inputs/configs/tushare_rate_limits.toml``
 (promoted from WT-R4-A1 ``accept_recommended``). Runtime enforce is via
 ``ashare_infra.data.tushare_rate_limit`` (wired into ``fetch_tushare_*``).
+
+Derived minimal layout (WT-R4-A4-T1) is also frozen here:
+``inputs/data/derived/{family}/{ts_code}/year={YYYY}/part.parquet``
+(M1: momentum return_5/10/20d + technical rsi_14). Builder/load = T2/T3.
 """
 
 from __future__ import annotations
@@ -54,6 +58,34 @@ R4_INDEX_OPTIONAL_NAMESPACES = frozenset({"tushare_daily_basic", "tushare_moneyf
 # Bare codes and ts_codes both accepted by helpers.
 R4_TRIAL_EXCLUDE_SYMBOLS = frozenset({"601989", "601989.SH"})
 
+# ---------------------------------------------------------------------------
+# Derived minimal contract (WT-R4-A4-T1; A4_Q1/Q2 locked at Init)
+# Layout mirrors cache: {derived_root}/{family}/{ts_code}/year={YYYY}/part.parquet
+# Builder/load land in T2/T3; T1 freezes constants + path helpers only.
+# ---------------------------------------------------------------------------
+R4_DERIVED_CONTRACT_ID = "MS-R4-001-derived-minimal-v0"
+R4_DERIVED_ROOT = Path("inputs/data/derived")
+R4_DERIVED_SOURCE_NAMESPACE = "tushare_qfq"  # cache-only input; refresh=False
+R4_DERIVED_MINIMAL_SET = "M1_ret_rsi"
+R4_DERIVED_FAMILY_MOMENTUM = "momentum"
+R4_DERIVED_FAMILY_TECHNICAL = "technical"
+R4_DERIVED_MINIMAL_FAMILIES = frozenset(
+    {R4_DERIVED_FAMILY_MOMENTUM, R4_DERIVED_FAMILY_TECHNICAL}
+)
+# Align column names with ashare_lab.features (Return5D/10D/20D, RSI(14)).
+R4_DERIVED_MOMENTUM_COLUMNS: tuple[str, ...] = (
+    "date",
+    "return_5d",
+    "return_10d",
+    "return_20d",
+)
+R4_DERIVED_TECHNICAL_COLUMNS: tuple[str, ...] = ("date", "rsi_14")
+R4_DERIVED_OPTIONAL_COLUMNS: tuple[str, ...] = ("atr_14",)  # A4_Q1 optional
+R4_DERIVED_DEFERRED_FAMILIES = frozenset(
+    {"macd", "bollinger", "volatility", "market_state"}
+)
+R4_DERIVED_PART_FILENAME = "part.parquet"
+
 # Fallback mirrors approved A1 caps if config file is absent.
 _R4_CAPS_FALLBACK = {"rpm": 180, "daily_api_calls_per_api": 80000}
 
@@ -74,6 +106,50 @@ def is_r4_trial_excluded(symbol: str) -> bool:
 def filter_r4_trial_symbols(symbols: list[str] | tuple[str, ...]) -> list[str]:
     """Return symbols for trial runs: registry order preserved, excludes applied."""
     return [s for s in symbols if not is_r4_trial_excluded(s)]
+
+
+def r4_derived_required_columns(family: str) -> tuple[str, ...]:
+    """Required on-disk columns for a minimal derived family (includes ``date``)."""
+    name = str(family or "").strip()
+    if name == R4_DERIVED_FAMILY_MOMENTUM:
+        return R4_DERIVED_MOMENTUM_COLUMNS
+    if name == R4_DERIVED_FAMILY_TECHNICAL:
+        return R4_DERIVED_TECHNICAL_COLUMNS
+    raise ValueError(
+        f"unknown derived family={family!r}; "
+        f"minimal set is {sorted(R4_DERIVED_MINIMAL_FAMILIES)}"
+    )
+
+
+def r4_derived_symbol_dir(
+    family: str,
+    ts_code: str,
+    *,
+    root: Path | str | None = None,
+) -> Path:
+    """``{root}/{family}/{ts_code}`` under the derived root."""
+    base = Path(root) if root is not None else R4_DERIVED_ROOT
+    fam = str(family or "").strip()
+    code = str(ts_code or "").strip()
+    if not fam or not code:
+        raise ValueError("family and ts_code are required")
+    return base / fam / code
+
+
+def r4_derived_part_path(
+    family: str,
+    ts_code: str,
+    year: int | str,
+    *,
+    root: Path | str | None = None,
+) -> Path:
+    """``{root}/{family}/{ts_code}/year={YYYY}/part.parquet``."""
+    y = int(year)
+    return (
+        r4_derived_symbol_dir(family, ts_code, root=root)
+        / f"year={y}"
+        / R4_DERIVED_PART_FILENAME
+    )
 
 
 def make_r4_datalake(
@@ -138,6 +214,18 @@ __all__ = [
     "R4_ADJUST_DEFAULT",
     "R4_CACHE_ROOT",
     "R4_CONTRACT_ID",
+    "R4_DERIVED_CONTRACT_ID",
+    "R4_DERIVED_DEFERRED_FAMILIES",
+    "R4_DERIVED_FAMILY_MOMENTUM",
+    "R4_DERIVED_FAMILY_TECHNICAL",
+    "R4_DERIVED_MINIMAL_FAMILIES",
+    "R4_DERIVED_MINIMAL_SET",
+    "R4_DERIVED_MOMENTUM_COLUMNS",
+    "R4_DERIVED_OPTIONAL_COLUMNS",
+    "R4_DERIVED_PART_FILENAME",
+    "R4_DERIVED_ROOT",
+    "R4_DERIVED_SOURCE_NAMESPACE",
+    "R4_DERIVED_TECHNICAL_COLUMNS",
     "R4_HARD_CAP",
     "R4_HISTORY_START",
     "R4_INDEX_ANCHOR",
@@ -158,4 +246,7 @@ __all__ = [
     "make_r4_datalake",
     "r4_approved_daily_per_api",
     "r4_approved_rpm",
+    "r4_derived_part_path",
+    "r4_derived_required_columns",
+    "r4_derived_symbol_dir",
 ]
