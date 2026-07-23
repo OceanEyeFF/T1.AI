@@ -13,9 +13,9 @@ owner: "OceanEyeFF"
 
 ## Metadata
 
-- updated: 2026-07-22T17:45:00+08:00
+- updated: 2026-07-23T09:35:00+08:00
 - owner: OceanEyeFF
-- refresh_note: WT-R4-A3 T2 done (freq-wall/resume); next T3 blocked on live-batch approve
+- refresh_note: WT-R4-A3 T3 live done (pass_with_residuals); next T4 soft80
 
 ## Current Control Level
 
@@ -25,7 +25,7 @@ owner: "OceanEyeFF"
 ## Active Worktrack
 
 - active_worktrack: WT-R4-A3
-- worktrack_status: t2_complete_awaiting_live_approve
+- worktrack_status: t3_live_done_pass_with_residuals
 - last_closed_worktrack: WT-R4-A2
 - worktrack_contract: worktrack/WT-R4-A3-contract.md
 - plan_task_queue: worktrack/WT-R4-A3-plan-task-queue.md
@@ -34,10 +34,10 @@ owner: "OceanEyeFF"
 - gate_evidence: N/A
 - closeout_ref: N/A
 - active_task_window: R4-A3-T3
-- selected_next_action_id: R4-A3-T3
+- selected_next_action_id: R4-A3-T4
 - worktrack_gate_verdict: N/A
-- worktrack_blocker: live_batch_approve_required
-- worktrack_residual_risk: soft80; 510300; live_needs_batch_approve
+- worktrack_blocker: none
+- worktrack_residual_risk: soft80; 510300_basic_mf_na; 601989_upstream_exhausted
 - execution_not_started: false
 
 ## Active Milestone
@@ -79,7 +79,7 @@ owner: "OceanEyeFF"
 
 ## Current Next Action
 
-- WT-R4-A3 **T2 complete** (freq-wall/resume). Next: **R4-A3-T3** limited-live — **blocked until programmer live-batch approve**.
+- WT-R4-A3 **T3 live done** (`pass_with_residuals`). Next: **R4-A3-T4** soft80 P2（或显式残差）。
 
 ## Linked Formal Documents
 

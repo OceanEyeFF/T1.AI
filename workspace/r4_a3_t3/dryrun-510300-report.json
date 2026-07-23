@@ -1,0 +1,54 @@
+{
+  "manifest_id": "r4-a3-t3-510300-dryrun",
+  "job_count": 3,
+  "pending_jobs": 3,
+  "estimates": {
+    "pending_calls_by_api": {
+      "daily": 1,
+      "adj_factor": 1,
+      "daily_basic": 1,
+      "moneyflow": 1
+    },
+    "pending_total_calls": 4
+  },
+  "affordability": {
+    "daily": {
+      "needed": 1,
+      "remaining_daily": 80000,
+      "affordable": true
+    },
+    "adj_factor": {
+      "needed": 1,
+      "remaining_daily": 80000,
+      "affordable": true
+    },
+    "daily_basic": {
+      "needed": 1,
+      "remaining_daily": 80000,
+      "affordable": true
+    },
+    "moneyflow": {
+      "needed": 1,
+      "remaining_daily": 80000,
+      "affordable": true
+    }
+  },
+  "blocking_apis": [],
+  "policy": {
+    "concurrency": 1,
+    "burst_pause_on_freq_wall": true,
+    "max_batch_symbols": 50,
+    "rpm": 180,
+    "daily_api_calls_per_api": 80000,
+    "planned_symbol_count": 1,
+    "planned_api_count": 3,
+    "pool_id": "custom_research_liquidity_quality_v1",
+    "pool_version": "1",
+    "pool_symbols": 61,
+    "batch_purpose": "T3-CORE-1_510300_fill",
+    "staleness_source": "WT-R4-A1-cache-inventory.md G2",
+    "batch_approve_id": null,
+    "live_policy": "M1_normal"
+  },
+  "dry_run": true
+}

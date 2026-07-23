@@ -95,12 +95,15 @@ def test_pool_full_coverage_per_namespace(pool_ts_codes: list[str], namespace: s
 
 
 @pytest.mark.contract
-def test_index_510300_unavailable() -> None:
-    """A1_Q2 / inventory G2: anchor dir may exist but must have zero parts."""
+def test_index_510300_qfq_available_after_a3() -> None:
+    """A1 G2 deferred → A3 L2 fill: 510300.SH must have qfq parts (fund_daily)."""
     _require_cache()
     anchor_dir = CACHE_ROOT / "tushare_qfq" / INDEX_ANCHOR
     parts = list(anchor_dir.glob("year=*/part.parquet")) if anchor_dir.is_dir() else []
-    assert parts == [], f"{INDEX_ANCHOR} unexpectedly has parts: {parts}"
+    assert parts, f"{INDEX_ANCHOR} still has no qfq parts after A3 fill"
+    df = pd.read_parquet(parts[0])
+    for col in REQUIRED_QFQ:
+        assert col in df.columns, f"{INDEX_ANCHOR} missing column {col}"
 
 
 @pytest.mark.contract

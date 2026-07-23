@@ -47,6 +47,16 @@ ManifestState = Literal[
 R4_MAX_BATCH_SYMBOLS = 50
 R4_DEFAULT_CONCURRENCY = 1
 
+# qfq/daily bars path acquires daily + adj_factor (see fetch_tushare_daily_bars).
+R4_QFQ_COMPOSITE_APIS = frozenset({"daily", "qfq"})
+R4_DEFAULT_ESTIMATED_CALLS: dict[str, int] = {
+    "daily": 2,
+    "qfq": 2,
+    "daily_basic": 1,
+    "moneyflow": 1,
+    "adj_factor": 1,
+}
+
 # TuShare freq-wall / throttle heuristics (doc + field reports).
 _FREQ_WALL_PATTERNS = (
     re.compile(r"\b2002\b"),
@@ -55,10 +65,11 @@ _FREQ_WALL_PATTERNS = (
     re.compile(r"too\s+many\s+requests", re.I),
     re.compile(r"ip\s*次数", re.I),
 )
+_FREQ_WALL_ERROR_PREFIX = "frequency_wall:"
 
 
 class FrequencyWallPause(RuntimeError):
-    """Raised (or recorded) when a TuShare frequency wall is detected."""
+    """Raised when a TuShare frequency wall should pause the batch (not fail the job)."""
 
 
 class BatchPolicyError(ValueError):
@@ -141,11 +152,17 @@ class BatchManifest:
         return [j for j in self.jobs if j.status == "pending"]
 
     def estimate_calls_by_api(self) -> dict[str, int]:
+        """Pending/in-flight call budget by *underlying* TuShare API name.
+
+        qfq/daily jobs with ``estimated_calls>=2`` expand to daily+adj_factor so
+        dry_run / can_afford match real ``acquire_tushare_call`` usage.
+        """
         totals: dict[str, int] = {}
         for job in self.jobs:
             if job.status in ("done", "skipped"):
                 continue
-            totals[job.api] = totals.get(job.api, 0) + int(job.estimated_calls)
+            for api, n in expand_job_api_calls(job).items():
+                totals[api] = totals.get(api, 0) + n
         return totals
 
     def estimate_total_calls(self) -> int:
@@ -208,7 +225,133 @@ JobExecutor = Callable[[FetchJob], None]
 
 def is_frequency_wall_error(exc: BaseException | str) -> bool:
     text = str(exc)
+    if text.startswith(_FREQ_WALL_ERROR_PREFIX):
+        return True
     return any(p.search(text) for p in _FREQ_WALL_PATTERNS)
+
+
+def default_estimated_calls(api: str) -> int:
+    """Default acquire count for one planned job (qfq daily path = 2)."""
+    name = str(api or "").strip() or "unknown"
+    return int(R4_DEFAULT_ESTIMATED_CALLS.get(name, 1))
+
+
+def expand_job_api_calls(job: FetchJob) -> dict[str, int]:
+    """Map a job to underlying API acquire counts for budget checks."""
+    api = str(job.api or "").strip() or "unknown"
+    n = max(1, int(job.estimated_calls))
+    if api in R4_QFQ_COMPOSITE_APIS and n >= 2:
+        # One composite qfq fetch: daily + adj_factor; extras stay on daily.
+        return {"daily": 1 + max(0, n - 2), "adj_factor": 1}
+    return {api: n}
+
+
+def job_can_afford(job: FetchJob, limiter: TushareRateLimiter) -> tuple[bool, str | None]:
+    """Return (ok, reason) for whether ``job`` fits remaining daily budgets."""
+    for api, n in expand_job_api_calls(job).items():
+        rem = limiter.remaining_daily(api)
+        if rem < n:
+            return (
+                False,
+                f"daily cap would be exceeded for api={api!r} "
+                f"(need={n}, remaining={rem}; job_api={job.api!r})",
+            )
+    return True, None
+
+
+def requeue_frequency_wall_jobs(manifest: BatchManifest) -> int:
+    """Reset ``frequency_wall:`` failed jobs to pending so resume retries them.
+
+    Also clears last pause note on jobs that stayed pending after a wall.
+    Returns number of jobs requeued from failed → pending.
+    """
+    n = 0
+    for job in manifest.jobs:
+        err = job.error or ""
+        if job.status == "failed" and (
+            err.startswith(_FREQ_WALL_ERROR_PREFIX) or is_frequency_wall_error(err)
+        ):
+            job.status = "pending"
+            n += 1
+        if job.status == "pending" and err.startswith(_FREQ_WALL_ERROR_PREFIX):
+            # Keep attempts; drop pause note so a clean retry is visible.
+            job.error = None
+    return n
+
+
+def make_r4_refresh_executor(
+    *,
+    lake: Any | None = None,
+    cache_dir: Path | str | None = None,
+    token: str | None = None,
+    adjust: str = "qfq",
+) -> JobExecutor:
+    """AO-B2 single live path: DataLake / ``load_or_fetch_*(refresh=True)``.
+
+    Never call ``fetch_tushare_*`` from scripts or this executor. Composite qfq
+    still goes through ``load_or_fetch_daily_bars`` → ``fetch_tushare_daily_bars``
+    (daily + adj_factor) under the T1 limiter.
+    """
+    from dataclasses import replace
+
+    from ashare_infra.lake.r4_contract import R4_ADJUST_DEFAULT, make_r4_datalake
+
+    adj = adjust or R4_ADJUST_DEFAULT
+    if lake is None:
+        lake_obj = make_r4_datalake(
+            cache_dir=cache_dir, refresh=True, tushare_token=token
+        )
+    else:
+        lake_obj = replace(lake, refresh=True)
+        if token is not None:
+            lake_obj = replace(lake_obj, tushare_token=token)
+
+    def _execute(job: FetchJob) -> None:
+        api = str(job.api or "").strip()
+        if api in R4_QFQ_COMPOSITE_APIS:
+            lake_obj.load_daily_bars(
+                job.symbol, job.start_date, job.end_date, adjust=adj
+            )
+            return
+        if api == "daily_basic":
+            from ashare_infra.data.tushare_source import (
+                TushareDailyBasicRequest,
+                load_or_fetch_daily_basic,
+            )
+
+            load_or_fetch_daily_basic(
+                TushareDailyBasicRequest(
+                    symbol=job.symbol,
+                    start_date=job.start_date,
+                    end_date=job.end_date,
+                    token=lake_obj.tushare_token,
+                ),
+                cache_dir=lake_obj.cache_dir,
+                refresh=True,
+            )
+            return
+        if api == "moneyflow":
+            from ashare_infra.data.tushare_source import (
+                TushareMoneyflowRequest,
+                load_or_fetch_moneyflow,
+            )
+
+            load_or_fetch_moneyflow(
+                TushareMoneyflowRequest(
+                    symbol=job.symbol,
+                    start_date=job.start_date,
+                    end_date=job.end_date,
+                    token=lake_obj.tushare_token,
+                ),
+                cache_dir=lake_obj.cache_dir,
+                refresh=True,
+            )
+            return
+        raise BatchPolicyError(
+            f"unsupported batch api={api!r}; use daily|qfq|daily_basic|moneyflow"
+        )
+
+    return _execute
 
 
 def chunk_symbols(
@@ -262,8 +405,13 @@ def plan_batch(
 
     def _est(api: str) -> int:
         if isinstance(estimated_calls_per_job, dict):
-            return int(estimated_calls_per_job.get(api, 1))
-        return int(estimated_calls_per_job)
+            if api in estimated_calls_per_job:
+                return int(estimated_calls_per_job[api])
+            return default_estimated_calls(api)
+        # Explicit int overrides all APIs; otherwise use api-aware defaults (qfq=2).
+        if estimated_calls_per_job != 1:
+            return int(estimated_calls_per_job)
+        return default_estimated_calls(api)
 
     jobs: list[FetchJob] = []
     for symbol in selected:
@@ -380,15 +528,12 @@ def run_batch(
             if max_jobs is not None and processed >= max_jobs:
                 break
             # Pre-check daily budget before executor (still counts on real fetch via T1).
-            needed = max(1, int(job.estimated_calls))
-            if not lim.can_afford(job.api, needed):
-                job.status = "failed"
-                job.error = (
-                    f"daily cap would be exceeded for api={job.api!r} "
-                    f"(need={needed}, remaining={lim.remaining_daily(job.api)})"
-                )
+            ok, reason = job_can_afford(job, lim)
+            if not ok:
+                # Leave pending so resume can retry after day roll / budget free.
+                job.error = reason
                 manifest.state = "paused_daily_cap"
-                manifest.pause_reason = job.error
+                manifest.pause_reason = reason
                 if manifest_path:
                     manifest.save(manifest_path)
                 return BatchRunResult(
@@ -403,7 +548,7 @@ def run_batch(
             try:
                 executor(job)
             except TushareRateLimitExceeded as exc:
-                job.status = "failed"
+                job.status = "pending"
                 job.error = str(exc)
                 manifest.state = "paused_daily_cap"
                 manifest.pause_reason = str(exc)
@@ -416,10 +561,25 @@ def run_batch(
                     pause_kind="daily_cap",
                     dry_run=False,
                 )
+            except FrequencyWallPause as exc:
+                # AO-B1: stay pending; resume retries the same job.
+                job.status = "pending"
+                job.error = f"{_FREQ_WALL_ERROR_PREFIX} {exc}"
+                manifest.state = "paused_freq_wall"
+                manifest.pause_reason = job.error
+                if manifest_path:
+                    manifest.save(manifest_path)
+                return BatchRunResult(
+                    manifest=manifest,
+                    processed=processed,
+                    paused=True,
+                    pause_kind="freq_wall",
+                    dry_run=False,
+                )
             except Exception as exc:  # noqa: BLE001 — batch boundary
                 if burst_pause and is_frequency_wall_error(exc):
-                    job.status = "failed"
-                    job.error = f"frequency_wall: {exc}"
+                    job.status = "pending"
+                    job.error = f"{_FREQ_WALL_ERROR_PREFIX} {exc}"
                     manifest.state = "paused_freq_wall"
                     manifest.pause_reason = job.error
                     if manifest_path:
@@ -474,7 +634,11 @@ def resume_batch(
     manifest_path: Path | str | None = None,
     max_jobs: int | None = None,
 ) -> BatchRunResult:
-    """Resume a paused/planned manifest from remaining pending jobs."""
+    """Resume a paused/planned manifest from remaining pending jobs.
+
+    AO-B1: requeues legacy ``frequency_wall:`` *failed* jobs to pending so the
+    same job is retried after a wall clears.
+    """
     if isinstance(manifest_or_path, (str, Path)):
         path = Path(manifest_or_path)
         manifest = BatchManifest.load(path)
@@ -482,6 +646,8 @@ def resume_batch(
     else:
         manifest = manifest_or_path
         save_path = manifest_path
+
+    requeue_frequency_wall_jobs(manifest)
 
     if manifest.state == "completed" and not manifest.pending_jobs():
         return BatchRunResult(
@@ -492,7 +658,7 @@ def resume_batch(
             dry_run=False,
         )
 
-    # Clear pause so run_batch can proceed; keep failed jobs as-is.
+    # Clear pause so run_batch can proceed; non-freq-wall failed jobs stay failed.
     if manifest.state.startswith("paused_"):
         manifest.state = "running"
         manifest.pause_reason = None
@@ -518,11 +684,18 @@ __all__ = [
     "FetchJob",
     "FrequencyWallPause",
     "R4BatchPolicy",
+    "R4_DEFAULT_ESTIMATED_CALLS",
     "R4_MAX_BATCH_SYMBOLS",
+    "R4_QFQ_COMPOSITE_APIS",
     "chunk_symbols",
+    "default_estimated_calls",
     "dry_run_batch",
+    "expand_job_api_calls",
     "is_frequency_wall_error",
+    "job_can_afford",
+    "make_r4_refresh_executor",
     "plan_batch",
+    "requeue_frequency_wall_jobs",
     "resume_batch",
     "run_batch",
 ]

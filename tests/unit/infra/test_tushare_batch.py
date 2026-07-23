@@ -1,4 +1,4 @@
-"""WT-R4-A3-T2: frequency-wall pause + resume batch runner (no live)."""
+"""WT-R4-A3-T2/T3: frequency-wall pause + resume batch runner (no live)."""
 
 from __future__ import annotations
 
@@ -13,7 +13,9 @@ from ashare_infra.data.tushare_batch import (
     BatchPolicyError,
     R4BatchPolicy,
     chunk_symbols,
+    default_estimated_calls,
     dry_run_batch,
+    expand_job_api_calls,
     is_frequency_wall_error,
     plan_batch,
     resume_batch,
@@ -69,7 +71,13 @@ def test_plan_estimates_and_dry_run(tmp_path: Path) -> None:
         estimated_calls_per_job={"daily": 2, "daily_basic": 1},
     )
     assert len(m.jobs) == 4
-    assert m.estimate_total_calls() == 6  # 2*2 + 2*1
+    # daily expands to daily+adj_factor; basic stays on daily_basic
+    assert m.estimate_calls_by_api() == {
+        "daily": 2,
+        "adj_factor": 2,
+        "daily_basic": 2,
+    }
+    assert m.estimate_total_calls() == 6  # 2*(1+1) + 2*1
     report = dry_run_batch(m, limiter=lim)
     assert report["dry_run"] is True
     assert report["blocking_apis"] == []
@@ -78,6 +86,20 @@ def test_plan_estimates_and_dry_run(tmp_path: Path) -> None:
     loaded = BatchManifest.load(path)
     assert loaded.manifest_id == m.manifest_id
     assert len(loaded.jobs) == 4
+
+
+def test_ao_b3_default_qfq_estimated_calls_expand() -> None:
+    assert default_estimated_calls("daily") == 2
+    m = plan_batch(
+        ["600000.SH"],
+        apis=("daily",),
+        start_date="20240101",
+        end_date="20240131",
+    )
+    job = m.jobs[0]
+    assert job.estimated_calls == 2
+    assert expand_job_api_calls(job) == {"daily": 1, "adj_factor": 1}
+    assert m.estimate_calls_by_api() == {"daily": 1, "adj_factor": 1}
 
 
 def test_freq_wall_pauses_without_tight_loop(tmp_path: Path) -> None:
@@ -106,12 +128,15 @@ def test_freq_wall_pauses_without_tight_loop(tmp_path: Path) -> None:
     assert result.pause_kind == "freq_wall"
     assert m.state == "paused_freq_wall"
     assert calls == ["600000.SH", "000001.SZ"]  # stopped; no tight retry of 000001
-    # first done, second failed, third still pending
+    # AO-B1: wall job stays pending (not failed); third still pending
     assert m.jobs[0].status == "done"
-    assert m.jobs[1].status == "failed"
+    assert m.jobs[1].status == "pending"
+    assert m.jobs[1].error is not None and m.jobs[1].error.startswith(
+        "frequency_wall:"
+    )
     assert m.jobs[2].status == "pending"
 
-    # Resume after wall clears: remaining pending (+ do not re-run done)
+    # Resume after wall clears: retry same wall job, then remaining
     calls.clear()
 
     def _exec2(job) -> None:  # noqa: ANN001
@@ -120,7 +145,41 @@ def test_freq_wall_pauses_without_tight_loop(tmp_path: Path) -> None:
     result2 = resume_batch(path, _exec2, limiter=lim)
     assert result2.paused is False
     assert result2.manifest.state == "completed"
-    assert calls == ["600519.SH"]
+    assert calls == ["000001.SZ", "600519.SH"]
+    loaded = BatchManifest.load(path)
+    assert loaded.jobs[0].status == "done"
+    assert loaded.jobs[1].status == "done"
+    assert loaded.jobs[1].attempts >= 2
+
+
+def test_resume_requeues_legacy_failed_freq_wall(tmp_path: Path) -> None:
+    """Legacy manifests that marked wall jobs failed must still retry on resume."""
+    lim = TushareRateLimiter(
+        rpm=180,
+        daily_per_api=80000,
+        sleep=lambda _: None,
+        today=lambda: date(2026, 7, 22),
+    )
+    m = plan_batch(
+        ["000001.SZ"],
+        apis=("daily",),
+        start_date="20240101",
+        end_date="20240131",
+    )
+    m.jobs[0].status = "failed"
+    m.jobs[0].error = "frequency_wall: code 2002"
+    m.jobs[0].attempts = 1
+    m.state = "paused_freq_wall"
+    path = m.save(tmp_path / "legacy.json")
+
+    calls: list[str] = []
+
+    def _exec(job) -> None:  # noqa: ANN001
+        calls.append(job.symbol)
+
+    result = resume_batch(path, _exec, limiter=lim)
+    assert result.manifest.state == "completed"
+    assert calls == ["000001.SZ"]
     assert BatchManifest.load(path).jobs[0].status == "done"
 
 
@@ -131,7 +190,7 @@ def test_daily_cap_pauses(tmp_path: Path) -> None:
         sleep=lambda _: None,
         today=lambda: date(2026, 7, 22),
     )
-    # Simulate one call already used.
+    # Simulate one call already used on daily; qfq job needs daily+adj_factor.
     lim.acquire("daily")
     m = plan_batch(
         ["600000.SH", "000001.SZ"],
@@ -147,7 +206,7 @@ def test_daily_cap_pauses(tmp_path: Path) -> None:
     assert result.paused is True
     assert result.pause_kind == "daily_cap"
     assert m.state == "paused_daily_cap"
-    assert all(j.status != "done" for j in m.jobs)
+    assert all(j.status == "pending" for j in m.jobs)
 
 
 def test_is_frequency_wall_heuristics() -> None:

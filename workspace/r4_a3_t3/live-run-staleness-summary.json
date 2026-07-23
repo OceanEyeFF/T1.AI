@@ -1,0 +1,22 @@
+{
+  "label": "staleness-7",
+  "path": "workspace/r4_a3_t3/manifest-staleness-live.json",
+  "elapsed_s": 9.5,
+  "final_state": "completed",
+  "jobs_done": 21,
+  "jobs_pending": 0,
+  "jobs_failed": 0,
+  "job_errors": [],
+  "rounds": [
+    {
+      "round": 1,
+      "processed": 21,
+      "paused": false,
+      "pause_kind": null,
+      "state": "completed",
+      "pending": 0,
+      "done": 21,
+      "failed": 0
+    }
+  ]
+}

@@ -7,7 +7,7 @@ status: "active"
 node_type: "feature"
 derived_from_milestone: true
 created: "2026-07-22T14:16:00+08:00"
-updated: "2026-07-22T17:45:00+08:00"
+updated: "2026-07-23T09:35:00+08:00"
 owner: "OceanEyeFF"
 ---
 
@@ -19,14 +19,14 @@ owner: "OceanEyeFF"
 - milestone_id: MS-R4-001
 - derived_from_milestone: true
 - status: active
-- implementation_status: t2_complete
+- implementation_status: t3_live_done_pass_with_residuals
 - node_type: feature
 - goal_summary: >
   将已批准 caps（180/80000）接到 fetch 限流；实现频率墙暂停/简历；
   在 M1/normal 显式批次批准下做 L2 limited-live 补洞（510300 + 池 61 陈旧优先；
   soft80 为 P2）；不训、不 full-campaign、不 blind-merge develop。
 - execution_not_started: false
-- selected_next_action_id: R4-A3-T3
+- selected_next_action_id: R4-A3-T4
 - t1_status: completed
 - t1_completed_at: 2026-07-22T14:54:00+08:00
 - t1_notes: .servo/worktrack/WT-R4-A3-t1-notes.md
@@ -35,9 +35,18 @@ owner: "OceanEyeFF"
 - t2_completed_at: 2026-07-22T17:45:00+08:00
 - t2_notes: .servo/worktrack/WT-R4-A3-t2-notes.md
 - t2_result: tushare_batch plan/dry-run/pause/resume; 19 passed (zero live)
+- t3_status: completed_pass_with_residuals
+- t3_completed_at: 2026-07-23T09:35:00+08:00
+- t3_notes: .servo/worktrack/WT-R4-A3-t3-notes.md
+- t3_addon: .servo/worktrack/WT-R4-A3-t3-addon.md
+- t3_result: >
+  live approve M1-normal-2026-07-23-510300+staleness7;
+  510300 qfq via fund_daily (859 rows); staleness 6/7→2026-07-22;
+  residuals: ETF basic/mf N/A; 601989 upstream exhausted
+- t3_progress: AO-B1..B4 + AO-R1 + T3-CORE live done
 - pool_binding: custom_research_liquidity_quality_v1 / version 1 (61 symbols)
 - caps_config: inputs/configs/tushare_rate_limits.toml (180 / 80000) — **enforced in T1**
-- live_policy: M1_normal — T3 blocked until explicit batch approve
+- live_policy: M1_normal — T3 live approved and executed
 - upstream_a2:
   - .servo/worktrack/WT-R4-A2-closeout.md (pass_with_residuals)
   - make_r4_datalake + consumer cutover already on tip
@@ -196,7 +205,7 @@ owner: "OceanEyeFF"
 
 - [x] Caps 在运行时限流路径可读并 enforce（非仅 toml） — T1
 - [x] 频率墙 / resume 策略有实现与可测证据（dry-run 优先） — T2
-- [ ] 经批准的 limited-live 对 `510300.SH`（及批准的 staleness）有补洞证据，或显式豁免
+- [x] 经批准的 limited-live 对 `510300.SH`（及批准的 staleness）有补洞证据，或显式豁免 — T3 (`pass_with_residuals`)
 - [ ] Soft80：有进度（扩池/重选）或显式 accepted residual 更新
 - [ ] 无 token 入仓；无 full-campaign；无训/Phase4/EXEC-002
 - [ ] T5 一致性矩阵 + Gate/Close 包

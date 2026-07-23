@@ -1,0 +1,63 @@
+{
+  "manifest_id": "r4-a3-t3-staleness-dryrun",
+  "job_count": 21,
+  "pending_jobs": 21,
+  "estimates": {
+    "pending_calls_by_api": {
+      "daily": 7,
+      "adj_factor": 7,
+      "daily_basic": 7,
+      "moneyflow": 7
+    },
+    "pending_total_calls": 28
+  },
+  "affordability": {
+    "daily": {
+      "needed": 7,
+      "remaining_daily": 80000,
+      "affordable": true
+    },
+    "adj_factor": {
+      "needed": 7,
+      "remaining_daily": 80000,
+      "affordable": true
+    },
+    "daily_basic": {
+      "needed": 7,
+      "remaining_daily": 80000,
+      "affordable": true
+    },
+    "moneyflow": {
+      "needed": 7,
+      "remaining_daily": 80000,
+      "affordable": true
+    }
+  },
+  "blocking_apis": [],
+  "policy": {
+    "concurrency": 1,
+    "burst_pause_on_freq_wall": true,
+    "max_batch_symbols": 50,
+    "rpm": 180,
+    "daily_api_calls_per_api": 80000,
+    "planned_symbol_count": 7,
+    "planned_api_count": 3,
+    "pool_id": "custom_research_liquidity_quality_v1",
+    "pool_version": "1",
+    "pool_symbols": 61,
+    "batch_purpose": "T3-CORE-2_pool61_staleness",
+    "staleness_source": "A1 inventory G3 + 2026-07-23 cache rescan vs universe_max=2026-03-31",
+    "staleness_symbols": [
+      "601989.SH",
+      "601318.SH",
+      "600519.SH",
+      "600036.SH",
+      "000333.SZ",
+      "000858.SZ",
+      "000001.SZ"
+    ],
+    "batch_approve_id": null,
+    "live_policy": "M1_normal"
+  },
+  "dry_run": true
+}

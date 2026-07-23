@@ -1,0 +1,10 @@
+{
+  "approve_id": "M1-normal-2026-07-23-510300+staleness7",
+  "state": "completed",
+  "processed": 1,
+  "parts": 4,
+  "calls_today": {
+    "daily": 1,
+    "fund_daily": 1
+  }
+}

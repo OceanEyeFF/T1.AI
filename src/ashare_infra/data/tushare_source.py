@@ -8,6 +8,9 @@ import time
 
 import pandas as pd
 
+from ashare_infra.data.tushare_batch import is_frequency_wall_error
+from ashare_infra.data.tushare_rate_limit import acquire_tushare_call
+
 # Public constants
 SUPPORTED_FIELDS: Sequence[str] = ("open", "high", "low", "close", "volume", "amount")
 SUPPORTED_DAILY_BASIC_FIELDS: Sequence[str] = (
@@ -140,9 +143,6 @@ def _normalize_tushare_table(df: pd.DataFrame, fields: Sequence[str]) -> pd.Data
     return out
 
 
-from ashare_infra.data.tushare_rate_limit import acquire_tushare_call
-
-
 def _get_tushare_pro(token: str | None = None):  # pragma: no cover - mostly integration
     import os
     import tushare as ts  # lazy import
@@ -157,7 +157,11 @@ def _get_tushare_pro(token: str | None = None):  # pragma: no cover - mostly int
 
 
 def fetch_tushare_daily_bars(req: TushareDailyBarsRequest) -> pd.DataFrame:  # pragma: no cover
-    """直接调用 TuShare 接口获取日线数据，并按 req.adjust 复权。"""
+    """直接调用 TuShare 接口获取日线数据，并按 req.adjust 复权。
+
+    ETF/基金（如 ``510300.SH``）在 ``pro.daily`` 上常为空；此时回退
+    ``pro.fund_daily``（计入 ``fund_daily`` 配额，不再拉 adj_factor）。
+    """
     pro = _get_tushare_pro(req.token)
     adjust_mode = _normalize_adjust_mode(req.adjust)
 
@@ -168,6 +172,18 @@ def fetch_tushare_daily_bars(req: TushareDailyBarsRequest) -> pd.DataFrame:  # p
         end_date=req.end_date,
     )
     daily = _normalize_tushare_daily(raw)
+    if daily.empty:
+        # ETF / fund instruments are not on stock daily.
+        acquire_tushare_call("fund_daily")
+        raw_fund = pro.fund_daily(
+            ts_code=req.symbol,
+            start_date=req.start_date,
+            end_date=req.end_date,
+        )
+        fund = _normalize_tushare_daily(raw_fund)
+        # fund_daily already exposes trade OHLC; treat as final series (no adj).
+        return fund
+
     if adjust_mode == "raw":
         return daily
 
@@ -243,12 +259,16 @@ def _apply_price_adjustment(daily: pd.DataFrame, adj_factor: pd.DataFrame, adjus
 
 
 def _retry_with_backoff(func, retries: int, base_delay: float = 0.5):
+    """Retry transient errors; AO-B4: frequency-wall (2002) is not retried in-loop."""
     last_exc = None
     for attempt in range(retries):
         try:
             return func()
         except Exception as exc:  # pragma: no cover - exercised via tests with mock
             last_exc = exc
+            # Do not tight-loop on TuShare frequency walls — surface to batch pause.
+            if is_frequency_wall_error(exc):
+                raise
             if attempt == retries - 1:
                 break
             time.sleep(base_delay * (2**attempt))
