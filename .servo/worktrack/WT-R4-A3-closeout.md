@@ -26,8 +26,8 @@ node_type: "feature"
 - pool_binding: custom_research_liquidity_quality_v1@1 (61) — unchanged
 - soft80: **accepted_residual**
 - branch: milestone/MS-R4-001-tushare-datalake
-- impl_tip: 62672b6 (T1–T3) + Close writeback (this commit)
-- close_writeback_commit: (this Close commit)
+- impl_tip: 62672b6 (T1–T3) + 8d60f09 (T4–T5 Gate/Close)
+- close_writeback_commit: 8d60f09
 - push: not requested (local commit only unless later approved)
 - next_worktrack: WT-R4-A4 intake (not auto Init)
 - out_of_scope_held: no full-campaign / train / Phase4 / EXEC-002 / blind merge develop
@@ -78,7 +78,7 @@ closeout_record:
   worktrack_id: WT-R4-A3
   branch: milestone/MS-R4-001-tushare-datalake
   base_ref: 4474da9
-  head_ref: (Close writeback tip)
+  head_ref: 8d60f09
   merge_commit: N/A (on milestone branch; develop merge at milestone close)
   pr: none
   acceptance_result: accepted
