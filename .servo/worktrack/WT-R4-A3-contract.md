@@ -7,8 +7,9 @@ status: "active"
 node_type: "feature"
 derived_from_milestone: true
 created: "2026-07-22T14:16:00+08:00"
-updated: "2026-07-23T09:35:00+08:00"
+updated: "2026-07-23T14:34:00+08:00"
 owner: "OceanEyeFF"
+status: "closed"
 ---
 
 # WT-R4-A3 Limited-live 增量补洞 + 频率墙/简历策略
@@ -18,15 +19,17 @@ owner: "OceanEyeFF"
 - worktrack_id: WT-R4-A3
 - milestone_id: MS-R4-001
 - derived_from_milestone: true
-- status: active
-- implementation_status: t3_live_done_pass_with_residuals
+- status: closed
+- implementation_status: closed
+- gate_verdict: pass_with_residuals
+- closed_at: 2026-07-23T14:34:00+08:00
 - node_type: feature
 - goal_summary: >
   将已批准 caps（180/80000）接到 fetch 限流；实现频率墙暂停/简历；
   在 M1/normal 显式批次批准下做 L2 limited-live 补洞（510300 + 池 61 陈旧优先；
   soft80 为 P2）；不训、不 full-campaign、不 blind-merge develop。
 - execution_not_started: false
-- selected_next_action_id: R4-A3-T4
+- selected_next_action_id: CLOSED
 - t1_status: completed
 - t1_completed_at: 2026-07-22T14:54:00+08:00
 - t1_notes: .servo/worktrack/WT-R4-A3-t1-notes.md
@@ -43,10 +46,21 @@ owner: "OceanEyeFF"
   live approve M1-normal-2026-07-23-510300+staleness7;
   510300 qfq via fund_daily (859 rows); staleness 6/7→2026-07-22;
   residuals: ETF basic/mf N/A; 601989 upstream exhausted
-- t3_progress: AO-B1..B4 + AO-R1 + T3-CORE live done
+- t4_status: completed
+- t4_completed_at: 2026-07-23T13:05:00+08:00
+- t4_notes: .servo/worktrack/WT-R4-A3-t4-notes.md
+- t4_result: >
+  soft80 accepted_residual (zero live); pool v1@1/61 kept;
+  trial exclude 601989; 510300 basic/mf accepted N/A; AO-O→A4
+- t5_status: completed
+- t5_completed_at: 2026-07-23T13:08:00+08:00
+- t5_consistency: .servo/worktrack/WT-R4-A3-consistency-matrix.md
+- t5_gate_evidence: .servo/worktrack/WT-R4-A3-gate-evidence.md
+- t5_closeout: .servo/worktrack/WT-R4-A3-closeout.md
+- proposed_gate_verdict: pass_with_residuals
 - pool_binding: custom_research_liquidity_quality_v1 / version 1 (61 symbols)
 - caps_config: inputs/configs/tushare_rate_limits.toml (180 / 80000) — **enforced in T1**
-- live_policy: M1_normal — T3 live approved and executed
+- live_policy: M1_normal — T3 live done; T4 zero live
 - upstream_a2:
   - .servo/worktrack/WT-R4-A2-closeout.md (pass_with_residuals)
   - make_r4_datalake + consumer cutover already on tip
@@ -205,10 +219,10 @@ owner: "OceanEyeFF"
 
 - [x] Caps 在运行时限流路径可读并 enforce（非仅 toml） — T1
 - [x] 频率墙 / resume 策略有实现与可测证据（dry-run 优先） — T2
-- [x] 经批准的 limited-live 对 `510300.SH`（及批准的 staleness）有补洞证据，或显式豁免 — T3 (`pass_with_residuals`)
-- [ ] Soft80：有进度（扩池/重选）或显式 accepted residual 更新
-- [ ] 无 token 入仓；无 full-campaign；无训/Phase4/EXEC-002
-- [ ] T5 一致性矩阵 + Gate/Close 包
+- [x] 经批准的 limited-live 对 `510300.SH`（及批准的 staleness）有补洞证据，或显式豁免 — T3
+- [x] Soft80：有进度（扩池/重选）或显式 accepted residual 更新 — T4 (`accepted_residual`)
+- [x] 无 token 入仓；无 full-campaign；无训/Phase4/EXEC-002
+- [x] T5 一致性矩阵 + Gate/Close 包 — proposed Gate `pass_with_residuals`
 
 ## 约束
 

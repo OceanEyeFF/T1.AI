@@ -40,8 +40,40 @@ R4_SYMBOLS_COUNT = 61
 R4_POOL_REGISTRY = Path("inputs/pools/research_liquidity_quality/")
 R4_RATE_LIMITS_CONFIG = Path("inputs/configs/tushare_rate_limits.toml")
 
+# Soft80 (A1 G1): experiment accepts 61 < soft_target; hard_cap 100 already met.
+R4_SOFT_TARGET = 80
+R4_HARD_CAP = 100
+R4_SOFT80_STATUS = "accepted_residual"  # WT-R4-A3-T4 D1=C; zero live
+
+# Index / ETF anchor: qfq required; stock daily_basic/moneyflow N/A (A3 T3/T4).
+R4_INDEX_ANCHOR = "510300.SH"
+R4_INDEX_REQUIRED_NAMESPACES = frozenset({"tushare_qfq"})
+R4_INDEX_OPTIONAL_NAMESPACES = frozenset({"tushare_daily_basic", "tushare_moneyflow"})
+
+# Keep in registry v1@1, but default trial/runtime subset excludes upstream-exhausted.
+# Bare codes and ts_codes both accepted by helpers.
+R4_TRIAL_EXCLUDE_SYMBOLS = frozenset({"601989", "601989.SH"})
+
 # Fallback mirrors approved A1 caps if config file is absent.
 _R4_CAPS_FALLBACK = {"rpm": 180, "daily_api_calls_per_api": 80000}
+
+
+def _normalize_symbol_key(symbol: str) -> str:
+    return str(symbol or "").strip().upper()
+
+
+def is_r4_trial_excluded(symbol: str) -> bool:
+    """True if symbol is excluded from the default R4 trial subset."""
+    key = _normalize_symbol_key(symbol)
+    if not key:
+        return False
+    bare = key.split(".", 1)[0]
+    return key in R4_TRIAL_EXCLUDE_SYMBOLS or bare in R4_TRIAL_EXCLUDE_SYMBOLS
+
+
+def filter_r4_trial_symbols(symbols: list[str] | tuple[str, ...]) -> list[str]:
+    """Return symbols for trial runs: registry order preserved, excludes applied."""
+    return [s for s in symbols if not is_r4_trial_excluded(s)]
 
 
 def make_r4_datalake(
@@ -106,13 +138,22 @@ __all__ = [
     "R4_ADJUST_DEFAULT",
     "R4_CACHE_ROOT",
     "R4_CONTRACT_ID",
+    "R4_HARD_CAP",
     "R4_HISTORY_START",
+    "R4_INDEX_ANCHOR",
+    "R4_INDEX_OPTIONAL_NAMESPACES",
+    "R4_INDEX_REQUIRED_NAMESPACES",
     "R4_POOL_REGISTRY",
     "R4_PRIMARY_SOURCE",
     "R4_RATE_LIMITS_CONFIG",
+    "R4_SOFT80_STATUS",
+    "R4_SOFT_TARGET",
     "R4_STOCK_POOL_ID",
     "R4_STOCK_POOL_VERSION",
     "R4_SYMBOLS_COUNT",
+    "R4_TRIAL_EXCLUDE_SYMBOLS",
+    "filter_r4_trial_symbols",
+    "is_r4_trial_excluded",
     "load_r4_rate_limits",
     "make_r4_datalake",
     "r4_approved_daily_per_api",

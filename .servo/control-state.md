@@ -13,32 +13,33 @@ owner: "OceanEyeFF"
 
 ## Metadata
 
-- updated: 2026-07-23T09:35:00+08:00
+- updated: 2026-07-23T14:34:00+08:00
 - owner: OceanEyeFF
-- refresh_note: WT-R4-A3 T3 live done (pass_with_residuals); next T4 soft80
+- refresh_note: WT-R4-A3 closed (pass_with_residuals); next WT-R4-A4 intake (not auto Init)
 
 ## Current Control Level
 
 - repo_scope: active
-- worktrack_scope: active
+- worktrack_scope: idle
 
 ## Active Worktrack
 
-- active_worktrack: WT-R4-A3
-- worktrack_status: t3_live_done_pass_with_residuals
-- last_closed_worktrack: WT-R4-A2
-- worktrack_contract: worktrack/WT-R4-A3-contract.md
-- plan_task_queue: worktrack/WT-R4-A3-plan-task-queue.md
-- worktrack_intake_review: worktrack/MS-R4-001-WT-R4-A3-intake-review.md
-- worktrack_init_result: worktrack/WT-R4-A3-init-result.md
-- gate_evidence: N/A
-- closeout_ref: N/A
-- active_task_window: R4-A3-T3
-- selected_next_action_id: R4-A3-T4
-- worktrack_gate_verdict: N/A
+- active_worktrack: none
+- worktrack_status: N/A
+- last_closed_worktrack: WT-R4-A3
+- worktrack_contract: N/A
+- plan_task_queue: N/A
+- worktrack_intake_review: N/A
+- worktrack_init_result: N/A
+- gate_evidence: worktrack/WT-R4-A3-gate-evidence.md
+- closeout_ref: worktrack/WT-R4-A3-closeout.md
+- active_task_window: N/A
+- selected_next_action_id: REPO_WHATS_NEXT_OR_A4_INTAKE
+- worktrack_gate_verdict: pass_with_residuals
 - worktrack_blocker: none
-- worktrack_residual_risk: soft80; 510300_basic_mf_na; 601989_upstream_exhausted
-- execution_not_started: false
+- worktrack_residual_risk: soft80_accepted; 510300_basic_mf_na; 601989_trial_exclude; AO-O→A4
+- execution_not_started: N/A
+- active_worktrack_initialized: false
 
 ## Active Milestone
 
@@ -53,13 +54,13 @@ owner: "OceanEyeFF"
   - planned_count: 0
   - completed_count: 9
   - superseded_count: 0
-  - note: MS-R4-001 active; WT-R4-A3 T2 done; T3 awaits live-batch approve
+  - note: MS-R4-001 active; WT-R4-A3 closed pass_with_residuals; next A4 intake
 - milestone_review_gate_ready: true
 - latest_review_status: effective_pass
 - milestone_review_count: 1
 - latest_review_checkpoint: MS-R4-001-intake-ready-2026-07-15T00:10:00+08:00
 - effective_review_pass: true
-- next_milestone_route: R4-A3-T3 after live-batch approve; no full-campaign / train / Phase4 / EXEC-002
+- next_milestone_route: WT-R4-A4 intake on request; no full-campaign / train / Phase4 / EXEC-002
 
 ## Baseline Branch
 
@@ -79,7 +80,7 @@ owner: "OceanEyeFF"
 
 ## Current Next Action
 
-- WT-R4-A3 **T3 live done** (`pass_with_residuals`). Next: **R4-A3-T4** soft80 P2（或显式残差）。
+- WT-R4-A3 **closed** (`pass_with_residuals`). Next: **WT-R4-A4 intake** on request（不自动 Init）。
 
 ## Linked Formal Documents
 

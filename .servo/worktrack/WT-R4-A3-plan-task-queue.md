@@ -3,7 +3,7 @@ title: "WT-R4-A3 Plan / Task Queue"
 artifact_type: "worktrack-plan-task-queue"
 milestone_id: "MS-R4-001"
 worktrack_id: "WT-R4-A3"
-updated: "2026-07-23T09:30:00+08:00"
+updated: "2026-07-23T14:34:00+08:00"
 owner: "OceanEyeFF"
 ---
 
@@ -13,39 +13,40 @@ owner: "OceanEyeFF"
 
 - worktrack_id: WT-R4-A3
 - milestone_id: MS-R4-001
-- updated: 2026-07-23T09:35:00+08:00
-- current_phase: t3_live_done_pass_with_residuals
-- selected_next_action_id: R4-A3-T4
-- selected_next_action: Soft80 P2 progress or explicit residual update
-- selection_reason: T3 live pass_with_residuals (510300 qfq + 6/7 staleness)
+- updated: 2026-07-23T14:34:00+08:00
+- current_phase: closed
+- selected_next_action_id: CLOSED
+- selected_next_action: none (worktrack closed)
+- selection_reason: Gate accepted pass_with_residuals; Close complete
 - t3_status: completed_pass_with_residuals
-- t3_completed_at: 2026-07-23T09:35:00+08:00
-- t3_notes: .servo/worktrack/WT-R4-A3-t3-notes.md
-- t3_addon: .servo/worktrack/WT-R4-A3-t3-addon.md
-- t3_verdict: pass_with_residuals
-- t3_residuals: 510300_basic_mf_na_etf; 601989_upstream_exhausted
+- t4_status: completed
+- t5_status: completed
+- gate_status: accepted
+- gate_verdict: pass_with_residuals
+- closed_at: 2026-07-23T14:34:00+08:00
+- t5_consistency: .servo/worktrack/WT-R4-A3-consistency-matrix.md
+- t5_gate_evidence: .servo/worktrack/WT-R4-A3-gate-evidence.md
+- t5_closeout: .servo/worktrack/WT-R4-A3-closeout.md
 - contract_ref: .servo/worktrack/WT-R4-A3-contract.md
 
 ## Task List
 
 1. [x] Caps enforce on fetch path — **R4-A3-T1** — completed
 2. [x] Frequency-wall + resume — **R4-A3-T2** — completed
-3. [x] Limited-live fill: 510300 + pool-61 staleness — **R4-A3-T3** — completed (`pass_with_residuals`)
-4. [ ] Soft80 P2 progress or residual update — **R4-A3-T4** — pending
-5. [ ] Consistency + Gate/Close packet — **R4-A3-T5** — pending
-6. [ ] Formal Gate + Close — **R4-A3-GATE** — pending
+3. [x] Limited-live fill: 510300 + pool-61 staleness — **R4-A3-T3** — completed
+4. [x] Soft80 accepted residual (zero live) — **R4-A3-T4** — completed
+5. [x] Consistency + Gate/Close packet — **R4-A3-T5** — completed
+6. [x] Formal Gate + Close — **R4-A3-GATE** — completed (`pass_with_residuals`)
 
 ## Current Next Action
 
-- selected_next_action_id: R4-A3-T4
-- selected_next_action: Soft80 P2 progress or accepted residual update
-- selection_reason: T3 live done
-- live_verify: workspace/r4_a3_t3/live-verify-report.json
+- selected_next_action_id: CLOSED
+- selected_next_action: none
+- handoff: WT-R4-A4 intake (not auto Init)
 
 ## Schedule Handoff
 
-- suggested_next_route: Dispatch R4-A3-T4 (soft80)
-- needs_approval: yes for commit/push; live already approved for T3
-- t3_verdict: pass_with_residuals
-- next_after_t4: R4-A3-T5
-
+- suggested_next_route: RepoScope → WT-R4-A4 intake on request
+- needs_approval: yes for A4 Init / commit-push already done for Close if committed
+- gate_verdict: pass_with_residuals
+- closed: true
