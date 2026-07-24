@@ -7,7 +7,7 @@ status: "active"
 node_type: "feature"
 derived_from_milestone: true
 created: "2026-07-23T17:47:00+08:00"
-updated: "2026-07-24T14:20:00+08:00"
+updated: "2026-07-24T14:50:00+08:00"
 owner: "OceanEyeFF"
 ---
 
@@ -19,14 +19,14 @@ owner: "OceanEyeFF"
 - milestone_id: MS-R4-001
 - derived_from_milestone: true
 - status: active
-- implementation_status: t4_complete
+- implementation_status: t5_complete
 - node_type: feature
 - goal_summary: >
   在已批准 cache（池 v1@1 / 61 + 510300 qfq）上落地 derived 最小合同与可复现
   load；交付 CS4 质量审计报告；按 Init 默认关闭 AO-O1/O2 hygiene；不训、不
   full-campaign、不 Phase4/EXEC-002、不 blind-merge develop。
 - execution_not_started: false
-- selected_next_action_id: R4-A4-T5
+- selected_next_action_id: R4-A4-RESIDUALS
 - t1_t3_review_verdict: pass_with_residuals
 - t1_t3_review: .servo/worktrack/WT-R4-A4-t1-t3-review.md
 - t1_t3_review_checkpoint: afba1f0
@@ -57,6 +57,19 @@ owner: "OceanEyeFF"
 - t4_result: >
   AO-O1 allowlist lake-only; AO-O2 dataset_builder 10 fails fixed (23 pass);
   AO-O3 toml dual-track doc; AO-O4 deferred optional
+- t5_status: completed
+- t5_completed_at: 2026-07-24T14:50:00+08:00
+- t5_notes: .servo/worktrack/WT-R4-A4-t5-notes.md
+- t5_result: >
+  QA report + consistency + residuals-round + draft Gate evidence;
+  focused A4 suite 50 passed; proposed pass_with_residuals; Gate not accepted
+- qa_report: .servo/worktrack/WT-R4-A4-qa-report.md
+- consistency_matrix: .servo/worktrack/WT-R4-A4-consistency-matrix.md
+- residuals_round: .servo/worktrack/WT-R4-A4-residuals-round.md
+- residuals_round_status: pending_programmer_confirmation
+- gate_evidence: .servo/worktrack/WT-R4-A4-gate-evidence.md
+- gate_status: pending_programmer_confirm
+- proposed_gate_verdict: pass_with_residuals
 - pool_binding: custom_research_liquidity_quality_v1 / version 1 (61 symbols)
 - live_policy: zero_live (cache-only); any live requires explicit M1/normal batch
 - upstream_a3:

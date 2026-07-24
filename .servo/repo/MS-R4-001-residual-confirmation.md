@@ -3,16 +3,16 @@ title: "Milestone Residual Confirmation: MS-R4-001"
 artifact_type: "milestone-residual-confirmation"
 milestone_id: "MS-R4-001"
 status: "pending_programmer_confirmation"
-updated: "2026-07-24T14:20:00+08:00"
+updated: "2026-07-24T14:50:00+08:00"
 owner: "OceanEyeFF"
 gate: "milestone_final_acceptance"
-checkpoint_note: "Register seeded from A0–A4 T1–T3; finalize at MS final acceptance after A4 Close"
+checkpoint_note: "T5 QA seeded full residual set; status still pending_programmer_confirmation; finalize at MS final acceptance after A4 Close"
 ---
 
 # Milestone Residual Confirmation — MS-R4-001
 
 > **硬门控：** MS-R4-001 **final acceptance**（A4_Q7：WT close ≠ MS 终验）前，必须与使用者完成本轮 Residual 确认。  
-> 状态：`pending_programmer_confirmation`（A4 未关；表为当前已知集合，终验前再对表一轮）。
+> 状态：`pending_programmer_confirmation`（**未确认**）。T5 QA 已播种完整 residual 集合；A4 未关；终验前再对表一轮。
 
 ## Control Signal
 
@@ -42,6 +42,7 @@ related_wt_close_policy: A4_Q7_wt_close_only
 | A4_F2_family_row_mismatch | WT-R4-A4 T1–T3 review | momentum/technical warm-up 后行数可不等 | 接受按 family 读 + 显式 date join | 需求变为「两 family 必须等长日历 / 强制内连接」 | doc_only |
 | A4_F4_refresh_not_rebuild | WT-R4-A4 T1–T3 review | `load_derived*` 只读盘；`DataLake.refresh` 不重建 derived | 接受 load≠build；刷新走 builder | 需求变为「refresh=True 必须级联重建 derived」 | doc_only |
 | AO-O_hygiene | A3→A4 AC / A4-T4 | AO-O1 allowlist + AO-O2 dataset_builder（+O3 doc）；AO-O4 deferred | T4 已完成；accept 以 T4 notes 为准 | 回归再破 allowlist / dataset 旧测再红；或要求强制做 AO-O4 AST | closed_in_A4_T4 |
+| AO-O4_deferred | A4-T4/T5 QA | AST 合同补强 optional；现有 no-direct + AO-R1 足够 | 接受 defer；不阻塞 A4 Gate | 需求变为「必须补 AST 合同」 | deferred |
 
 ### Optional footnotes（非阻塞，终验可点名）
 
@@ -71,6 +72,8 @@ residual_confirmation_status: pending_programmer_confirmation
 
 ## Refs
 
+- T5 QA: `.servo/worktrack/WT-R4-A4-qa-report.md`
+- WT Residuals round: `.servo/worktrack/WT-R4-A4-residuals-round.md`
 - T1–T3 review: `.servo/worktrack/WT-R4-A4-t1-t3-review.md`
 - A3 closeout: `.servo/worktrack/WT-R4-A3-closeout.md`
 - Template: `.servo/template/milestone-residual-confirmation.template.md`

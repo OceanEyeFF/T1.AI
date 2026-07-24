@@ -1,0 +1,20 @@
+{
+  "worktrack_id": "WT-R4-A4",
+  "milestone_id": "MS-R4-001",
+  "generated_at": "2026-07-24T14:50:00+08:00",
+  "tip": "15c078d",
+  "pool": {"registry": 61, "trial": 60, "trial_exclude": ["601989.SH"]},
+  "derived_coverage": {"momentum": 61, "technical": 61, "years": ["2023", "2024", "2025", "2026"]},
+  "tests_focused_passed": 50,
+  "live_pull": "none",
+  "proposed_gate_verdict": "pass_with_residuals",
+  "residuals": [
+    "soft80_61lt80",
+    "index_510300_qfq_only",
+    "trial_exclude_601989",
+    "A4_F1",
+    "A4_F2",
+    "A4_F4",
+    "AO-O4_deferred"
+  ]
+}

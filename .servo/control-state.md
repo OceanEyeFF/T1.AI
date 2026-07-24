@@ -13,9 +13,9 @@ owner: "OceanEyeFF"
 
 ## Metadata
 
-- updated: 2026-07-23T20:55:00+08:00
+- updated: 2026-07-24T14:50:00+08:00
 - owner: OceanEyeFF
-- refresh_note: WT-R4-A4 T4 complete (AO-O1/O2/O3); next T5 QA/Gate on request
+- refresh_note: WT-R4-A4 T5 done (QA+consistency+residuals draft); await Residuals+Gate confirm
 
 ## Current Control Level
 
@@ -25,19 +25,19 @@ owner: "OceanEyeFF"
 ## Active Worktrack
 
 - active_worktrack: WT-R4-A4
-- worktrack_status: t4_complete
+- worktrack_status: t5_complete
 - last_closed_worktrack: WT-R4-A3
 - worktrack_contract: worktrack/WT-R4-A4-contract.md
 - plan_task_queue: worktrack/WT-R4-A4-plan-task-queue.md
 - worktrack_intake_review: worktrack/MS-R4-001-WT-R4-A4-intake-review.md
 - worktrack_init_result: worktrack/WT-R4-A4-init-result.md
-- gate_evidence: N/A
+- gate_evidence: worktrack/WT-R4-A4-gate-evidence.md
 - closeout_ref: N/A
-- active_task_window: R4-A4-T5
-- selected_next_action_id: R4-A4-T5
+- active_task_window: R4-A4-RESIDUALS
+- selected_next_action_id: R4-A4-RESIDUALS
 - worktrack_gate_verdict: N/A
 - worktrack_blocker: none
-- worktrack_residual_risk: soft80_accepted; 510300_basic_mf_na; 601989_trial_exclude; AO-O1_O2_O3_done; AO-O4_deferred; A4_T1T3_F1_F2_F4_doc_only
+- worktrack_residual_risk: soft80_accepted; 510300_basic_mf_na; 601989_trial_exclude; AO-O1_O2_O3_done; AO-O4_deferred; A4_F1_F2_F4_doc_only; residuals_round_pending
 - execution_not_started: false
 - active_worktrack_initialized: true
 
@@ -54,13 +54,13 @@ owner: "OceanEyeFF"
   - planned_count: 0
   - completed_count: 9
   - superseded_count: 0
-  - note: MS-R4-001 active; WT-R4-A4 T4 done; next T5 on request
+  - note: MS-R4-001 active; WT-R4-A4 T5 done; awaiting Residuals+Gate
 - milestone_review_gate_ready: true
 - latest_review_status: effective_pass
 - milestone_review_count: 1
 - latest_review_checkpoint: MS-R4-001-intake-ready-2026-07-15T00:10:00+08:00
 - effective_review_pass: true
-- next_milestone_route: Dispatch R4-A4-T5 on request; no full-campaign / train / Phase4 / EXEC-002
+- next_milestone_route: Residuals confirm → Formal Gate; no full-campaign / train / Phase4 / EXEC-002
 
 ## Baseline Branch
 
@@ -74,13 +74,13 @@ owner: "OceanEyeFF"
 - branch_context_guard_status: pass_with_caveat
 - branch_context_required_ref: refs/heads/milestone/MS-R4-001-tushare-datalake
 - active_milestone_branch: milestone/MS-R4-001-tushare-datalake
-- active_milestone_branch_sync_state: tip 0aa6037; A4 Init on same branch
+- active_milestone_branch_sync_state: tip 15c078d; A4 T5 on same branch
 - worktrack_branch: milestone/MS-R4-001-tushare-datalake
-- observed_checkout: milestone/MS-R4-001-tushare-datalake @ 0aa6037
+- observed_checkout: milestone/MS-R4-001-tushare-datalake @ 15c078d
 
 ## Current Next Action
 
-- WT-R4-A4 **T4 complete**（AO-O1/O2/O3；AO-O4 deferred）。Next: **R4-A4-T5**（QA + Gate packet；零 live）on request。
+- WT-R4-A4 **T5 complete**（QA + consistency + residuals/gate draft）。Next: **R4-A4-RESIDUALS** → Gate（proposed pass_with_residuals；零 live）。
 
 ## Linked Formal Documents
 
@@ -93,7 +93,7 @@ owner: "OceanEyeFF"
 - planned_worktrack_backlog: repo/worktrack-backlog.md
 - worktrack_contract: worktrack/WT-R4-A4-contract.md
 - plan_task_queue: worktrack/WT-R4-A4-plan-task-queue.md
-- gate_evidence: N/A
+- gate_evidence: worktrack/WT-R4-A4-gate-evidence.md
 - closeout_ref: N/A
 - worktrack_init_result: worktrack/WT-R4-A4-init-result.md
 - worktrack_intake_review: worktrack/MS-R4-001-WT-R4-A4-intake-review.md
@@ -248,13 +248,13 @@ owner: "OceanEyeFF"
 
 ## Handback Guard
 
-- handoff_state: a4_t2_done_awaiting_t3
-- last_stop_reason: WT-R4-A4 T4 complete (AO-O hygiene); await 「开始 T5」; zero live; push gated
-- last_handback_signature: WT-R4-A4/T4/2026-07-24T14:20:00+08:00
+- handoff_state: a4_t5_done_awaiting_residuals
+- last_stop_reason: WT-R4-A4 T5 complete; awaiting Residuals+Gate confirm; zero live; push gated
+- last_handback_signature: WT-R4-A4/T5/2026-07-24T14:50:00+08:00
 - handback_reaffirmed_rounds: 0
 - stable_handback_threshold: 2
 - handback_lock_active: false
-- last_unlock_signal: programmer start WT-R4-A4-T4
+- last_unlock_signal: programmer start WT-R4-A4-T5
 
 ## Baseline Traceability
 
@@ -304,10 +304,10 @@ owner: "OceanEyeFF"
 - active_worktrack_initialized: WT-R4-A4
 - last_closed_worktrack: WT-R4-A3
 - worktrack_intake_review_ref: .servo/worktrack/MS-R4-001-WT-R4-A4-intake-review.md
-- worktrack_gate_evidence_ref: N/A
+- worktrack_gate_evidence_ref: .servo/worktrack/WT-R4-A4-gate-evidence.md
 - closeout_ref: .servo/worktrack/WT-R4-A3-closeout.md
 - environment_validation_report_ref: .servo/worktrack/environment-validation-report.md
-- current_stop_condition: A4 T4 done; T5 on request; MS final acceptance blocked until Residual Confirmation Round; zero live; push gated
+- current_stop_condition: A4 T5 done; awaiting Residuals+Gate confirm; MS final acceptance blocked until Residual Confirmation Round; zero live; push gated
 - active_intake_review_ref: .servo/worktrack/MS-R4-001-WT-R4-A4-intake-review.md
 - control_plane_refresh_ref: .servo/repo/refresh-report-MS-T1-001-close-2026-07-14.md
 - persistent_work_habits_updated: 2026-06-10

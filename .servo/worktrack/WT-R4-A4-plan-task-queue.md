@@ -3,7 +3,7 @@ title: "WT-R4-A4 Plan / Task Queue"
 artifact_type: "worktrack-plan-task-queue"
 milestone_id: "MS-R4-001"
 worktrack_id: "WT-R4-A4"
-updated: "2026-07-24T14:20:00+08:00"
+updated: "2026-07-24T14:50:00+08:00"
 owner: "OceanEyeFF"
 ---
 
@@ -13,11 +13,11 @@ owner: "OceanEyeFF"
 
 - worktrack_id: WT-R4-A4
 - milestone_id: MS-R4-001
-- updated: 2026-07-24T14:20:00+08:00
-- current_phase: t4_complete
-- selected_next_action_id: R4-A4-T5
-- selected_next_action: QA report + consistency + Gate/Close packet
-- selection_reason: T4 AO-O hygiene done; next A4-D5 QA/Gate packet
+- updated: 2026-07-24T14:50:00+08:00
+- current_phase: t5_complete
+- selected_next_action_id: R4-A4-RESIDUALS
+- selected_next_action: Residuals round confirm (then Formal Gate)
+- selection_reason: T5 QA/consistency/gate draft seeded; Residuals required before Gate
 - execution_not_started: false
 - t1_status: completed
 - t2_status: completed
@@ -29,6 +29,14 @@ owner: "OceanEyeFF"
 - t4_status: completed
 - t4_completed_at: 2026-07-24T14:20:00+08:00
 - t4_notes: .servo/worktrack/WT-R4-A4-t4-notes.md
+- t5_status: completed
+- t5_completed_at: 2026-07-24T14:50:00+08:00
+- t5_notes: .servo/worktrack/WT-R4-A4-t5-notes.md
+- residuals_round_status: pending_programmer_confirmation
+- residuals_round: .servo/worktrack/WT-R4-A4-residuals-round.md
+- gate_evidence: .servo/worktrack/WT-R4-A4-gate-evidence.md
+- qa_report: .servo/worktrack/WT-R4-A4-qa-report.md
+- gate_status: pending_programmer_confirm
 - t1_t3_review_verdict: pass_with_residuals
 - t1_t3_review: .servo/worktrack/WT-R4-A4-t1-t3-review.md
 - t1_t3_residuals_doc_only: F1,F2,F4
@@ -41,19 +49,20 @@ owner: "OceanEyeFF"
 2. [x] Minimal derived builder (cache → derived; Return5/10/20 + RSI) — **R4-A4-T2** — completed
 3. [x] Reproducible load API + Arch-v1 tests — **R4-A4-T3** — completed
 4. [x] Hygiene: AO-O1 allowlist + AO-O2 dataset_builder tests (+ AO-O3 doc) — **R4-A4-T4** — completed
-5. [ ] QA report + consistency + Gate/Close packet — **R4-A4-T5** — pending
-6. [ ] Formal Gate + Close — **R4-A4-GATE** — pending
+5. [x] QA report + consistency + Gate/Close packet — **R4-A4-T5** — completed
+6. [ ] Residuals round (programmer confirm) — **R4-A4-RESIDUALS** — pending
+7. [ ] Formal Gate + Close — **R4-A4-GATE** — pending
 
 ## Current Next Action
 
-- selected_next_action_id: R4-A4-T5
-- selected_next_action: QA report + consistency + Gate/Close packet
-- blocked_until: programmer 「开始 T5」or Dispatch
-- note: AO-O1/O2 done; AO-O3 doc; AO-O4 deferred optional; F1/F2/F4 still doc-only
+- selected_next_action_id: R4-A4-RESIDUALS
+- selected_next_action: Residuals round confirm (then Formal Gate)
+- blocked_until: programmer confirm Residuals phrase
+- note: T5 complete; Gate draft pending; AO-O4 deferred; F1/F2/F4 doc-only; GATE still pending
 
 ## Schedule Handoff
 
-- suggested_next_route: Dispatch R4-A4-T5 on request
+- suggested_next_route: Residuals confirm → Formal Gate
 - needs_approval: yes for commit/push; live batches (none planned)
 - stop_conditions:
   - no full-campaign / train / Phase4 / EXEC-002
