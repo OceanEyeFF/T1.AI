@@ -16,7 +16,7 @@ Approved L2 rate caps live in ``inputs/configs/tushare_rate_limits.toml``
 
 Derived minimal layout (WT-R4-A4-T1) is also frozen here:
 ``inputs/data/derived/{family}/{ts_code}/year={YYYY}/part.parquet``
-(M1: momentum return_5/10/20d + technical rsi_14). Builder/load = T2/T3.
+(M1: momentum return_5/10/20d + technical rsi_14). Builder=T2; load via DataLake=T3.
 """
 
 from __future__ import annotations
@@ -61,7 +61,7 @@ R4_TRIAL_EXCLUDE_SYMBOLS = frozenset({"601989", "601989.SH"})
 # ---------------------------------------------------------------------------
 # Derived minimal contract (WT-R4-A4-T1; A4_Q1/Q2 locked at Init)
 # Layout mirrors cache: {derived_root}/{family}/{ts_code}/year={YYYY}/part.parquet
-# Builder/load land in T2/T3; T1 freezes constants + path helpers only.
+# Builder=T2; DataLake.load_derived*=T3; T1 froze constants + path helpers.
 # ---------------------------------------------------------------------------
 R4_DERIVED_CONTRACT_ID = "MS-R4-001-derived-minimal-v0"
 R4_DERIVED_ROOT = Path("inputs/data/derived")
@@ -157,14 +157,20 @@ def make_r4_datalake(
     *,
     refresh: bool = False,
     tushare_token: str | None = None,
+    derived_root: Path | str | None = None,
 ) -> DataLake:
-    """Build a cache-first DataLake with R4/A1 defaults (TuShare primary, qfq)."""
+    """Build a cache-first DataLake with R4/A1 defaults (TuShare primary, qfq).
+
+    ``derived_root`` defaults to ``R4_DERIVED_ROOT`` for ``load_derived*``.
+    """
     root = Path(cache_dir) if cache_dir is not None else R4_CACHE_ROOT
+    droot = Path(derived_root) if derived_root is not None else R4_DERIVED_ROOT
     return DataLake(
         cache_dir=root,
         default_source=R4_PRIMARY_SOURCE,  # type: ignore[arg-type]
         refresh=refresh,
         tushare_token=tushare_token,
+        derived_root=droot,
     )
 
 

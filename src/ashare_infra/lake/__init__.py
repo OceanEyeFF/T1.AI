@@ -38,6 +38,9 @@ class DataLake:
 
     Meta (``stock_basic``) is local-cache only in WT-INFRA-001.5 — see
     ``load_stock_basic`` / ``ashare_infra.lake.meta``.
+
+    Derived features (WT-R4-A4) load from ``derived_root`` year partitions via
+    ``load_derived`` / ``load_derived_minimal`` — filesystem only, never network.
     """
 
     cache_dir: Path
@@ -49,9 +52,12 @@ class DataLake:
     odp_interval: str = "1d"
     odp_base_url: str | None = None
     odp_prefer_rest: bool = False
+    derived_root: Path | None = None
 
     def __post_init__(self) -> None:
         self.cache_dir = Path(self.cache_dir)
+        if self.derived_root is not None:
+            self.derived_root = Path(self.derived_root)
 
     def stock_basic_path(self) -> Path:
         """Canonical stem path ``{cache_dir}/meta/stock_basic`` (no suffix)."""
@@ -190,6 +196,99 @@ class DataLake:
             df = truncate_as_of(df, as_of, inclusive=True)
         return df
 
+    def resolved_derived_root(self) -> Path:
+        """Resolved derived root (explicit ``derived_root`` or R4 default)."""
+        if self.derived_root is not None:
+            return Path(self.derived_root)
+        from ashare_infra.lake.r4_contract import R4_DERIVED_ROOT
+
+        return Path(R4_DERIVED_ROOT)
+
+    def load_derived(
+        self,
+        symbol: str,
+        family: str,
+        start: date | str | None = None,
+        end: date | str | None = None,
+        *,
+        as_of: date | None = None,
+    ) -> pd.DataFrame:
+        """Load one derived family for ``symbol`` (parquet partitions only).
+
+        Never calls TuShare / network. Missing parts → empty frame with the
+        family's required feature columns. ``start``/``end`` slice the
+        DatetimeIndex; ``as_of`` truncates like ``load_daily_bars``.
+        """
+        from ashare_infra.lake.r4_contract import (
+            R4_DERIVED_MINIMAL_FAMILIES,
+            r4_derived_required_columns,
+        )
+        from ashare_infra.lake.r4_derived_io import read_r4_derived_parts
+        from ashare_lab.symbols import symbol_to_ts_code
+
+        fam = str(family or "").strip()
+        if fam not in R4_DERIVED_MINIMAL_FAMILIES:
+            raise ValueError(
+                f"family={family!r} not in minimal set "
+                f"{sorted(R4_DERIVED_MINIMAL_FAMILIES)}"
+            )
+        ts_code = symbol_to_ts_code(symbol)
+        df = read_r4_derived_parts(fam, ts_code, root=self.resolved_derived_root())
+        required_feats = [c for c in r4_derived_required_columns(fam) if c != "date"]
+        if df.empty:
+            empty = pd.DataFrame(columns=required_feats)
+            empty.index = pd.DatetimeIndex([], name="date")
+            return empty
+        missing = [c for c in required_feats if c not in df.columns]
+        if missing:
+            raise ValueError(
+                f"derived family={fam!r} ts_code={ts_code!r} missing columns: {missing}"
+            )
+        df = df.loc[:, required_feats].copy()
+        df = _slice_datetime_index(df, start=start, end=end)
+        if as_of is not None and not df.empty:
+            df = truncate_as_of(df, as_of, inclusive=True)
+        return df
+
+    def load_derived_minimal(
+        self,
+        symbol: str,
+        start: date | str | None = None,
+        end: date | str | None = None,
+        *,
+        as_of: date | None = None,
+    ) -> dict[str, pd.DataFrame]:
+        """Load all M1 derived families for one symbol (filesystem only)."""
+        from ashare_infra.lake.r4_contract import R4_DERIVED_MINIMAL_FAMILIES
+
+        return {
+            fam: self.load_derived(
+                symbol, fam, start=start, end=end, as_of=as_of
+            )
+            for fam in sorted(R4_DERIVED_MINIMAL_FAMILIES)
+        }
+
+    def load_scope_derived(
+        self,
+        scope: DataScope,
+        family: str,
+        *,
+        as_of: date | None = None,
+    ) -> dict[str, pd.DataFrame]:
+        """Load one derived family for every symbol in ``scope`` (non-empty only)."""
+        out: dict[str, pd.DataFrame] = {}
+        for symbol in sorted(scope.symbols):
+            df = self.load_derived(
+                symbol,
+                family,
+                start=scope.window_start,
+                end=scope.window_end,
+                as_of=as_of,
+            )
+            if not df.empty:
+                out[symbol] = df
+        return out
+
     def _load_or_fetch(
         self,
         source: SourceKind,
@@ -283,3 +382,29 @@ def _yyyymmdd(value: date | str) -> str:
     if len(s) != 8 or not s.isdigit():
         raise ValueError(f"expected YYYYMMDD or date, got {value!r}")
     return s
+
+
+def _to_timestamp(value: date | str) -> pd.Timestamp:
+    if isinstance(value, date):
+        return pd.Timestamp(value)
+    s = str(value).replace("-", "")
+    if len(s) == 8 and s.isdigit():
+        return pd.to_datetime(s)
+    return pd.to_datetime(value)
+
+
+def _slice_datetime_index(
+    df: pd.DataFrame,
+    *,
+    start: date | str | None,
+    end: date | str | None,
+) -> pd.DataFrame:
+    """Slice a DatetimeIndex frame by optional start/end (inclusive)."""
+    if df.empty or (start is None and end is None):
+        return df
+    out = df
+    if start is not None:
+        out = out.loc[out.index >= _to_timestamp(start)]
+    if end is not None:
+        out = out.loc[out.index <= _to_timestamp(end)]
+    return out

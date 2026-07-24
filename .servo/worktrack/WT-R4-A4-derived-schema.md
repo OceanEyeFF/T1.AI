@@ -4,10 +4,10 @@ artifact_type: "schema-draft"
 milestone_id: "MS-R4-001"
 worktrack_id: "WT-R4-A4"
 deliverable: "A4-D1"
-status: "frozen_for_T2"
-updated: "2026-07-23T20:40:00+08:00"
+status: "frozen_for_T3"
+updated: "2026-07-24T09:40:00+08:00"
 owner: "OceanEyeFF"
-freeze_state: "frozen_for_T2"
+freeze_state: "frozen_for_T3"
 aligned_with:
   - ashare_infra.lake.r4_contract (R4_DERIVED_*)
   - ashare_lab.features.momentum (Return5D/10D/20D)
@@ -20,13 +20,13 @@ aligned_with:
 
 > **性质：** A4-T1 文档。供 T2 builder / T3 load / contract 测试引用。  
 > **权威常量：** `ashare_infra.lake.r4_contract` 的 `R4_DERIVED_*`。  
-> **不在本任务：** 写 parquet、实现 builder、改 DataLake load API（T2/T3）。
+> **Load：** `DataLake.load_derived*`（T3）。Builder 见 T2。
 
 ## 1. Control Signal
 
 ```yaml
 schema_id: MS-R4-001-derived-minimal-v0
-status: frozen_for_T2
+status: frozen_for_T3
 minimal_set: M1_ret_rsi
 derived_root: inputs/data/derived
 source_namespace: tushare_qfq
@@ -90,11 +90,11 @@ required_columns_technical: [date, rsi_14]
 | volatility family | deferred |
 | market_state | deferred（A2-carry） |
 
-## 6. Test Expectations (T1)
+## 6. Test Expectations
 
-- **Unit：** 常量锁定 + path helper 形状 + unknown family raises
-- **Contract：** 引用 `R4_DERIVED_*`；不要求磁盘已有 parquet（T2 前可空）
-- **Integration（T2+）：** 构建后断言列 schema + year 分区可读
+- **Unit：** 常量/path（T1）；builder（T2）；`load_derived` schema/as_of/reproducible/zero-live（T3）
+- **Contract：** `R4_DERIVED_*` + README load API surface + `make_r4_datalake` binds derived_root
+- **Integration：** build→load roundtrip；列 schema；零 live
 
 ## 7. Non-Goals
 

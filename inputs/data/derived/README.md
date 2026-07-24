@@ -3,7 +3,7 @@
 > **合同 ID：** `MS-R4-001-derived-minimal-v0`（`R4_DERIVED_CONTRACT_ID`）  
 > **权威常量：** `ashare_infra.lake.r4_contract`（WT-R4-A4-T1 冻结）  
 > **Schema 文档：** `.servo/worktrack/WT-R4-A4-derived-schema.md`  
-> **构建/加载：** T2 builder / T3 load（本目录 T1 仅布局+README）
+> **构建/加载：** T2 `ashare_lab.derived`；T3 `DataLake.load_derived*` / `make_r4_datalake`
 
 ## 布局（对齐 cache year 分区）
 
@@ -38,9 +38,21 @@ inputs/data/derived/
 - **Live：** 默认 **零 live**（`refresh=False`）；禁止旁路直拉 TuShare
 - **禁止：** 与 `workspace/datasets/` 静默双写为第二套 derived 真理；DatasetBuilder 输出仍属 workspace，不替代本目录合同
 
+## Load API（T3）
+
+| API | 语义 |
+|-----|------|
+| `DataLake.load_derived(symbol, family, start=None, end=None, as_of=None)` | 读单一 family 年分区；filesystem only |
+| `DataLake.load_derived_minimal(symbol, …)` | 返回 `momentum` + `technical` |
+| `DataLake.load_scope_derived(scope, family, as_of=None)` | 按 DataScope 批量（空帧跳过） |
+| `make_r4_datalake(..., derived_root=…)` | 默认绑定 `R4_DERIVED_ROOT` |
+
+- **零 live：** load 不调用 `fetch_tushare_*`；缺分区 → 空帧（保留 schema 列）
+- **可复现：** 同一路径重复 load 结果一致；列对齐 `r4_derived_required_columns`
+
 ## 当前状态
 
 - T1：目录 + README + 常量/路径助手已冻结
 - T2：cache-only builder 已落地（`ashare_lab.derived` + `r4_derived_io`）；本地可由 cache 重建 parquet
+- T3：`DataLake.load_derived*` + Arch-v1 unit/contract/integration
 - Parquet 分区（`**/year=*/`）默认不入仓（见 `.gitignore`）；README / 合同入仓
-- T3+：DataLake/load API 与 Arch-v1 强化
