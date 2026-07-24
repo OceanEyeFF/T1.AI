@@ -1,4 +1,8 @@
-"""WT-INFRA-002: business modules must not directly import load_or_fetch_*."""
+"""WT-INFRA-002 / AO-O1: business modules must not directly import load_or_fetch_*.
+
+Only ``ashare_infra.lake`` is allowlisted (DataLake façade). ``ashare_infra.data``
+is intentionally excluded so consumers cannot bypass DataLake and still pass.
+"""
 
 from __future__ import annotations
 
@@ -24,9 +28,10 @@ DEFERRED_SCAN_TARGETS = (
     REPO_ROOT / "scripts/build_sequence_dataset_market_state.py",
 )
 
+# AO-O1 (WT-R4-A4-T4): only DataLake façade may import load_or_fetch_*.
+# Do NOT allowlist ashare_infra.data — that would greenlight bypassing DataLake.
 ALLOWED_PREFIXES = (
     "ashare_infra.lake",
-    "ashare_infra.data",
 )
 
 

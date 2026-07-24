@@ -7,7 +7,7 @@ status: "active"
 node_type: "feature"
 derived_from_milestone: true
 created: "2026-07-23T17:47:00+08:00"
-updated: "2026-07-24T11:40:00+08:00"
+updated: "2026-07-24T14:20:00+08:00"
 owner: "OceanEyeFF"
 ---
 
@@ -19,14 +19,14 @@ owner: "OceanEyeFF"
 - milestone_id: MS-R4-001
 - derived_from_milestone: true
 - status: active
-- implementation_status: t3_complete
+- implementation_status: t4_complete
 - node_type: feature
 - goal_summary: >
   在已批准 cache（池 v1@1 / 61 + 510300 qfq）上落地 derived 最小合同与可复现
   load；交付 CS4 质量审计报告；按 Init 默认关闭 AO-O1/O2 hygiene；不训、不
   full-campaign、不 Phase4/EXEC-002、不 blind-merge develop。
 - execution_not_started: false
-- selected_next_action_id: R4-A4-T4
+- selected_next_action_id: R4-A4-T5
 - t1_t3_review_verdict: pass_with_residuals
 - t1_t3_review: .servo/worktrack/WT-R4-A4-t1-t3-review.md
 - t1_t3_review_checkpoint: afba1f0
@@ -51,6 +51,12 @@ owner: "OceanEyeFF"
 - t3_result: >
   DataLake.load_derived* + make_r4_datalake(derived_root);
   Arch-v1 unit/contract/integration green (12); zero live
+- t4_status: completed
+- t4_completed_at: 2026-07-24T14:20:00+08:00
+- t4_notes: .servo/worktrack/WT-R4-A4-t4-notes.md
+- t4_result: >
+  AO-O1 allowlist lake-only; AO-O2 dataset_builder 10 fails fixed (23 pass);
+  AO-O3 toml dual-track doc; AO-O4 deferred optional
 - pool_binding: custom_research_liquidity_quality_v1 / version 1 (61 symbols)
 - live_policy: zero_live (cache-only); any live requires explicit M1/normal batch
 - upstream_a3:

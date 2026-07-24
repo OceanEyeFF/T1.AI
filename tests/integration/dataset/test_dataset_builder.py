@@ -14,6 +14,10 @@ import pytest
 from ashare_lab.dataset.builder import DatasetBuilder, DatasetConfig
 from ashare_lab.features.momentum import Return1D, Return5D, Return20D
 from ashare_lab.features.volume import AmountChange, VolumeChange, VolumeRatio
+from ashare_lab.symbols import symbol_to_odp_equity_symbol, symbol_to_ts_code
+
+# AO-O2 (WT-R4-A4-T4): fixtures seed akshare-style CSV caches; tests that use
+# them must set source="akshare". Default DatasetConfig.source is tushare (R4).
 
 
 @pytest.fixture
@@ -119,6 +123,7 @@ class TestDatasetBuilder:
             label_type="excess_return",
             train_end_date="20240121",  # 70% split
             valid_end_date="20240125",  # 85% split
+            source="akshare",
             cache_dir=sample_stock_cache,
             output_dir=temp_output_dir,
         )
@@ -155,6 +160,7 @@ class TestDatasetBuilder:
             label_type="forward_return",
             train_end_date="20240121",
             valid_end_date="20240125",
+            source="akshare",
             cache_dir=sample_stock_cache,
             output_dir=temp_output_dir,
         )
@@ -197,6 +203,7 @@ class TestDatasetBuilder:
             label_type="forward_return",
             train_end_date="20240121",
             valid_end_date="20240125",
+            source="akshare",
             cache_dir=sample_stock_cache,
             output_dir=temp_output_dir,
         )
@@ -241,6 +248,7 @@ class TestDatasetBuilder:
             label_type="excess_return",
             train_end_date="20240121",
             valid_end_date="20240125",
+            source="akshare",
             cache_dir=sample_stock_cache,
             output_dir=temp_output_dir,
         )
@@ -298,6 +306,7 @@ class TestDatasetBuilder:
             benchmark_code="000300",
             train_end_date="20240121",
             valid_end_date="20240125",
+            source="akshare",
             cache_dir=sample_stock_cache,
             output_dir=temp_output_dir,
         )
@@ -327,6 +336,7 @@ class TestDatasetBuilder:
             label_type="forward_return",
             train_end_date="20240121",
             valid_end_date="20240125",
+            source="akshare",
             cache_dir=sample_stock_cache,
             output_dir=temp_output_dir,
         )
@@ -358,6 +368,7 @@ class TestDatasetBuilder:
             label_type="forward_return",
             train_end_date="20240121",
             valid_end_date="20240125",
+            source="akshare",
             cache_dir=sample_stock_cache,
             output_dir=temp_output_dir,
             nan_threshold=0.1,  # 降低阈值以触发警告
@@ -411,6 +422,7 @@ class TestDatasetBuilderEdgeCases:
             label_type="forward_return",
             train_end_date="20240121",
             valid_end_date="20240125",
+            source="akshare",
             cache_dir=sample_stock_cache,
             output_dir=temp_output_dir,
         )
@@ -429,8 +441,8 @@ def test_builder_with_tushare_source(
     temp_output_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """验证数据源切换到 TuShare"""
-    from ashare_lab import dataset
+    """验证数据源切换到 TuShare（经 DataLake；AO-O2）"""
+    from ashare_infra.lake import DataLake
 
     symbol = "600000.SH"
     dates = pd.date_range("2024-01-01", periods=5, freq="D")
@@ -445,14 +457,25 @@ def test_builder_with_tushare_source(
         },
         index=dates,
     )
+    fake_df.index.name = "date"
 
     calls: list[str] = []
 
-    def fake_loader(req, cache_dir):
-        calls.append(req.symbol)
-        return fake_df
+    def fake_load_daily_bars(
+        self,
+        sym,
+        start,
+        end,
+        *,
+        source=None,
+        adjust="qfq",
+        as_of=None,
+    ):
+        _ = self, start, end, source, adjust, as_of
+        calls.append(sym)
+        return fake_df.copy()
 
-    monkeypatch.setattr(dataset.builder, "load_or_fetch_tushare_bars", fake_loader)
+    monkeypatch.setattr(DataLake, "load_daily_bars", fake_load_daily_bars)
 
     config = DatasetConfig(
         name="test_tushare_source",
@@ -463,7 +486,7 @@ def test_builder_with_tushare_source(
         label_type="forward_return",
         train_end_date="20240103",
         valid_end_date="20240104",
-        cache_dir=sample_benchmark_cache,  # 复用基准缓存路径
+        cache_dir=sample_benchmark_cache,
         output_dir=temp_output_dir,
         source="tushare",
     )
@@ -472,7 +495,7 @@ def test_builder_with_tushare_source(
     output_path = builder.build()
 
     assert (output_path / "train.parquet").exists()
-    assert calls == [symbol]
+    assert calls == [symbol_to_ts_code(symbol)]
 
 
 def test_builder_with_odp_source(
@@ -480,8 +503,8 @@ def test_builder_with_odp_source(
     temp_output_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """验证数据源切换到 ODP"""
-    from ashare_lab import dataset
+    """验证数据源切换到 ODP（经 DataLake；AO-O2）"""
+    from ashare_infra.lake import DataLake
 
     symbol = "600519"
     dates = pd.date_range("2024-01-01", periods=5, freq="D")
@@ -496,15 +519,25 @@ def test_builder_with_odp_source(
         },
         index=dates,
     )
+    fake_df.index.name = "date"
 
     calls: list[str] = []
 
-    def fake_loader(req, cache_dir):
-        _ = cache_dir
-        calls.append(req.symbol)
-        return fake_df
+    def fake_load_daily_bars(
+        self,
+        sym,
+        start,
+        end,
+        *,
+        source=None,
+        adjust="qfq",
+        as_of=None,
+    ):
+        _ = self, start, end, source, adjust, as_of
+        calls.append(sym)
+        return fake_df.copy()
 
-    monkeypatch.setattr(dataset.builder, "load_or_fetch_odp_bars", fake_loader)
+    monkeypatch.setattr(DataLake, "load_daily_bars", fake_load_daily_bars)
 
     config = DatasetConfig(
         name="test_odp_source",
@@ -524,4 +557,4 @@ def test_builder_with_odp_source(
     output_path = builder.build()
 
     assert (output_path / "train.parquet").exists()
-    assert calls == [symbol]
+    assert calls == [symbol_to_odp_equity_symbol(symbol)]

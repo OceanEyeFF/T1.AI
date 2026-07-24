@@ -3,7 +3,7 @@ title: "Milestone Residual Confirmation: MS-R4-001"
 artifact_type: "milestone-residual-confirmation"
 milestone_id: "MS-R4-001"
 status: "pending_programmer_confirmation"
-updated: "2026-07-24T11:40:00+08:00"
+updated: "2026-07-24T14:20:00+08:00"
 owner: "OceanEyeFF"
 gate: "milestone_final_acceptance"
 checkpoint_note: "Register seeded from A0–A4 T1–T3; finalize at MS final acceptance after A4 Close"
@@ -41,7 +41,7 @@ related_wt_close_policy: A4_Q7_wt_close_only
 | A4_F1_stale_year_no_prune | WT-R4-A4 T1–T3 review | derived 重建只覆盖同年 `part.parquet`，不 prune 旧 `year=*` | 接受增量覆盖语义；严格对齐需手动清目录 | 需求变为「rebuild 必须与 cache 年份集合严格一致 / 自动 prune」 | doc_only |
 | A4_F2_family_row_mismatch | WT-R4-A4 T1–T3 review | momentum/technical warm-up 后行数可不等 | 接受按 family 读 + 显式 date join | 需求变为「两 family 必须等长日历 / 强制内连接」 | doc_only |
 | A4_F4_refresh_not_rebuild | WT-R4-A4 T1–T3 review | `load_derived*` 只读盘；`DataLake.refresh` 不重建 derived | 接受 load≠build；刷新走 builder | 需求变为「refresh=True 必须级联重建 derived」 | doc_only |
-| AO-O_hygiene | A3→A4 AC | AO-O1 allowlist + AO-O2 dataset_builder（+O3 doc） | **T4 完成或显式豁免后**才可进 MS 终验表终态 | T4 未完成且未豁免；或后续回归再破 allowlist/旧测 | pending_T4 |
+| AO-O_hygiene | A3→A4 AC / A4-T4 | AO-O1 allowlist + AO-O2 dataset_builder（+O3 doc）；AO-O4 deferred | T4 已完成；accept 以 T4 notes 为准 | 回归再破 allowlist / dataset 旧测再红；或要求强制做 AO-O4 AST | closed_in_A4_T4 |
 
 ### Optional footnotes（非阻塞，终验可点名）
 
