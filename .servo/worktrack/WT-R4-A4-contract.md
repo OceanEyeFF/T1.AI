@@ -7,7 +7,7 @@ status: "active"
 node_type: "feature"
 derived_from_milestone: true
 created: "2026-07-23T17:47:00+08:00"
-updated: "2026-07-24T09:40:00+08:00"
+updated: "2026-07-24T11:40:00+08:00"
 owner: "OceanEyeFF"
 ---
 
@@ -27,6 +27,11 @@ owner: "OceanEyeFF"
   full-campaign、不 Phase4/EXEC-002、不 blind-merge develop。
 - execution_not_started: false
 - selected_next_action_id: R4-A4-T4
+- t1_t3_review_verdict: pass_with_residuals
+- t1_t3_review: .servo/worktrack/WT-R4-A4-t1-t3-review.md
+- t1_t3_review_checkpoint: afba1f0
+- t1_t3_accepted_residuals: [F1_stale_year_no_prune, F2_family_row_mismatch, F4_refresh_not_rebuild]
+- t1_t3_residual_disposition: document_only_no_code_fix
 - t1_status: completed
 - t1_completed_at: 2026-07-23T20:45:00+08:00
 - t1_notes: .servo/worktrack/WT-R4-A4-t1-notes.md
@@ -61,7 +66,7 @@ owner: "OceanEyeFF"
   - A4_Q4: O1_O2_in_AC — AO-O1+O2 in AC; O3 doc-only; O4 optional
   - A4_Q5: zero_live — cache-only derived build
   - A4_Q6: registry61_trial60 — QA reports registry 61 + trial 60 note
-  - A4_Q7: wt_close_only — A4 Gate closes WT only; MS final acceptance / develop merge separate
+  - A4_Q7: wt_close_only — A4 Gate closes WT only; MS final acceptance / develop merge separate **and requires Residual Confirmation Round** (MS AC6)
 - out_of_scope: full_campaign; training; Phase_4; EXEC-002; token-in-repo; blind_full_merge_develop; soft80_expansion
 - plan_task_queue: .servo/worktrack/WT-R4-A4-plan-task-queue.md
 - intake_review: .servo/worktrack/MS-R4-001-WT-R4-A4-intake-review.md
@@ -187,7 +192,7 @@ owner: "OceanEyeFF"
 - Phase 4 / EXEC-002
 - Soft80 扩池或 registry 重选
 - MACD / Bollinger / market-state 完整层（可 residual）
-- MS-R4-001 final acceptance + develop merge（A4_Q7 另批）
+- MS-R4-001 final acceptance + develop merge（A4_Q7 另批；终验前 Residual Confirmation Round 硬门控）
 - Token 入仓；blind full merge develop
 
 ## 验收标准（AC）

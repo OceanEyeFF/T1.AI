@@ -50,6 +50,17 @@ inputs/data/derived/
 - **零 live：** load 不调用 `fetch_tushare_*`；缺分区 → 空帧（保留 schema 列）
 - **可复现：** 同一路径重复 load 结果一致；列对齐 `r4_derived_required_columns`
 
+
+## 已知限制（T1–T3 review accepted residuals）
+
+> 审查结论：`pass_with_residuals` @ `afba1f0`；**不改代码**，仅文档约定。详见 `.servo/worktrack/WT-R4-A4-t1-t3-review.md`。
+
+| ID | 约定 |
+|----|------|
+| **F1** | 重建只覆盖同年 `year=YYYY/part.parquet`，**不**自动删除该 symbol 下过期 `year=*` 目录。若要与 cache 严格对齐，全量重建前先清 `derived/{family}/{ts_code}/`。 |
+| **F2** | `momentum` 与 `technical` 因各自 warm-up `dropna`，行数可能不等；消费侧按 family 读取，按 `date` 显式 join，勿假设等长日历。 |
+| **F4** | `load_derived*` **只读盘**；`DataLake.refresh` **不会**重建 derived。刷新请走 cache-only `build_r4_derived_*`。 |
+
 ## 当前状态
 
 - T1：目录 + README + 常量/路径助手已冻结

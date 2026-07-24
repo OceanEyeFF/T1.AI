@@ -15,7 +15,7 @@ owner: "OceanEyeFF"
 
 - updated: 2026-07-23T20:55:00+08:00
 - owner: OceanEyeFF
-- refresh_note: WT-R4-A4 T3 complete (derived load API); next T4 on request (zero live)
+- refresh_note: MS final acceptance requires Residual Confirmation Round; A4 T1–T3 review locked; next T4 on request
 
 ## Current Control Level
 
@@ -37,7 +37,7 @@ owner: "OceanEyeFF"
 - selected_next_action_id: R4-A4-T4
 - worktrack_gate_verdict: N/A
 - worktrack_blocker: none
-- worktrack_residual_risk: soft80_accepted; 510300_basic_mf_na; 601989_trial_exclude; AO-O in A4 AC
+- worktrack_residual_risk: soft80_accepted; 510300_basic_mf_na; 601989_trial_exclude; AO-O in A4 AC; A4_T1T3_F1_F2_F4_doc_only
 - execution_not_started: false
 - active_worktrack_initialized: true
 
@@ -80,7 +80,7 @@ owner: "OceanEyeFF"
 
 ## Current Next Action
 
-- WT-R4-A4 **T3 complete** (DataLake.load_derived*). Next: **R4-A4-T4**（AO-O hygiene；零 live）on request。
+- WT-R4-A4 **T1–T3 review** `pass_with_residuals`（F1/F2/F4 文档化，不修代码）。Next: **R4-A4-T4**（AO-O only；零 live）on request。
 
 ## Linked Formal Documents
 
@@ -249,8 +249,8 @@ owner: "OceanEyeFF"
 ## Handback Guard
 
 - handoff_state: a4_t2_done_awaiting_t3
-- last_stop_reason: WT-R4-A4 T3 complete (derived load); await 「开始 T4」; zero live; push gated
-- last_handback_signature: WT-R4-A4/T3/2026-07-24T09:40:00+08:00
+- last_stop_reason: WT-R4-A4 T1–T3 review locked pass_with_residuals (F1/F2/F4 doc); await 「开始 T4」; zero live; push gated
+- last_handback_signature: WT-R4-A4/T1-T3-review/2026-07-24T11:17:00+08:00
 - handback_reaffirmed_rounds: 0
 - stable_handback_threshold: 2
 - handback_lock_active: false
@@ -307,7 +307,7 @@ owner: "OceanEyeFF"
 - worktrack_gate_evidence_ref: N/A
 - closeout_ref: .servo/worktrack/WT-R4-A3-closeout.md
 - environment_validation_report_ref: .servo/worktrack/environment-validation-report.md
-- current_stop_condition: A4 T3 done; T4 on request; zero live; no full-campaign / train / Phase4 / EXEC-002; push gated
+- current_stop_condition: A4 T1–T3 review done; T4 on request; MS final acceptance blocked until Residual Confirmation Round; zero live; push gated
 - active_intake_review_ref: .servo/worktrack/MS-R4-001-WT-R4-A4-intake-review.md
 - control_plane_refresh_ref: .servo/repo/refresh-report-MS-T1-001-close-2026-07-14.md
 - persistent_work_habits_updated: 2026-06-10

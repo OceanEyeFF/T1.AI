@@ -3,7 +3,7 @@ title: "WT-R4-A4 Plan / Task Queue"
 artifact_type: "worktrack-plan-task-queue"
 milestone_id: "MS-R4-001"
 worktrack_id: "WT-R4-A4"
-updated: "2026-07-24T09:40:00+08:00"
+updated: "2026-07-24T11:17:00+08:00"
 owner: "OceanEyeFF"
 ---
 
@@ -13,7 +13,7 @@ owner: "OceanEyeFF"
 
 - worktrack_id: WT-R4-A4
 - milestone_id: MS-R4-001
-- updated: 2026-07-24T09:40:00+08:00
+- updated: 2026-07-24T11:17:00+08:00
 - current_phase: t3_complete
 - selected_next_action_id: R4-A4-T4
 - selected_next_action: Hygiene AO-O1 allowlist + AO-O2 dataset_builder (+ AO-O3 doc)
@@ -26,6 +26,9 @@ owner: "OceanEyeFF"
 - t3_status: completed
 - t3_completed_at: 2026-07-24T09:40:00+08:00
 - t3_notes: .servo/worktrack/WT-R4-A4-t3-notes.md
+- t1_t3_review_verdict: pass_with_residuals
+- t1_t3_review: .servo/worktrack/WT-R4-A4-t1-t3-review.md
+- t1_t3_residuals_doc_only: F1,F2,F4
 - live_policy: zero_live
 - contract_ref: .servo/worktrack/WT-R4-A4-contract.md
 
@@ -43,6 +46,7 @@ owner: "OceanEyeFF"
 - selected_next_action_id: R4-A4-T4
 - selected_next_action: Hygiene AO-O1 allowlist + AO-O2 dataset_builder (+ AO-O3 doc)
 - blocked_until: programmer 「开始 T4」or Dispatch
+- note: T1–T3 review pass_with_residuals; F1/F2/F4 document-only (not T4 code)
 
 ## Schedule Handoff
 

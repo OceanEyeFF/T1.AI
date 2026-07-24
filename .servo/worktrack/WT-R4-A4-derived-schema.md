@@ -5,7 +5,7 @@ milestone_id: "MS-R4-001"
 worktrack_id: "WT-R4-A4"
 deliverable: "A4-D1"
 status: "frozen_for_T3"
-updated: "2026-07-24T09:40:00+08:00"
+updated: "2026-07-24T11:17:00+08:00"
 owner: "OceanEyeFF"
 freeze_state: "frozen_for_T3"
 aligned_with:
@@ -102,3 +102,11 @@ required_columns_technical: [date, rsi_14]
 - Soft80 expansion
 - Training / Phase4 / EXEC-002
 - Replacing DatasetBuilder `workspace/datasets/` outputs
+
+## 8. Accepted Residuals (T1–T3 review)
+
+Document-only (`pass_with_residuals` @ afba1f0); see `WT-R4-A4-t1-t3-review.md`.
+
+- **F1:** no auto-prune of stale `year=*` on rebuild
+- **F2:** family row counts may differ after warm-up
+- **F4:** `load_derived*` filesystem-only; `refresh` does not rebuild

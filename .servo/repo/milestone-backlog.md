@@ -1,7 +1,7 @@
 ---
 title: "Milestone Backlog"
 artifact_type: "milestone-backlog"
-updated: "2026-07-23T17:47:00+08:00"
+updated: "2026-07-24T11:40:00+08:00"
 updated_by: "cursor-init-worktrack-WT-R4-A4"
 ---
 
@@ -64,7 +64,7 @@ updated_by: "cursor-init-worktrack-WT-R4-A4"
 - note: >
   WT-R4-A4 initialized 2026-07-23. Next: R4-A4-T1 on request (zero live).
   Residuals in scope: AO-O1/O2 AC; soft80/510300/601989 documented in QA.
-  No full-campaign / train / Phase4 / EXEC-002. MS final acceptance separate (A4_Q7).
+  No full-campaign / train / Phase4 / EXEC-002. MS final acceptance separate (A4_Q7) and **requires Residual Confirmation Round** (AC6; `.servo/repo/MS-R4-001-residual-confirmation.md`).
 
 ## Planned
 
