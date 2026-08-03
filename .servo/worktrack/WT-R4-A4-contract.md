@@ -3,11 +3,11 @@ title: "WT-R4-A4: derived 最小实现 + 质量审计报告收口（非训练）
 artifact_type: "worktrack-contract"
 milestone_id: "MS-R4-001"
 worktrack_id: "WT-R4-A4"
-status: "active"
+status: "closed"
 node_type: "feature"
 derived_from_milestone: true
 created: "2026-07-23T17:47:00+08:00"
-updated: "2026-07-24T14:50:00+08:00"
+updated: "2026-07-28T15:17:00+08:00"
 owner: "OceanEyeFF"
 ---
 
@@ -18,15 +18,19 @@ owner: "OceanEyeFF"
 - worktrack_id: WT-R4-A4
 - milestone_id: MS-R4-001
 - derived_from_milestone: true
-- status: active
-- implementation_status: t5_complete
+- status: closed
+- implementation_status: closed
+- gate_verdict: pass_with_residuals
+- gate_status: accepted
+- closed_at: 2026-07-28T15:17:00+08:00
 - node_type: feature
 - goal_summary: >
   在已批准 cache（池 v1@1 / 61 + 510300 qfq）上落地 derived 最小合同与可复现
   load；交付 CS4 质量审计报告；按 Init 默认关闭 AO-O1/O2 hygiene；不训、不
   full-campaign、不 Phase4/EXEC-002、不 blind-merge develop。
 - execution_not_started: false
-- selected_next_action_id: R4-A4-RESIDUALS
+- selected_next_action_id: MS-R4-001-RESIDUAL-CONFIRMATION
+- selected_next: MS residual confirmation / handback (AC6); no auto Init next WT
 - t1_t3_review_verdict: pass_with_residuals
 - t1_t3_review: .servo/worktrack/WT-R4-A4-t1-t3-review.md
 - t1_t3_review_checkpoint: afba1f0
@@ -61,15 +65,18 @@ owner: "OceanEyeFF"
 - t5_completed_at: 2026-07-24T14:50:00+08:00
 - t5_notes: .servo/worktrack/WT-R4-A4-t5-notes.md
 - t5_result: >
-  QA report + consistency + residuals-round + draft Gate evidence;
-  focused A4 suite 50 passed; proposed pass_with_residuals; Gate not accepted
+  QA report + consistency + residuals-round + Gate evidence;
+  focused A4 suite 50 passed; Gate accepted pass_with_residuals 2026-07-28
 - qa_report: .servo/worktrack/WT-R4-A4-qa-report.md
 - consistency_matrix: .servo/worktrack/WT-R4-A4-consistency-matrix.md
 - residuals_round: .servo/worktrack/WT-R4-A4-residuals-round.md
-- residuals_round_status: pending_programmer_confirmation
+- residuals_round_status: confirmed
 - gate_evidence: .servo/worktrack/WT-R4-A4-gate-evidence.md
-- gate_status: pending_programmer_confirm
-- proposed_gate_verdict: pass_with_residuals
+- gate_status: accepted
+- gate_verdict: pass_with_residuals
+- closeout_ref: .servo/worktrack/WT-R4-A4-closeout.md
+- evidence_tip: 60cbf22
+- close_writeback_commit: pending_programmer_commit
 - pool_binding: custom_research_liquidity_quality_v1 / version 1 (61 symbols)
 - live_policy: zero_live (cache-only); any live requires explicit M1/normal batch
 - upstream_a3:
@@ -96,9 +103,9 @@ owner: "OceanEyeFF"
 - 分支: milestone/MS-R4-001-tushare-datalake
 - 基准分支: develop
 - 基准引用: 0aa6037796ea1c8ea70f29c6682a2a1be2227c42
-- 约定状态: active
+- 约定状态: closed
 - 负责人: OceanEyeFF
-- 更新时间: 2026-07-23T17:47:00+08:00
+- 更新时间: 2026-07-28T15:17:00+08:00
 - milestone_id: MS-R4-001
 
 ## Branch Policy

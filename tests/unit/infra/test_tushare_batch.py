@@ -228,4 +228,60 @@ def test_run_batch_dry_run_skips_executor() -> None:
     result = run_batch(m, _boom, dry_run=True)
     assert result.dry_run is True
     assert result.processed == 0
+    assert result.failed is False
     assert m.jobs[0].status == "pending"
+
+
+def test_non_wall_failure_sets_result_failed(tmp_path: Path) -> None:
+    lim = TushareRateLimiter(
+        rpm=180,
+        daily_per_api=80000,
+        sleep=lambda _: None,
+        today=lambda: date(2026, 7, 22),
+    )
+    m = plan_batch(
+        ["600000.SH", "000001.SZ"],
+        apis=("daily",),
+        start_date="20240101",
+        end_date="20240131",
+    )
+
+    def _exec(job) -> None:  # noqa: ANN001
+        if job.symbol == "000001.SZ":
+            raise RuntimeError("token invalid")
+
+    result = run_batch(m, _exec, limiter=lim, manifest_path=tmp_path / "fail.json")
+    assert result.failed is True
+    assert result.paused is False
+    assert m.state == "failed"
+    assert m.jobs[0].status == "done"
+    assert m.jobs[1].status == "failed"
+
+
+def test_terminal_state_failed_not_completed_when_failed_jobs_remain(
+    tmp_path: Path,
+) -> None:
+    lim = TushareRateLimiter(
+        rpm=180,
+        daily_per_api=80000,
+        sleep=lambda _: None,
+        today=lambda: date(2026, 7, 22),
+    )
+    m = plan_batch(
+        ["600000.SH", "000001.SZ", "600519.SH"],
+        apis=("daily",),
+        start_date="20240101",
+        end_date="20240131",
+    )
+    m.jobs[0].status = "done"
+    m.jobs[1].status = "failed"
+    m.jobs[1].error = "upstream error"
+    m.state = "failed"
+
+    def _exec(job) -> None:  # noqa: ANN001
+        pass
+
+    result = run_batch(m, _exec, limiter=lim, manifest_path=tmp_path / "partial.json")
+    assert result.failed is True
+    assert m.state == "failed"
+    assert m.jobs[2].status == "done"

@@ -199,10 +199,10 @@ class BatchManifest:
         out = Path(path)
         out.parent.mkdir(parents=True, exist_ok=True)
         self.updated_at = _utc_now()
-        out.write_text(
-            json.dumps(self.to_dict(), ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
+        payload = json.dumps(self.to_dict(), ensure_ascii=False, indent=2) + "\n"
+        tmp = out.with_suffix(out.suffix + ".tmp")
+        tmp.write_text(payload, encoding="utf-8")
+        tmp.replace(out)
         return out
 
     @classmethod
@@ -218,6 +218,22 @@ class BatchRunResult:
     paused: bool
     pause_kind: str | None
     dry_run: bool
+    failed: bool = False
+
+
+def _has_failed_jobs(manifest: BatchManifest) -> bool:
+    return any(j.status == "failed" for j in manifest.jobs)
+
+
+def _sync_manifest_when_no_pending(manifest: BatchManifest) -> None:
+    """Terminal state when no pending jobs remain (F-05: do not mark completed if jobs failed)."""
+    if manifest.pending_jobs():
+        return
+    if _has_failed_jobs(manifest):
+        manifest.state = "failed"
+    else:
+        manifest.state = "completed"
+        manifest.pause_reason = None
 
 
 JobExecutor = Callable[[FetchJob], None]
@@ -509,6 +525,7 @@ def run_batch(
             paused=False,
             pause_kind=None,
             dry_run=True,
+            failed=False,
         )
 
     lim = limiter or get_tushare_rate_limiter()
@@ -542,6 +559,7 @@ def run_batch(
                     paused=True,
                     pause_kind="daily_cap",
                     dry_run=False,
+                    failed=False,
                 )
 
             job.attempts += 1
@@ -560,6 +578,7 @@ def run_batch(
                     paused=True,
                     pause_kind="daily_cap",
                     dry_run=False,
+                    failed=False,
                 )
             except FrequencyWallPause as exc:
                 # AO-B1: stay pending; resume retries the same job.
@@ -575,6 +594,7 @@ def run_batch(
                     paused=True,
                     pause_kind="freq_wall",
                     dry_run=False,
+                    failed=False,
                 )
             except Exception as exc:  # noqa: BLE001 — batch boundary
                 if burst_pause and is_frequency_wall_error(exc):
@@ -590,6 +610,7 @@ def run_batch(
                         paused=True,
                         pause_kind="freq_wall",
                         dry_run=False,
+                        failed=False,
                     )
                 job.status = "failed"
                 job.error = str(exc)
@@ -603,6 +624,7 @@ def run_batch(
                     paused=False,
                     pause_kind=None,
                     dry_run=False,
+                    failed=True,
                 )
 
             job.status = "done"
@@ -611,9 +633,7 @@ def run_batch(
             if manifest_path:
                 manifest.save(manifest_path)
 
-        if not manifest.pending_jobs():
-            manifest.state = "completed"
-            manifest.pause_reason = None
+        _sync_manifest_when_no_pending(manifest)
         if manifest_path:
             manifest.save(manifest_path)
 
@@ -623,6 +643,7 @@ def run_batch(
         paused=False,
         pause_kind=None,
         dry_run=False,
+        failed=manifest.state == "failed",
     )
 
 
@@ -649,13 +670,18 @@ def resume_batch(
 
     requeue_frequency_wall_jobs(manifest)
 
-    if manifest.state == "completed" and not manifest.pending_jobs():
+    if (
+        manifest.state == "completed"
+        and not manifest.pending_jobs()
+        and not _has_failed_jobs(manifest)
+    ):
         return BatchRunResult(
             manifest=manifest,
             processed=0,
             paused=False,
             pause_kind=None,
             dry_run=False,
+            failed=False,
         )
 
     # Clear pause so run_batch can proceed; non-freq-wall failed jobs stay failed.

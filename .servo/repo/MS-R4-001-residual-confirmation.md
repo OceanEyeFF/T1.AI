@@ -3,16 +3,17 @@ title: "Milestone Residual Confirmation: MS-R4-001"
 artifact_type: "milestone-residual-confirmation"
 milestone_id: "MS-R4-001"
 status: "pending_programmer_confirmation"
-updated: "2026-07-24T14:50:00+08:00"
+updated: "2026-07-28T15:17:00+08:00"
 owner: "OceanEyeFF"
 gate: "milestone_final_acceptance"
-checkpoint_note: "T5 QA seeded full residual set; status still pending_programmer_confirmation; finalize at MS final acceptance after A4 Close"
+checkpoint_note: "A4 Gate/Close seeded final residual set; WT residuals round confirmed 2026-07-28 (WT-level only); status still pending_programmer_confirmation for MS final acceptance"
 ---
 
 # Milestone Residual Confirmation — MS-R4-001
 
 > **硬门控：** MS-R4-001 **final acceptance**（A4_Q7：WT close ≠ MS 终验）前，必须与使用者完成本轮 Residual 确认。  
-> 状态：`pending_programmer_confirmation`（**未确认**）。T5 QA 已播种完整 residual 集合；A4 未关；终验前再对表一轮。
+> 状态：`pending_programmer_confirmation`（**未确认**）。  
+> A4 Gate/Close（2026-07-28，`pass_with_residuals`）已播种最终 residual 集合；WT Residuals round 已 confirmed（WT-level only）。MS 终验前再对表一轮。
 
 ## Control Signal
 
@@ -23,6 +24,8 @@ programmer_confirmed: false
 confirmed_at: N/A
 blocks_final_acceptance_until: residual_confirmation_status == confirmed
 related_wt_close_policy: A4_Q7_wt_close_only
+wt_r4_a4_gate: pass_with_residuals  # 2026-07-28
+wt_r4_a4_residuals_round: confirmed  # WT-level only; 2026-07-28
 ```
 
 ## Purpose（必须同时满足）
@@ -73,7 +76,9 @@ residual_confirmation_status: pending_programmer_confirmation
 ## Refs
 
 - T5 QA: `.servo/worktrack/WT-R4-A4-qa-report.md`
-- WT Residuals round: `.servo/worktrack/WT-R4-A4-residuals-round.md`
+- WT Residuals round: `.servo/worktrack/WT-R4-A4-residuals-round.md`（confirmed 2026-07-28，WT-level）
+- Gate: `.servo/worktrack/WT-R4-A4-gate-evidence.md`（accepted pass_with_residuals）
+- Closeout: `.servo/worktrack/WT-R4-A4-closeout.md`
 - T1–T3 review: `.servo/worktrack/WT-R4-A4-t1-t3-review.md`
 - A3 closeout: `.servo/worktrack/WT-R4-A3-closeout.md`
 - Template: `.servo/template/milestone-residual-confirmation.template.md`

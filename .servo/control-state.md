@@ -13,33 +13,33 @@ owner: "OceanEyeFF"
 
 ## Metadata
 
-- updated: 2026-07-24T14:50:00+08:00
+- updated: 2026-07-28T15:17:00+08:00
 - owner: OceanEyeFF
-- refresh_note: WT-R4-A4 T5 done (QA+consistency+residuals draft); await Residuals+Gate confirm
+- refresh_note: A4 Gate/Close pass_with_residuals; await MS Residual Confirmation Round (AC6) before final acceptance
 
 ## Current Control Level
 
 - repo_scope: active
-- worktrack_scope: active
+- worktrack_scope: idle
 
 ## Active Worktrack
 
-- active_worktrack: WT-R4-A4
-- worktrack_status: t5_complete
-- last_closed_worktrack: WT-R4-A3
+- active_worktrack: none
+- worktrack_status: closed
+- last_closed_worktrack: WT-R4-A4
 - worktrack_contract: worktrack/WT-R4-A4-contract.md
 - plan_task_queue: worktrack/WT-R4-A4-plan-task-queue.md
 - worktrack_intake_review: worktrack/MS-R4-001-WT-R4-A4-intake-review.md
 - worktrack_init_result: worktrack/WT-R4-A4-init-result.md
 - gate_evidence: worktrack/WT-R4-A4-gate-evidence.md
-- closeout_ref: N/A
-- active_task_window: R4-A4-RESIDUALS
-- selected_next_action_id: R4-A4-RESIDUALS
-- worktrack_gate_verdict: N/A
+- closeout_ref: worktrack/WT-R4-A4-closeout.md
+- active_task_window: none
+- selected_next_action_id: MS-R4-001-RESIDUAL-CONFIRMATION
+- worktrack_gate_verdict: pass_with_residuals
 - worktrack_blocker: none
-- worktrack_residual_risk: soft80_accepted; 510300_basic_mf_na; 601989_trial_exclude; AO-O1_O2_O3_done; AO-O4_deferred; A4_F1_F2_F4_doc_only; residuals_round_pending
+- worktrack_residual_risk: soft80_accepted; 510300_basic_mf_na; 601989_trial_exclude; AO-O1_O2_O3_done; AO-O4_deferred; A4_F1_F2_F4_doc_only; residuals_round_confirmed; ms_residual_confirmation_pending
 - execution_not_started: false
-- active_worktrack_initialized: true
+- active_worktrack_initialized: false
 
 ## Active Milestone
 
@@ -54,13 +54,13 @@ owner: "OceanEyeFF"
   - planned_count: 0
   - completed_count: 9
   - superseded_count: 0
-  - note: MS-R4-001 active; WT-R4-A4 T5 done; awaiting Residuals+Gate
+  - note: MS-R4-001 active; all 5 WTs complete; MS residual confirmation pending; do NOT mark milestone achieved
 - milestone_review_gate_ready: true
 - latest_review_status: effective_pass
 - milestone_review_count: 1
 - latest_review_checkpoint: MS-R4-001-intake-ready-2026-07-15T00:10:00+08:00
 - effective_review_pass: true
-- next_milestone_route: Residuals confirm → Formal Gate; no full-campaign / train / Phase4 / EXEC-002
+- next_milestone_route: MS Residual Confirmation Round (AC6) → MS final acceptance / develop merge (separate approve); no full-campaign / train / Phase4 / EXEC-002
 
 ## Baseline Branch
 
@@ -74,13 +74,13 @@ owner: "OceanEyeFF"
 - branch_context_guard_status: pass_with_caveat
 - branch_context_required_ref: refs/heads/milestone/MS-R4-001-tushare-datalake
 - active_milestone_branch: milestone/MS-R4-001-tushare-datalake
-- active_milestone_branch_sync_state: tip 15c078d; A4 T5 on same branch
+- active_milestone_branch_sync_state: tip 60cbf22 (T5 packet; Gate/Close writeback commit pending)
 - worktrack_branch: milestone/MS-R4-001-tushare-datalake
-- observed_checkout: milestone/MS-R4-001-tushare-datalake @ 15c078d
+- observed_checkout: milestone/MS-R4-001-tushare-datalake @ 60cbf22
 
 ## Current Next Action
 
-- WT-R4-A4 **T5 complete**（QA + consistency + residuals/gate draft）。Next: **R4-A4-RESIDUALS** → Gate（proposed pass_with_residuals；零 live）。
+- WT-R4-A4 **closed**（Gate `pass_with_residuals`）。Next: **MS-R4-001 Residual Confirmation Round (AC6)** → then MS final acceptance / develop merge（separate approve；不自动 Init 下一 WT）。
 
 ## Linked Formal Documents
 
@@ -91,13 +91,14 @@ owner: "OceanEyeFF"
 - milestone_history: repo/milestone-history.md
 - pre_milestone_intake: repo/MS-R4-001-pre-milestone-intake-review.md
 - planned_worktrack_backlog: repo/worktrack-backlog.md
+- residual_confirmation: repo/MS-R4-001-residual-confirmation.md
 - worktrack_contract: worktrack/WT-R4-A4-contract.md
 - plan_task_queue: worktrack/WT-R4-A4-plan-task-queue.md
 - gate_evidence: worktrack/WT-R4-A4-gate-evidence.md
-- closeout_ref: N/A
+- closeout_ref: worktrack/WT-R4-A4-closeout.md
 - worktrack_init_result: worktrack/WT-R4-A4-init-result.md
 - worktrack_intake_review: worktrack/MS-R4-001-WT-R4-A4-intake-review.md
-- last_closed_worktrack_closeout: worktrack/WT-R4-A3-closeout.md
+- last_closed_worktrack_closeout: worktrack/WT-R4-A4-closeout.md
 - completed_milestone_artifact: milestone/MS-T1-001.md
 
 ## Approval Boundary
@@ -248,32 +249,32 @@ owner: "OceanEyeFF"
 
 ## Handback Guard
 
-- handoff_state: a4_t5_done_awaiting_residuals
-- last_stop_reason: WT-R4-A4 T5 complete; awaiting Residuals+Gate confirm; zero live; push gated
-- last_handback_signature: WT-R4-A4/T5/2026-07-24T14:50:00+08:00
+- handoff_state: wt_closed_awaiting_ms_residual_confirmation
+- last_stop_reason: WT-R4-A4 closed (pass_with_residuals); awaiting MS Residual Confirmation Round (AC6) before final acceptance; zero live; push gated
+- last_handback_signature: WT-R4-A4/Close/2026-07-28T15:17:00+08:00
 - handback_reaffirmed_rounds: 0
 - stable_handback_threshold: 2
 - handback_lock_active: false
-- last_unlock_signal: programmer start WT-R4-A4-T5
+- last_unlock_signal: programmer 「确认 Residuals，再 Formal Gate」
 
 ## Baseline Traceability
 
 > 记录最近一次 worktrack 关闭后的已验证基线，供后续续跑时快速定位。
 
-- last_verified_checkpoint: 8d60f09
-- latest_observed_checkpoint: 0aa6037
-- last_doc_catch_up_checkpoint: 0aa6037
-- milestone_input_checkpoint: WT-R4-A4-init-2026-07-23T17:47:00+08:00
+- last_verified_checkpoint: 60cbf22
+- latest_observed_checkpoint: 60cbf22
+- last_doc_catch_up_checkpoint: 60cbf22
+- milestone_input_checkpoint: WT-R4-A4-close-2026-07-28T15:17:00+08:00
 - checkpoint_type: git_commit
-- checkpoint_ref: 0aa6037796ea1c8ea70f29c6682a2a1be2227c42
-- verified_at: 2026-07-23T17:47:00+08:00
-- if_no_commit_reason: N/A for Init baseline; A4 Init artifacts uncommitted until programmer approve
+- checkpoint_ref: 60cbf22
+- verified_at: 2026-07-28T15:17:00+08:00
+- if_no_commit_reason: Gate/Close writeback docs prepared; close_writeback_commit pending_programmer_commit
 - alternative_traceability:
+  - A4 close: .servo/worktrack/WT-R4-A4-closeout.md
+  - A4 gate: .servo/worktrack/WT-R4-A4-gate-evidence.md
+  - A4 residuals: .servo/worktrack/WT-R4-A4-residuals-round.md
+  - MS residual confirmation: .servo/repo/MS-R4-001-residual-confirmation.md
   - A4 contract: .servo/worktrack/WT-R4-A4-contract.md
-  - A4 plan: .servo/worktrack/WT-R4-A4-plan-task-queue.md
-  - A4 intake: .servo/worktrack/MS-R4-001-WT-R4-A4-intake-review.md
-  - A4 init result: .servo/worktrack/WT-R4-A4-init-result.md
-  - A3 close: .servo/worktrack/WT-R4-A3-closeout.md
 
 ## Autonomy Ledger
 
@@ -300,14 +301,14 @@ owner: "OceanEyeFF"
 - completed_milestone_latest: MS-T1-001 广义测试体系清理 (accepted; merge develop@eed3e24)
 - last_active_milestone_initialized: MS-R4-001
 - planned_milestone_waiting: none (MS-R4-001 active)
-- worktrack_init_blocked_until: N/A (WT-R4-A4 active)
-- active_worktrack_initialized: WT-R4-A4
-- last_closed_worktrack: WT-R4-A3
+- worktrack_init_blocked_until: N/A (all planned WTs closed; next is MS residual confirmation)
+- active_worktrack_initialized: none
+- last_closed_worktrack: WT-R4-A4
 - worktrack_intake_review_ref: .servo/worktrack/MS-R4-001-WT-R4-A4-intake-review.md
 - worktrack_gate_evidence_ref: .servo/worktrack/WT-R4-A4-gate-evidence.md
-- closeout_ref: .servo/worktrack/WT-R4-A3-closeout.md
+- closeout_ref: .servo/worktrack/WT-R4-A4-closeout.md
 - environment_validation_report_ref: .servo/worktrack/environment-validation-report.md
-- current_stop_condition: A4 T5 done; awaiting Residuals+Gate confirm; MS final acceptance blocked until Residual Confirmation Round; zero live; push gated
+- current_stop_condition: WT-R4-A4 closed awaiting MS Residual Confirmation Round (AC6); MS final acceptance blocked until confirmed; zero live; push gated
 - active_intake_review_ref: .servo/worktrack/MS-R4-001-WT-R4-A4-intake-review.md
 - control_plane_refresh_ref: .servo/repo/refresh-report-MS-T1-001-close-2026-07-14.md
 - persistent_work_habits_updated: 2026-06-10

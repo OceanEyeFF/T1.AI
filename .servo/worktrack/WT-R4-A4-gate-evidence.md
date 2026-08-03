@@ -1,35 +1,33 @@
 ---
-title: "WT-R4-A4 Gate Evidence (draft)"
+title: "WT-R4-A4 Gate Evidence"
 artifact_type: "worktrack-gate-evidence"
 milestone_id: "MS-R4-001"
 worktrack_id: "WT-R4-A4"
-updated: "2026-07-24T14:50:00+08:00"
+updated: "2026-07-28T15:17:00+08:00"
 owner: "OceanEyeFF"
-gate_status: "pending_programmer_confirm"
-proposed_gate_verdict: "pass_with_residuals"
-tip: "15c078d"
+gate_status: "accepted"
+gate_verdict: "pass_with_residuals"
+tip: "60cbf22"
 ---
 
-# WT-R4-A4 Gate Evidence — **DRAFT**（尚未接受）
+# WT-R4-A4 Gate Evidence
 
-> **gate_status:** `pending_programmer_confirm`  
-> **proposed verdict:** `pass_with_residuals`  
-> **NOT accepted.** Residuals round 未确认前不得正式 Gate。
+## Verdict (Judging — accepted)
 
-## Proposed Verdict（Judging — draft）
-
-- proposed_verdict: **pass_with_residuals**
-- tip: `15c078d`
-- drafted_at: 2026-07-24T14:50:00+08:00
+- verdict: **pass_with_residuals**
+- tip: `60cbf22` (T5 packet; Gate/Close writeback commit pending)
+- judged_at: 2026-07-28T15:17:00+08:00
+- judged_by: Cursor (main dialogue; programmer confirmed Residuals+Gate)
 - node_type: feature
 - blocking_p0: **none**
 - rationale: >
   T1 schema/layout；T2 cache-only M1 derived（61/61 momentum+technical）；
   T3 filesystem load API + Arch-v1；T4 AO-O1/O2/O3（AO-O4 deferred）；
   T5 QA + consistency + residuals packet；focused suite 50 passed；零 live。
-  Residuals 显式非阻塞 A4 AC。待 Residuals confirm 后再 Formal Gate。
+  Residuals round confirmed 2026-07-28（全部 accepted）；Formal Gate accepted
+  pass_with_residuals. MS Residual Confirmation（AC6）仍 pending — 不在本 Gate 确认。
 
-## Dimension Reception（draft）
+## Dimension Reception
 
 | Dimension | Status | Notes |
 |-----------|--------|-------|
@@ -54,36 +52,38 @@ tip: "15c078d"
 | QA report | `.servo/worktrack/WT-R4-A4-qa-report.md` |
 | QA JSON | `workspace/r4_a4_qa/qa-summary.json` |
 | Consistency | `.servo/worktrack/WT-R4-A4-consistency-matrix.md` |
-| Residuals round | `.servo/worktrack/WT-R4-A4-residuals-round.md` |
+| Residuals round | `.servo/worktrack/WT-R4-A4-residuals-round.md`（**confirmed**） |
 | T1–T4 notes | `WT-R4-A4-t{1,2,3,4}-notes.md` |
 | T1–T3 review | `.servo/worktrack/WT-R4-A4-t1-t3-review.md` |
 | T5 notes | `.servo/worktrack/WT-R4-A4-t5-notes.md` |
+| Closeout | `.servo/worktrack/WT-R4-A4-closeout.md` |
 | MS residual register | `.servo/repo/MS-R4-001-residual-confirmation.md`（仍 pending） |
 
-## Proposed Residuals（await WT Residuals confirm）
+## Accepted Residuals
 
-| ID | Item | Proposed |
-|----|------|----------|
-| R-soft80 | 61 < 80 | accept |
-| R-510300-qfq | index qfq-only | accept |
-| R-601989 | trial exclude | accept |
-| R-F1/F2/F4 | derived semantics | accept doc-only |
-| R-AO-O4 | AST deferred | accept defer |
+| ID | Item | Disposition |
+|----|------|-------------|
+| R-soft80 | 61 < 80 | **accepted**（residuals-round confirmed） |
+| R-510300-qfq | index qfq-only | **accepted** |
+| R-601989 | trial exclude | **accepted** |
+| R-F1/F2/F4 | derived semantics | **accepted** doc-only |
+| R-AO-O4 | AST deferred | **accepted** defer |
 
 ## Allowed Next Route
 
-1. **Residuals confirm**（`R4-A4-RESIDUALS`）→
-2. **Formal Gate**（accept this packet）→
-3. **Close**（WT only；A4_Q7）
+1. **Close** → repo handback（本 WT 已关）
+2. **MS Residual Confirmation Round**（AC6）before MS final acceptance — **NOT auto**
+3. MS final acceptance / develop merge — separate programmer approve
 
-Do **not** mark Gate accepted / WT closed / MS residuals confirmed from this draft.
+Do **not** mark MS residuals confirmed / milestone achieved from this Gate.
 
-## Gate sign-off（未填）
+## Gate sign-off
 
 | 项 | 内容 |
 |----|------|
-| Reviewer | （待 Residuals 后确认） |
-| 日期 | — |
-| 实现结论 | ☐ pass　☑ pass_with_residuals（proposed）　☐ fail |
-| 阻塞 P0？ | ☐ 有　☑ 无（proposed） |
-| Gate accepted？ | ☐ **否 — pending_programmer_confirm** |
+| Reviewer | OceanEyeFF（主对话确认 Residuals+Gate） |
+| 日期 | 2026-07-28 |
+| 实现结论 | ☐ pass　☑ pass_with_residuals　☐ fail |
+| 阻塞 P0？ | ☐ 有　☑ 无 |
+| Gate accepted？ | ☑ **是 — accepted** |
+| 备注 | Residuals confirmed「确认 Residuals，再 Formal Gate」；Close 同步；MS AC6 仍 pending |

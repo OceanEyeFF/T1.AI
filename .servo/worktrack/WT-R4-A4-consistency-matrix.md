@@ -3,10 +3,10 @@ title: "WT-R4-A4 Consistency Matrix (T5)"
 artifact_type: "doc-consistency-check"
 milestone_id: "MS-R4-001"
 worktrack_id: "WT-R4-A4"
-updated: "2026-07-24T14:50:00+08:00"
+updated: "2026-07-28T15:17:00+08:00"
 owner: "OceanEyeFF"
 verdict: "consistent_with_residuals"
-tip: "15c078d"
+tip: "60cbf22"
 ---
 
 # WT-R4-A4 T5 — Deliverable Consistency Matrix
@@ -27,7 +27,8 @@ tip: "15c078d"
 | Zero live / no token / no full-campaign / no blind merge | policy held | no live manifests | contract | ok |
 
 **Inconsistencies blocking Gate:** none.  
-**Evidence re-verify (2026-07-24):** focused A4 suite **50 passed** @ tip `15c078d`.
+**Evidence re-verify (2026-07-24):** focused A4 suite **50 passed** @ tip `60cbf22` (T5 packet).  
+**Gate (2026-07-28):** accepted `pass_with_residuals`; Residuals round confirmed.
 
 ## Residual package (for Residuals round → Gate)
 

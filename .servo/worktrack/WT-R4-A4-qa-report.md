@@ -3,11 +3,12 @@ title: "WT-R4-A4 QA Report (CS4)"
 artifact_type: "worktrack-qa-report"
 milestone_id: "MS-R4-001"
 worktrack_id: "WT-R4-A4"
-updated: "2026-07-24T14:50:00+08:00"
+updated: "2026-07-28T15:17:00+08:00"
 owner: "OceanEyeFF"
-tip: "15c078d"
+tip: "60cbf22"
 live_pull: "none"
 proposed_gate_verdict: "pass_with_residuals"
+gate_status: "accepted"
 ---
 
 # WT-R4-A4 QA Report — CS4 Quality Audit Handoff
@@ -18,8 +19,9 @@ proposed_gate_verdict: "pass_with_residuals"
 artifact_type: worktrack-qa-report
 milestone_id: MS-R4-001
 worktrack_id: WT-R4-A4
-tip: 15c078d
+tip: 60cbf22
 generated_at: "2026-07-24T14:50:00+08:00"
+gate_accepted_at: "2026-07-28T15:17:00+08:00"
 live_pull: none
 pool: custom_research_liquidity_quality_v1@1
 registry: 61
@@ -27,7 +29,7 @@ trial: 60
 trial_exclude: ["601989.SH"]
 derived_m1: Return5/10/20 + RSI
 proposed_gate_verdict: pass_with_residuals
-gate_status: not_accepted  # draft evidence only; Residuals round first
+gate_status: accepted  # Formal Gate 2026-07-28
 ms_residual_confirmation: pending_programmer_confirmation  # do NOT mark confirmed
 ```
 

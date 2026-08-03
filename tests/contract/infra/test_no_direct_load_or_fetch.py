@@ -30,6 +30,7 @@ DEFERRED_SCAN_TARGETS = (
 
 # AO-O1 (WT-R4-A4-T4): only DataLake façade may import load_or_fetch_*.
 # Do NOT allowlist ashare_infra.data — that would greenlight bypassing DataLake.
+# Coverage is intentionally limited to SCAN_TARGETS until AO-O4 (full-tree AST).
 ALLOWED_PREFIXES = (
     "ashare_infra.lake",
 )

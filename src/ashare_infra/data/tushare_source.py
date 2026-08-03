@@ -290,6 +290,8 @@ def _read_cached_partitions(symbol_dir: Path) -> pd.DataFrame:
             frames.append(df)
         except FileNotFoundError:
             continue
+        except (OSError, ValueError):  # corrupt/truncated part → skip (fail-open read)
+            continue
     if not frames:
         return pd.DataFrame(columns=SUPPORTED_FIELDS)
     return pd.concat(frames).sort_index()
@@ -307,7 +309,9 @@ def _write_partitioned(df: pd.DataFrame, symbol_dir: Path) -> None:
         year_dir = symbol_dir / f"year={year}"
         year_dir.mkdir(parents=True, exist_ok=True)
         out_path = year_dir / "part.parquet"
-        year_df.drop(columns=["year"]).to_parquet(out_path, index=False)
+        tmp_path = year_dir / "part.parquet.tmp"
+        year_df.drop(columns=["year"]).to_parquet(tmp_path, index=False)
+        tmp_path.replace(out_path)
 
 
 def _date_ranges_to_fetch(
