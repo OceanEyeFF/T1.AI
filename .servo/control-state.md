@@ -37,7 +37,7 @@ owner: "OceanEyeFF"
 - selected_next_action_id: MS-R4-001-RESIDUAL-CONFIRMATION
 - worktrack_gate_verdict: pass_with_residuals
 - worktrack_blocker: none
-- worktrack_residual_risk: soft80_accepted; 510300_basic_mf_na; 601989_trial_exclude; AO-O1_O2_O3_done; AO-O4_deferred; A4_F1_F2_F4_doc_only; residuals_round_confirmed; ms_residual_confirmation_pending
+- worktrack_residual_risk: soft80_accepted; 510300_basic_mf_na; 601989_trial_exclude; AO-O1_O2_O3_done; AO-O4-A_static_done; AO-O4_dynamic_deferred; A4_F1_fixed_post_a4; A4_F2_F4_doc_only; residuals_round_confirmed; ms_residual_confirmation_pending
 - execution_not_started: false
 - active_worktrack_initialized: false
 

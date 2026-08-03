@@ -1,8 +1,14 @@
-"""R4 minimal derived builder (WT-R4-A4-T2).
+"""R4 minimal derived builder (WT-R4-A4-T2; post-A4 F1 prune + incremental).
 
 Cache-only by default: reads ``tushare_qfq`` partitions, computes M1 features via
 ``ashare_lab.features`` (no second formula truth), writes
 ``inputs/data/derived/{family}/{ts_code}/year=*/part.parquet``.
+
+Rebuild semantics:
+- ``rebuild="full"`` (default): write computed years (overwrite), then prune
+  derived years to the qfq cache year set.
+- ``rebuild="incremental"``: merge existing derived with new by date union
+  (new wins), write overwritten years from the merged frame, then prune.
 
 Does **not** call TuShare. Empty/missing cache → skip symbol (no live fill).
 """
@@ -11,7 +17,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import pandas as pd
 
@@ -26,6 +32,10 @@ from ashare_infra.lake.r4_contract import (
     r4_derived_required_columns,
 )
 from ashare_infra.lake.r4_derived_io import (
+    list_r4_qfq_cache_years,
+    merge_r4_derived_by_date,
+    prune_r4_derived_years,
+    read_r4_derived_parts,
     read_r4_qfq_cache,
     write_r4_derived_parts,
 )
@@ -100,6 +110,17 @@ def compute_r4_minimal_families(bars: pd.DataFrame) -> dict[str, pd.DataFrame]:
     }
 
 
+def _prune_families_to_cache(
+    ts_code: str,
+    *,
+    cache_dir: Path,
+    derived_root: Path,
+) -> None:
+    cache_years = list_r4_qfq_cache_years(ts_code, cache_dir=cache_dir)
+    for fam in sorted(R4_DERIVED_MINIMAL_FAMILIES):
+        prune_r4_derived_years(fam, ts_code, keep_years=cache_years, root=derived_root)
+
+
 def build_r4_derived_symbol(
     symbol: str,
     *,
@@ -107,12 +128,19 @@ def build_r4_derived_symbol(
     derived_root: Path | str | None = None,
     start: str | None = None,
     end: str | None = None,
+    rebuild: Literal["full", "incremental"] = "full",
 ) -> DerivedBuildResult:
     """Build M1 derived parts for one symbol from cache only (zero live).
 
     ``start``/``end`` (YYYYMMDD or ISO) optionally slice bars before compute.
     Missing cache → ``skipped_empty_cache`` (does not fetch).
+
+    After a non-empty-cache path, all minimal families are pruned to the qfq
+    cache year set (F1 fix), including families with empty feature rows.
     """
+    if rebuild not in ("full", "incremental"):
+        raise ValueError(f"rebuild must be 'full' or 'incremental', got {rebuild!r}")
+
     ts_code = symbol_to_ts_code(symbol)
     cache = Path(cache_dir) if cache_dir is not None else R4_CACHE_ROOT
     droot = Path(derived_root) if derived_root is not None else R4_DERIVED_ROOT
@@ -151,12 +179,18 @@ def build_r4_derived_symbol(
         feat_cols = [c for c in fam_df.columns]
         if feat_cols:
             fam_df = fam_df.dropna(how="all", subset=feat_cols)
+        if rebuild == "incremental" and not fam_df.empty:
+            existing = read_r4_derived_parts(fam, ts_code, root=droot)
+            fam_df = merge_r4_derived_by_date(existing, fam_df)
         rows_by_family[fam] = int(len(fam_df))
         if fam_df.empty:
             continue
         any_rows = True
         written = write_r4_derived_parts(fam_df, fam, ts_code, root=droot)
         parts.extend(str(p) for p in written)
+
+    # F1: align derived year dirs to qfq cache years whenever cache was usable.
+    _prune_families_to_cache(ts_code, cache_dir=cache, derived_root=droot)
 
     if not any_rows:
         return DerivedBuildResult(
@@ -181,6 +215,7 @@ def build_r4_derived_batch(
     derived_root: Path | str | None = None,
     start: str | None = None,
     end: str | None = None,
+    rebuild: Literal["full", "incremental"] = "full",
 ) -> dict[str, Any]:
     """Build derived parts for many symbols (cache-only). Returns summary dict."""
     results: list[DerivedBuildResult] = []
@@ -192,6 +227,7 @@ def build_r4_derived_batch(
                 derived_root=derived_root,
                 start=start,
                 end=end,
+                rebuild=rebuild,
             )
         )
     built = [r for r in results if r.status == "built"]

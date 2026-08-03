@@ -57,7 +57,7 @@ inputs/data/derived/
 
 | ID | 约定 |
 |----|------|
-| **F1** | 重建只覆盖同年 `year=YYYY/part.parquet`，**不**自动删除该 symbol 下过期 `year=*` 目录。若要与 cache 严格对齐，全量重建前先清 `derived/{family}/{ts_code}/`。 |
+| **F1** | **fixed post-A4**：重建仍覆盖写入年份的 `year=YYYY/part.parquet`；写完后 **prune** 到该 symbol 的 qfq cache year 集合。可选 `rebuild="incremental"`：写前按 date 并集合并（**new wins**）；`rebuild="full"`（默认）≠ 仅 bare date-union。 |
 | **F2** | `momentum` 与 `technical` 因各自 warm-up `dropna`，行数可能不等；消费侧按 family 读取，按 `date` 显式 join，勿假设等长日历。 |
 | **F4** | `load_derived*` **只读盘**；`DataLake.refresh` **不会**重建 derived。刷新请走 cache-only `build_r4_derived_*`。 |
 

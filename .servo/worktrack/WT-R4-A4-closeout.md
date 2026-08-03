@@ -31,7 +31,7 @@ node_type: "feature"
 - AO-O1_O2_O3: done; AO-O4: deferred (accepted)
 - branch: milestone/MS-R4-001-tushare-datalake
 - evidence_tip: 60cbf22 (T5 packet)
-- close_writeback_commit: pending_programmer_commit
+- close_writeback_commit: e0b683d
 - push: not requested
 - next_action: MS Residual Confirmation Round (AC6) then MS final acceptance / develop merge — separate approve; **no auto Init next WT** (A4 was last planned WT)
 - out_of_scope_held: no full-campaign / train / Phase4 / EXEC-002 / blind merge develop / MS final acceptance
@@ -84,7 +84,7 @@ closeout_record:
   branch: milestone/MS-R4-001-tushare-datalake
   evidence_tip: 60cbf22
   head_ref: 60cbf22  # pre-writeback tip; Gate/Close docs land in subsequent commit
-  close_writeback_commit: pending_programmer_commit
+  close_writeback_commit: e0b683d
   merge_commit: N/A (on milestone branch; develop merge at milestone close)
   pr: none
   acceptance_result: accepted

@@ -3,7 +3,7 @@ title: "Milestone Residual Confirmation: MS-R4-001"
 artifact_type: "milestone-residual-confirmation"
 milestone_id: "MS-R4-001"
 status: "pending_programmer_confirmation"
-updated: "2026-07-28T15:17:00+08:00"
+updated: "2026-08-03T14:53:00+08:00"
 owner: "OceanEyeFF"
 gate: "milestone_final_acceptance"
 checkpoint_note: "A4 Gate/Close seeded final residual set; WT residuals round confirmed 2026-07-28 (WT-level only); status still pending_programmer_confirmation for MS final acceptance"
@@ -41,11 +41,11 @@ wt_r4_a4_residuals_round: confirmed  # WT-level only; 2026-07-28
 | soft80_61lt80 | WT-R4-A3-T4/Gate | 池 61 < soft_target 80；hard_cap 100 已满足 | 接受「实验池不必凑满 80」；不默认可扩池 | 需求变为「必须 ≥80 / 扩池 live / 重选 registry」 | accepted_residual |
 | index_510300_qfq_only | WT-R4-A3-T3/T4 | `510300.SH` 仅要求 qfq；basic/moneyflow 不适用 ETF | 接受 qfq-only 锚；basic/mf 不进硬 AC | 需求变为「指数/ETF 必须具备股票同构 basic/mf」 | accepted_residual |
 | trial_exclude_601989 | WT-R4-A3-T4 | `601989` 留在 registry，默认 trial 子集排除（上游耗尽） | 接受 trial 默认 60；registry 仍计 61 | 需求变为「trial/训练必须含 601989 且要新鲜 bars」 | accepted_residual |
-| A4_F1_stale_year_no_prune | WT-R4-A4 T1–T3 review | derived 重建只覆盖同年 `part.parquet`，不 prune 旧 `year=*` | 接受增量覆盖语义；严格对齐需手动清目录 | 需求变为「rebuild 必须与 cache 年份集合严格一致 / 自动 prune」 | doc_only |
+| A4_F1_stale_year_no_prune | WT-R4-A4 T1–T3 review | derived 重建只覆盖同年 `part.parquet`，不 prune 旧 `year=*` | 接受增量覆盖语义；严格对齐需手动清目录 | 需求变为「rebuild 必须与 cache 年份集合严格一致 / 自动 prune」 | fixed_post_a4 |
 | A4_F2_family_row_mismatch | WT-R4-A4 T1–T3 review | momentum/technical warm-up 后行数可不等 | 接受按 family 读 + 显式 date join | 需求变为「两 family 必须等长日历 / 强制内连接」 | doc_only |
 | A4_F4_refresh_not_rebuild | WT-R4-A4 T1–T3 review | `load_derived*` 只读盘；`DataLake.refresh` 不重建 derived | 接受 load≠build；刷新走 builder | 需求变为「refresh=True 必须级联重建 derived」 | doc_only |
 | AO-O_hygiene | A3→A4 AC / A4-T4 | AO-O1 allowlist + AO-O2 dataset_builder（+O3 doc）；AO-O4 deferred | T4 已完成；accept 以 T4 notes 为准 | 回归再破 allowlist / dataset 旧测再红；或要求强制做 AO-O4 AST | closed_in_A4_T4 |
-| AO-O4_deferred | A4-T4/T5 QA | AST 合同补强 optional；现有 no-direct + AO-R1 足够 | 接受 defer；不阻塞 A4 Gate | 需求变为「必须补 AST 合同」 | deferred |
+| AO-O4_deferred | A4-T4/T5 QA / post-A4 | AO-O4-A static Import/ImportFrom full-tree scan **done** post-A4；dynamic getattr/importlib AST 仍 deferred | 接受 dynamic AST defer；不阻塞 MS residual 确认 | 需求变为「必须补 dynamic AST 合同」 | deferred |
 
 ### Optional footnotes（非阻塞，终验可点名）
 
