@@ -12,9 +12,11 @@ htmlcov/
 venv/
 
 inputs/data/cache/
+inputs/data/derived/**/year=*/
 data/cache/
 workspace/checkpoints/
 workspace/runs/
+workspace/r4_a4_qa/*-run.log
 
 # 自动化工作流配置（本地）
 .autoworkflow/

@@ -16,6 +16,7 @@ Args:
     --model: Model checkpoint path (default: models/best_mtl.pt).
     --output: Output directory (default: output/recommendations).
     --top-n: Number of items per horizon list (default: 10).
+    --cache-dir: R4 TuShare cache root (default: inputs/data/cache).
 """
 
 from __future__ import annotations
@@ -40,7 +41,7 @@ except Exception as exc:  # pragma: no cover - torch is expected in this repo
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from ashare_infra.lake import DataLake
+from ashare_infra.lake.r4_contract import R4_ADJUST_DEFAULT, R4_CACHE_ROOT, make_r4_datalake
 from ashare_lab.features import (  # noqa: E402
     AmountChange,
     Return1D,
@@ -67,6 +68,11 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--model", default=None, help="模型 checkpoint 路径")
     parser.add_argument("--output", default="outputs/predictions", help="输出目录")
     parser.add_argument("--top-n", type=int, default=10, help="每个时间跨度推荐数量")
+    parser.add_argument(
+        "--cache-dir",
+        default=str(R4_CACHE_ROOT),
+        help="R4 TuShare cache root (default: inputs/data/cache)",
+    )
     return parser.parse_args(argv)
 
 
@@ -77,17 +83,12 @@ def _parse_yyyymmdd(date_str: str) -> datetime:
         raise ValueError(f"--date must be in YYYYMMDD format, got: {date_str!r}") from exc
 
 
-def _latest_cached_bars_path(symbol: str, cache_dir: Path) -> Path | None:
-    candidates = sorted(cache_dir.glob(f"{symbol}_daily_*.csv"), reverse=True)
-    return candidates[0] if candidates else None
-
-
 def _load_cached_daily_bars(symbol: str, cache_dir: Path) -> pd.DataFrame:
-    """Load daily bars via DataLake (TuShare partitioned cache under cache_dir)."""
+    """Load daily bars via R4 DataLake (TuShare partitioned cache under cache_dir)."""
     ts_code = symbol_to_ts_code(symbol)
-    lake = DataLake(cache_dir=cache_dir, default_source="tushare")
+    lake = make_r4_datalake(cache_dir=cache_dir)
     df = lake.load_daily_bars(
-        ts_code, "20000101", "20991231", source="tushare", adjust="qfq"
+        ts_code, "20000101", "20991231", source="tushare", adjust=R4_ADJUST_DEFAULT
     )
 
     if df.empty:
@@ -99,16 +100,19 @@ def _load_cached_daily_bars(symbol: str, cache_dir: Path) -> pd.DataFrame:
     return df
 
 
-def _load_selected_universe() -> list[dict[str, str]]:
+def _load_selected_universe(cache_dir: Path) -> list[dict[str, str]]:
     """Load a practical universe list for the MVP.
 
     Priority:
-      1) data/cache/selected_stocks_20210701.csv (small, already cached bars in this repo)
+      1) {cache_dir}/selected_stocks_20210701.csv (legacy snapshot)
       2) infer from TuShare cached directories (tushare_qfq/{ts_code}/ then tushare/{ts_code}/)
     """
-    selected_csv = PROJECT_ROOT / "data" / "cache" / "selected_stocks_20210701.csv"
-    if selected_csv.exists():
-        df = pd.read_csv(selected_csv, dtype=str)
+    legacy_csv = PROJECT_ROOT / "data" / "cache" / "selected_stocks_20210701.csv"
+    selected_csv = cache_dir / "selected_stocks_20210701.csv"
+    for csv_path in (selected_csv, legacy_csv):
+        if not csv_path.exists():
+            continue
+        df = pd.read_csv(csv_path, dtype=str)
         code_col = "code" if "code" in df.columns else "symbol"
         name_col = "name" if "name" in df.columns else "名称"
         items: dict[str, str] = {}
@@ -123,10 +127,10 @@ def _load_selected_universe() -> list[dict[str, str]]:
 
     symbols: set[str] = set()
     for subdir in ("tushare_qfq", "tushare"):
-        cache_dir = PROJECT_ROOT / "data" / "cache" / subdir
-        if not cache_dir.exists():
+        namespace_dir = cache_dir / subdir
+        if not namespace_dir.exists():
             continue
-        for p in cache_dir.iterdir():
+        for p in namespace_dir.iterdir():
             if not p.is_dir():
                 continue
             ts_code = p.name
@@ -412,7 +416,7 @@ def main(argv: list[str] | None = None) -> int:
 
     model_path = Path(args.model)
     output_dir = Path(args.output)
-    cache_dir = PROJECT_ROOT / "data" / "cache"
+    cache_dir = Path(args.cache_dir)
 
     if args.top_n <= 0:
         raise ValueError("--top-n must be positive")
@@ -440,7 +444,7 @@ def main(argv: list[str] | None = None) -> int:
             PriceSlope(window=20),
         ]
 
-        universe_items = _load_selected_universe()
+        universe_items = _load_selected_universe(cache_dir)
 
         # Attach names to meta so RecommendationEngine can display them.
         feature_builder = LocalFeatureBuilder(cache_dir=cache_dir, feature_fns=features, seq_len=20)

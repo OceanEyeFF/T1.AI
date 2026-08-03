@@ -7,7 +7,9 @@ from pathlib import Path
 import pandas as pd
 
 from ashare_infra.lake import DataLake
+from ashare_infra.lake.r4_contract import R4_ADJUST_DEFAULT, make_r4_datalake
 from ashare_lab.sim import LimitOrder, PaperBroker, ReplayConfig, ReplayEngine, SimConfig
+from ashare_lab.symbols import symbol_to_ts_code
 from ashare_lab.universe import is_allowed_a_share_symbol
 
 
@@ -72,6 +74,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--end", required=True, help="YYYYMMDD")
     p.add_argument("--cash", type=float, default=20_000.0)
     p.add_argument("--shares", type=int, default=100)
+    p.add_argument("--source", default="akshare", choices=["akshare", "tushare"])
     p.add_argument("--cache-dir", default="inputs/data/cache")
     p.add_argument("--out-dir", default="outputs/sim")
     p.add_argument("--refresh", action="store_true")
@@ -83,13 +86,20 @@ def main() -> None:
     if not is_allowed_a_share_symbol(args.symbol):
         raise SystemExit(f"symbol not allowed: {args.symbol}")
 
-    lake = DataLake(
-        cache_dir=Path(args.cache_dir),
-        default_source="akshare",
-        refresh=args.refresh,
-    )
+    if args.source == "tushare":
+        lake = make_r4_datalake(cache_dir=args.cache_dir, refresh=args.refresh)
+        lake_symbol = symbol_to_ts_code(args.symbol)
+        adjust = R4_ADJUST_DEFAULT
+    else:
+        lake = DataLake(
+            cache_dir=Path(args.cache_dir),
+            default_source="akshare",
+            refresh=args.refresh,
+        )
+        lake_symbol = args.symbol
+        adjust = "qfq"
     df = lake.load_daily_bars(
-        args.symbol, args.start, args.end, source="akshare", adjust="qfq"
+        lake_symbol, args.start, args.end, source=args.source, adjust=adjust
     )
     if df.empty:
         raise SystemExit(f"empty data for {args.symbol}")

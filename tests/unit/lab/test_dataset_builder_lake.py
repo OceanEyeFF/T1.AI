@@ -43,6 +43,13 @@ def test_builder_holds_datalake(tmp_path: Path) -> None:
     assert builder._lake.default_source == "akshare"
 
 
+def test_builder_tushare_uses_r4_factory(tmp_path: Path) -> None:
+    builder = DatasetBuilder(_config(tmp_path, source="tushare"))
+    assert isinstance(builder._lake, DataLake)
+    assert builder._lake.default_source == "tushare"
+    assert builder._lake.refresh is False
+
+
 def test_resolve_lake_symbol_by_source(tmp_path: Path) -> None:
     builder = DatasetBuilder(_config(tmp_path, source="tushare"))
     assert builder._resolve_lake_symbol("600519", "tushare") == "600519.SH"

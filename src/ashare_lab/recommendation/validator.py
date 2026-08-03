@@ -148,11 +148,10 @@ class TushareSourceAdapter:
         self.adjust = adjust
         self.refresh = refresh
         self.token = token
-        from ashare_infra.lake import DataLake
+        from ashare_infra.lake.r4_contract import make_r4_datalake
 
-        self._lake = DataLake(
+        self._lake = make_r4_datalake(
             cache_dir=self.cache_dir,
-            default_source="tushare",
             refresh=self.refresh,
             tushare_token=self.token,
         )

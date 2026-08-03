@@ -1,8 +1,8 @@
 ---
 title: "Worktrack Backlog"
 artifact_type: "worktrack-backlog"
-updated: "2026-06-22T13:20:00+08:00"
-updated_by: "codex"
+updated: "2026-07-22T11:54:00+08:00"
+updated_by: "cursor-gate-close-WT-R4-A2"
 ---
 
 # Worktrack Backlog
@@ -10,6 +10,67 @@ updated_by: "codex"
 > Closed and resolved worktracks are tracked here for Milestone progress and RepoScope refresh. Live per-worktrack execution details remain in `.servo/worktrack/*`.
 
 ## Done
+
+### WT-R4-A2
+
+- worktrack_id: WT-R4-A2
+- milestone_id: MS-R4-001
+- status: done
+- node_type: test
+- scope: >
+  scoped ashare_infra/DataLake land + make_r4_datalake A1 bind + consumer cutover
+  + Arch-v1 contract/integration (schema/cache-hit/as_of/no-direct) + caps config
+  promote (180/80000); zero live; no ashare_exec / no blind merge develop.
+- branch: milestone/MS-R4-001-tushare-datalake
+- merge_commit: N/A (impl c80b7ae+d21420f on milestone; Close writeback commit)
+- validation: focused suite 40 passed (2026-07-22)
+- intake_route: milestone-derived
+- gate_verdict: pass_with_residuals
+- report_ref: .servo/worktrack/WT-R4-A2-closeout.md
+- gate_evidence_ref: .servo/worktrack/WT-R4-A2-gate-evidence.md
+- closeout_ref: .servo/worktrack/WT-R4-A2-closeout.md
+- closed_at: 2026-07-22T11:54:00+08:00
+- residual_risk: soft80; 510300; dataset_old_tests_10fail; allowlist_infra_data; caps_not_enforced; toml_dual_track; deferred_market_state
+
+### WT-R4-A1
+
+- worktrack_id: WT-R4-A1
+- milestone_id: MS-R4-001
+- status: done
+- node_type: docs
+- scope: >
+  lake/source contract + cache inventory + schema draft + approved rate caps
+  (180 rpm / 80000 per API·day); zero live; frozen_for_A2.
+- branch: milestone/MS-R4-001-tushare-datalake
+- merge_commit: N/A (docs Close commit on milestone branch; develop at milestone close)
+- validation: N/A (docs); T5 consistency matrix consistent; inventory read-only
+- intake_route: milestone-derived
+- gate_verdict: pass
+- report_ref: .servo/worktrack/WT-R4-A1-closeout.md
+- gate_evidence_ref: .servo/worktrack/WT-R4-A1-gate-evidence.md
+- closeout_ref: .servo/worktrack/WT-R4-A1-closeout.md
+- closed_at: 2026-07-20T21:22:00+08:00
+- residual_risk: soft_target_80; index_510300; caps_not_in_inputs_configs; milestone_behind_develop
+
+### WT-R4-A0
+
+- worktrack_id: WT-R4-A0
+- milestone_id: MS-R4-001
+- status: done
+- node_type: feature
+- scope: >
+  research_liquidity_quality strategy + registry export ≤100 (61) +
+  diff vs low_manipulation; cache-first; no live.
+- branch: milestone/MS-R4-001-tushare-datalake
+- merge_commit: N/A (implementation 3807f81 is ancestor of develop)
+- validation: `pytest tests/unit/stock_pool/` → 15 passed (re-verified 2026-07-20); smoke 61≤100
+- intake_route: milestone-derived
+- gate_verdict: pass_with_accepted_residuals
+- report_ref: .servo/worktrack/WT-R4-A0-closeout.md
+- gate_evidence_ref: .servo/worktrack/WT-R4-A0-gate-evidence.md
+- closeout_ref: .servo/worktrack/WT-R4-A0-closeout.md
+- closed_at: 2026-07-20T19:16:00+08:00
+- residual_risk: soft_target_80_deficit; index_510300_empty; research_only until milestone Gate; Close writeback commit approval-gated
 
 ### WT-EXPAND-001
 

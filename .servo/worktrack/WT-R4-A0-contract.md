@@ -3,11 +3,11 @@ title: "WT-R4-A0: 新策略准则草案 + ≤100 池导出（registry）+ 与旧
 artifact_type: "worktrack-contract"
 milestone_id: "MS-R4-001"
 worktrack_id: "WT-R4-A0"
-status: "active"
+status: "closed"
 node_type: "feature"
 derived_from_milestone: true
 created: "2026-07-15T09:12:00+08:00"
-updated: "2026-07-15T13:50:00+08:00"
+updated: "2026-07-20T19:16:00+08:00"
 owner: "OceanEyeFF"
 ---
 
@@ -18,8 +18,10 @@ owner: "OceanEyeFF"
 - worktrack_id: WT-R4-A0
 - milestone_id: MS-R4-001
 - derived_from_milestone: true
-- status: active
-- implementation_status: complete_awaiting_gate_close
+- status: closed
+- implementation_status: closed
+- gate_verdict: pass_with_accepted_residuals
+- closed_at: 2026-07-20T19:16:00+08:00
 - node_type: feature
 - strategy_thesis: research_liquidity_quality
 - strategy_folder: research_liquidity_quality
@@ -29,7 +31,7 @@ owner: "OceanEyeFF"
   实现可审计的 research_liquidity_quality 策略（主板可研究/可交易卫生筛），
   cache-first 选出 ≤80（硬上限 100）的可版本化池并 registry 导出，产出相对
   旧 low_manipulation 的差异说明。
-- next_state_after_close: handoff WT-R4-A1（湖/源合同 + 日/RPM 上限建议）
+- next_state_after_close: WT-R4-A1 intake opened（湖/源合同 + cache inventory + schema + 日/RPM）
 - execution_not_started: false
 - strategy_brief_ref: .servo/worktrack/WT-R4-A0-strategy-brief.md
 - t1_status: completed
@@ -50,9 +52,9 @@ owner: "OceanEyeFF"
 - registry_path: inputs/pools/research_liquidity_quality/config.toml
 - strategy_impl_ref: src/ashare_lab/stock_pool/research_liquidity_quality/
 - unit_tests_ref: tests/unit/stock_pool/test_research_liquidity_quality_strategy.py
-- unit_tests_result: 15 passed tests/unit/stock_pool/ (py311-private)
+- unit_tests_result: 15 passed tests/unit/stock_pool/ (re-verified 2026-07-20)
 - smoke_result: cache-first select idempotent; count=61<=100
-- awaiting: WorktrackScope.Judging (gate) then Close; commit/push approval-gated
+- awaiting: Close writeback commit/push approval; then A1 Init on request
 
 ## Metadata
 

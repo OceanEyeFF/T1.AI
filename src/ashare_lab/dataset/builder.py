@@ -16,6 +16,7 @@ import pandas as pd
 import yaml
 
 from ashare_infra.lake import DataLake
+from ashare_infra.lake.r4_contract import R4_ADJUST_DEFAULT, make_r4_datalake
 from ashare_lab.features.base import BaseFeature
 from ashare_lab.labels.excess_return import ExcessReturnLabel, ForwardReturnLabel
 from ashare_lab.symbols import symbol_to_odp_equity_symbol, symbol_to_ts_code
@@ -39,7 +40,7 @@ class DatasetConfig:
     split_method: str = "fixed_window"  # 'fixed_window' or 'rolling_window'
     train_end_date: str | None = None  # YYYYMMDD
     valid_end_date: str | None = None  # YYYYMMDD
-    source: SourceKind = "akshare"  # 'akshare' or 'tushare' or 'odp'
+    source: SourceKind = "tushare"  # R4/A1 primary; override for akshare/odp
     cache_dir: Path = field(default_factory=lambda: Path("inputs/data/cache"))
     output_dir: Path = field(default_factory=lambda: Path("workspace/datasets"))
     nan_threshold: float = 0.2  # 缺失数据阈值（超过警告）
@@ -61,10 +62,13 @@ class DatasetBuilder:
         self.stock_data: dict[str, pd.DataFrame] = {}
         self.benchmark_data: pd.DataFrame | None = None
         self.dataset: pd.DataFrame | None = None
-        self._lake = DataLake(
-            cache_dir=config.cache_dir,
-            default_source=config.source,  # type: ignore[arg-type]
-        )
+        if config.source == "tushare":
+            self._lake = make_r4_datalake(cache_dir=config.cache_dir)
+        else:
+            self._lake = DataLake(
+                cache_dir=config.cache_dir,
+                default_source=config.source,  # type: ignore[arg-type]
+            )
 
     def build(self) -> Path:
         """构建完整数据集
@@ -108,7 +112,7 @@ class DatasetBuilder:
                     self.config.start_date,
                     self.config.end_date,
                     source=source,
-                    adjust="qfq",
+                    adjust=R4_ADJUST_DEFAULT,
                 )
                 if df.empty:
                     logger.warning(f"股票 {symbol} 数据为空，跳过")

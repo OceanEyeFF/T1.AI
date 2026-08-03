@@ -1,0 +1,85 @@
+{
+  "verified_at": "2026-07-23T09:31:29+08:00",
+  "batch_approve_id": "M1-normal-2026-07-23-510300+staleness7",
+  "510300": {
+    "tushare_qfq": {
+      "parts": 4,
+      "rows": 859,
+      "min": "2023-01-03",
+      "max": "2026-07-22"
+    },
+    "tushare_daily_basic": {
+      "parts": 0,
+      "rows": 0,
+      "min": null,
+      "max": null
+    },
+    "tushare_moneyflow": {
+      "parts": 0,
+      "rows": 0,
+      "min": null,
+      "max": null
+    }
+  },
+  "510300_note": "qfq via fund_daily fallback; daily_basic/moneyflow remain empty (ETF not on stock APIs)",
+  "staleness": [
+    {
+      "symbol": "601989.SH",
+      "prior": "2025-08-12",
+      "now": "2025-08-12",
+      "rows": 622,
+      "improved": false
+    },
+    {
+      "symbol": "601318.SH",
+      "prior": "2026-03-05",
+      "now": "2026-07-22",
+      "rows": 859,
+      "improved": true
+    },
+    {
+      "symbol": "600519.SH",
+      "prior": "2026-03-05",
+      "now": "2026-07-22",
+      "rows": 859,
+      "improved": true
+    },
+    {
+      "symbol": "600036.SH",
+      "prior": "2026-03-05",
+      "now": "2026-07-22",
+      "rows": 859,
+      "improved": true
+    },
+    {
+      "symbol": "000333.SZ",
+      "prior": "2026-03-05",
+      "now": "2026-07-22",
+      "rows": 859,
+      "improved": true
+    },
+    {
+      "symbol": "000858.SZ",
+      "prior": "2026-03-05",
+      "now": "2026-07-22",
+      "rows": 859,
+      "improved": true
+    },
+    {
+      "symbol": "000001.SZ",
+      "prior": "2026-03-05",
+      "now": "2026-07-22",
+      "rows": 859,
+      "improved": true
+    }
+  ],
+  "601989_note": "TuShare daily ends 2025-08-12; stock_basic empty — upstream exhausted, not runner failure",
+  "expectations": {
+    "T3-CORE-1_510300_qfq_parts": true,
+    "T3-CORE-1_510300_history_from_2023": true,
+    "T3-CORE-1_510300_basic_mf": "N/A_ETF_stock_apis_empty",
+    "T3-CORE-2_staleness_6of7": true,
+    "T3-CORE-2_601989_upstream_exhausted": true
+  },
+  "verdict": "pass_with_residuals"
+}

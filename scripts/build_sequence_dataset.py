@@ -23,6 +23,7 @@ import numpy as np
 import pandas as pd
 
 from ashare_infra.lake import DataLake
+from ashare_infra.lake.r4_contract import R4_ADJUST_DEFAULT, make_r4_datalake
 from ashare_lab.dataset.sequence_builder import SequenceDatasetBuilder
 from ashare_lab.features.momentum import Return1D, Return20D, Return5D
 from ashare_lab.features.volume import AmountChange, VolumeChange, VolumeRatio
@@ -168,15 +169,17 @@ def _load_bars(source: str, symbol: str, start: str, end: str, cache_dir: Path) 
     if source not in {"akshare", "tushare", "odp"}:
         raise ValueError(f"unsupported --source: {source}")
 
-    lake = DataLake(cache_dir=cache_dir, default_source=source)  # type: ignore[arg-type]
     if source == "tushare":
+        lake = make_r4_datalake(cache_dir=cache_dir)
         lake_symbol = symbol_to_ts_code(symbol)
-    elif source == "odp":
-        lake_symbol = symbol_to_odp_equity_symbol(symbol)
     else:
-        lake_symbol = symbol
+        lake = DataLake(cache_dir=cache_dir, default_source=source)  # type: ignore[arg-type]
+        if source == "odp":
+            lake_symbol = symbol_to_odp_equity_symbol(symbol)
+        else:
+            lake_symbol = symbol
     return lake.load_daily_bars(
-        lake_symbol, start, end, source=source, adjust="qfq"  # type: ignore[arg-type]
+        lake_symbol, start, end, source=source, adjust=R4_ADJUST_DEFAULT  # type: ignore[arg-type]
     )
 
 

@@ -8,6 +8,9 @@ import time
 
 import pandas as pd
 
+from ashare_infra.data.tushare_batch import is_frequency_wall_error
+from ashare_infra.data.tushare_rate_limit import acquire_tushare_call
+
 # Public constants
 SUPPORTED_FIELDS: Sequence[str] = ("open", "high", "low", "close", "volume", "amount")
 SUPPORTED_DAILY_BASIC_FIELDS: Sequence[str] = (
@@ -154,19 +157,37 @@ def _get_tushare_pro(token: str | None = None):  # pragma: no cover - mostly int
 
 
 def fetch_tushare_daily_bars(req: TushareDailyBarsRequest) -> pd.DataFrame:  # pragma: no cover
-    """直接调用 TuShare 接口获取日线数据，并按 req.adjust 复权。"""
+    """直接调用 TuShare 接口获取日线数据，并按 req.adjust 复权。
+
+    ETF/基金（如 ``510300.SH``）在 ``pro.daily`` 上常为空；此时回退
+    ``pro.fund_daily``（计入 ``fund_daily`` 配额，不再拉 adj_factor）。
+    """
     pro = _get_tushare_pro(req.token)
     adjust_mode = _normalize_adjust_mode(req.adjust)
 
+    acquire_tushare_call("daily")
     raw = pro.daily(
         ts_code=req.symbol,
         start_date=req.start_date,
         end_date=req.end_date,
     )
     daily = _normalize_tushare_daily(raw)
+    if daily.empty:
+        # ETF / fund instruments are not on stock daily.
+        acquire_tushare_call("fund_daily")
+        raw_fund = pro.fund_daily(
+            ts_code=req.symbol,
+            start_date=req.start_date,
+            end_date=req.end_date,
+        )
+        fund = _normalize_tushare_daily(raw_fund)
+        # fund_daily already exposes trade OHLC; treat as final series (no adj).
+        return fund
+
     if adjust_mode == "raw":
         return daily
 
+    acquire_tushare_call("adj_factor")
     raw_adj = pro.adj_factor(
         ts_code=req.symbol,
         start_date=req.start_date,
@@ -179,6 +200,7 @@ def fetch_tushare_daily_bars(req: TushareDailyBarsRequest) -> pd.DataFrame:  # p
 def fetch_tushare_daily_basic(req: TushareDailyBasicRequest) -> pd.DataFrame:  # pragma: no cover
     """直接调用 TuShare daily_basic 接口。"""
     pro = _get_tushare_pro(req.token)
+    acquire_tushare_call("daily_basic")
     raw = pro.daily_basic(ts_code=req.symbol, start_date=req.start_date, end_date=req.end_date)
     return _normalize_tushare_table(raw, SUPPORTED_DAILY_BASIC_FIELDS)
 
@@ -186,6 +208,7 @@ def fetch_tushare_daily_basic(req: TushareDailyBasicRequest) -> pd.DataFrame:  #
 def fetch_tushare_moneyflow(req: TushareMoneyflowRequest) -> pd.DataFrame:  # pragma: no cover
     """直接调用 TuShare moneyflow 接口。"""
     pro = _get_tushare_pro(req.token)
+    acquire_tushare_call("moneyflow")
     raw = pro.moneyflow(ts_code=req.symbol, start_date=req.start_date, end_date=req.end_date)
     return _normalize_tushare_table(raw, SUPPORTED_MONEYFLOW_FIELDS)
 
@@ -193,6 +216,7 @@ def fetch_tushare_moneyflow(req: TushareMoneyflowRequest) -> pd.DataFrame:  # pr
 def fetch_tushare_adj_factor(req: TushareAdjFactorRequest) -> pd.DataFrame:  # pragma: no cover
     """直接调用 TuShare adj_factor 接口。"""
     pro = _get_tushare_pro(req.token)
+    acquire_tushare_call("adj_factor")
     raw = pro.adj_factor(ts_code=req.symbol, start_date=req.start_date, end_date=req.end_date)
     return _normalize_tushare_adj_factor(raw)
 
@@ -235,12 +259,16 @@ def _apply_price_adjustment(daily: pd.DataFrame, adj_factor: pd.DataFrame, adjus
 
 
 def _retry_with_backoff(func, retries: int, base_delay: float = 0.5):
+    """Retry transient errors; AO-B4: frequency-wall (2002) is not retried in-loop."""
     last_exc = None
     for attempt in range(retries):
         try:
             return func()
         except Exception as exc:  # pragma: no cover - exercised via tests with mock
             last_exc = exc
+            # Do not tight-loop on TuShare frequency walls — surface to batch pause.
+            if is_frequency_wall_error(exc):
+                raise
             if attempt == retries - 1:
                 break
             time.sleep(base_delay * (2**attempt))
@@ -262,6 +290,8 @@ def _read_cached_partitions(symbol_dir: Path) -> pd.DataFrame:
             frames.append(df)
         except FileNotFoundError:
             continue
+        except (OSError, ValueError):  # corrupt/truncated part → skip (fail-open read)
+            continue
     if not frames:
         return pd.DataFrame(columns=SUPPORTED_FIELDS)
     return pd.concat(frames).sort_index()
@@ -279,7 +309,9 @@ def _write_partitioned(df: pd.DataFrame, symbol_dir: Path) -> None:
         year_dir = symbol_dir / f"year={year}"
         year_dir.mkdir(parents=True, exist_ok=True)
         out_path = year_dir / "part.parquet"
-        year_df.drop(columns=["year"]).to_parquet(out_path, index=False)
+        tmp_path = year_dir / "part.parquet.tmp"
+        year_df.drop(columns=["year"]).to_parquet(tmp_path, index=False)
+        tmp_path.replace(out_path)
 
 
 def _date_ranges_to_fetch(
