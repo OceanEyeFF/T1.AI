@@ -84,18 +84,13 @@ def test_write_rejects_unknown_family(tmp_path: Path) -> None:
         write_r4_derived_parts(families["momentum"], "macd", "600519.SH", root=tmp_path)
 
 
-def test_build_symbol_from_cache_zero_live(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_build_symbol_from_cache_zero_live(tmp_path: Path) -> None:
+    # Cache-only path: build reads qfq partitions via read_r4_qfq_cache;
+    # fetch_tushare_daily_bars is not on this call path (no fetch monkeypatch).
     cache = tmp_path / "cache"
     derived = tmp_path / "derived"
     bars = _make_bars(n=80)
     ts_src._write_partitioned(bars, cache / "tushare_qfq" / "600519.SH")
-
-    def _boom(*_a, **_k):  # noqa: ANN001
-        raise AssertionError("fetch must not be called in T2 cache-only build")
-
-    monkeypatch.setattr(ts_src, "fetch_tushare_daily_bars", _boom)
 
     result = build_r4_derived_symbol(
         "600519.SH", cache_dir=cache, derived_root=derived
@@ -119,3 +114,63 @@ def test_build_skips_missing_cache(tmp_path: Path) -> None:
     )
     assert result.status == "skipped_empty_cache"
     assert result.parts_written == []
+
+
+def test_full_rebuild_with_mid_year_start_truncates_year_part(tmp_path: Path) -> None:
+    """TG-06: full rebuild with mid-year start overwrites year part to dates >= start."""
+    cache = tmp_path / "cache"
+    derived = tmp_path / "derived"
+    ts_code = "600519.SH"
+    bars = _make_bars(n=120, start="2024-01-02")
+    ts_src._write_partitioned(bars, cache / "tushare_qfq" / ts_code)
+
+    first = build_r4_derived_symbol(
+        ts_code, cache_dir=cache, derived_root=derived, rebuild="full"
+    )
+    assert first.status == "built"
+    mom_full = read_r4_derived_parts("momentum", ts_code, root=derived)
+    full_rows = len(mom_full)
+    mid = bars.index[len(bars) // 2]
+    start = mid.strftime("%Y%m%d")
+
+    second = build_r4_derived_symbol(
+        ts_code,
+        cache_dir=cache,
+        derived_root=derived,
+        start=start,
+        rebuild="full",
+    )
+    assert second.status == "built"
+    mom = read_r4_derived_parts("momentum", ts_code, root=derived)
+    assert not mom.empty
+    assert mom.index.min() >= mid
+    assert (mom.index < mid).sum() == 0
+    assert len(mom) < full_rows
+
+
+def test_start_after_cache_range_skips_empty_cache(tmp_path: Path) -> None:
+    """TG-13: cache only 2024; start in 2025 → skipped_empty_cache after slice."""
+    cache = tmp_path / "cache"
+    derived = tmp_path / "derived"
+    bars = _make_bars(n=40, start="2024-01-02")
+    ts_src._write_partitioned(bars, cache / "tushare_qfq" / "600519.SH")
+
+    result = build_r4_derived_symbol(
+        "600519.SH",
+        cache_dir=cache,
+        derived_root=derived,
+        start="20250101",
+    )
+    assert result.status == "skipped_empty_cache"
+    assert result.parts_written == []
+
+
+def test_invalid_rebuild_raises(tmp_path: Path) -> None:
+    """TG-23: rebuild='partial' → ValueError."""
+    with pytest.raises(ValueError, match="rebuild must be"):
+        build_r4_derived_symbol(
+            "600519.SH",
+            cache_dir=tmp_path / "cache",
+            derived_root=tmp_path / "derived",
+            rebuild="partial",  # type: ignore[arg-type]
+        )

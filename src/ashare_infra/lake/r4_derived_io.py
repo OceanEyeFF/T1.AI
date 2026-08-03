@@ -174,6 +174,8 @@ def write_r4_derived_parts(
         )
     required = r4_derived_required_columns(fam)
     frame = _normalize_derived_frame(df)
+    if frame.empty:
+        return []
     missing = [c for c in required if c not in frame.columns]
     if missing:
         raise ValueError(f"derived family={fam!r} missing columns: {missing}")
@@ -204,17 +206,26 @@ def read_r4_derived_parts(
     *,
     root: Path | str | None = None,
 ) -> pd.DataFrame:
-    """Read all year parts for a derived family/symbol (DatetimeIndex)."""
+    """Read all year parts for a derived family/symbol (DatetimeIndex).
+
+    Corrupt/truncated parts are skipped (fail-open), matching cache
+    ``_read_cached_partitions`` F-03 behavior.
+    """
     symbol_dir = r4_derived_symbol_dir(family, ts_code, root=root)
     if not symbol_dir.is_dir():
         return pd.DataFrame(columns=list(r4_derived_required_columns(family)))
 
     frames: list[pd.DataFrame] = []
     for part in sorted(symbol_dir.glob(f"year=*/{R4_DERIVED_PART_FILENAME}")):
-        df = pd.read_parquet(part)
-        df["date"] = pd.to_datetime(df["date"])
-        df = df.set_index("date").sort_index()
-        frames.append(df)
+        try:
+            df = pd.read_parquet(part)
+            df["date"] = pd.to_datetime(df["date"])
+            df = df.set_index("date").sort_index()
+            frames.append(df)
+        except FileNotFoundError:
+            continue
+        except (OSError, ValueError):  # corrupt/truncated part → skip
+            continue
     if not frames:
         return pd.DataFrame(columns=list(r4_derived_required_columns(family)))
     combined = pd.concat(frames).sort_index()

@@ -11,6 +11,7 @@ from ashare_infra.data.tushare_batch import (
     R4_MAX_BATCH_SYMBOLS,
     BatchManifest,
     BatchPolicyError,
+    FrequencyWallPause,
     R4BatchPolicy,
     chunk_symbols,
     default_estimated_calls,
@@ -285,3 +286,102 @@ def test_terminal_state_failed_not_completed_when_failed_jobs_remain(
     assert result.failed is True
     assert m.state == "failed"
     assert m.jobs[2].status == "done"
+
+
+def test_manifest_save_no_tmp_leftover_after_success(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """TG-07 (downgraded): success path uses *.tmp then replace; no leftover; reload ok.
+
+    Does not claim crash-atomic / kill-9 safety — only happy-path tmp+replace.
+    """
+    replace_srcs: list[Path] = []
+    orig_replace = Path.replace
+
+    def _tracking_replace(self: Path, target: Path | str) -> Path:  # noqa: ANN001
+        replace_srcs.append(Path(self))
+        return orig_replace(self, target)
+
+    monkeypatch.setattr(Path, "replace", _tracking_replace)
+
+    m = plan_batch(
+        ["600000.SH"],
+        apis=("daily",),
+        start_date="20240101",
+        end_date="20240131",
+    )
+    path = tmp_path / "manifest.json"
+    m.save(path)
+    assert path.is_file()
+    assert any(p.name.endswith(".tmp") for p in replace_srcs), replace_srcs
+    assert list(tmp_path.glob("*.tmp")) == []
+    loaded = BatchManifest.load(path)
+    assert loaded.manifest_id == m.manifest_id
+    assert len(loaded.jobs) == 1
+
+
+def test_non_wall_mid_job_failure_leaves_later_pending(tmp_path: Path) -> None:
+    """TG-15: mid-job RuntimeError → that job failed, later pending; resume finishes."""
+    lim = TushareRateLimiter(
+        rpm=180,
+        daily_per_api=80000,
+        sleep=lambda _: None,
+        today=lambda: date(2026, 7, 22),
+    )
+    m = plan_batch(
+        ["600000.SH", "000001.SZ", "600519.SH"],
+        apis=("daily",),
+        start_date="20240101",
+        end_date="20240131",
+    )
+    path = tmp_path / "mid_fail.json"
+
+    def _exec(job) -> None:  # noqa: ANN001
+        if job.symbol == "000001.SZ":
+            raise RuntimeError("upstream boom")
+
+    result = run_batch(m, _exec, limiter=lim, manifest_path=path)
+    assert result.failed is True
+    assert result.paused is False
+    assert m.jobs[0].status == "done"
+    assert m.jobs[1].status == "failed"
+    assert m.jobs[2].status == "pending"
+
+    def _ok(job) -> None:  # noqa: ANN001
+        pass
+
+    result2 = resume_batch(path, _ok, limiter=lim)
+    loaded = BatchManifest.load(path)
+    assert loaded.jobs[2].status == "done"
+    # Failed mid-job remains failed; terminal state stays failed.
+    assert loaded.jobs[1].status == "failed"
+    assert result2.failed is True
+    assert loaded.state == "failed"
+
+
+def test_frequency_wall_pause_typed_exception(tmp_path: Path) -> None:
+    """TG-16: executor raises FrequencyWallPause → paused freq_wall, job pending."""
+    lim = TushareRateLimiter(
+        rpm=180,
+        daily_per_api=80000,
+        sleep=lambda _: None,
+        today=lambda: date(2026, 7, 22),
+    )
+    m = plan_batch(
+        ["600000.SH", "000001.SZ"],
+        apis=("daily",),
+        start_date="20240101",
+        end_date="20240131",
+    )
+
+    def _exec(job) -> None:  # noqa: ANN001
+        if job.symbol == "600000.SH":
+            raise FrequencyWallPause("typed wall")
+
+    result = run_batch(m, _exec, limiter=lim, manifest_path=tmp_path / "typed_wall.json")
+    assert result.paused is True
+    assert result.pause_kind == "freq_wall"
+    assert m.state == "paused_freq_wall"
+    assert m.jobs[0].status == "pending"
+    assert m.jobs[0].error is not None and m.jobs[0].error.startswith("frequency_wall:")
+    assert m.jobs[1].status == "pending"

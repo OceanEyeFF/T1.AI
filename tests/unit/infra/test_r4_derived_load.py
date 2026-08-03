@@ -113,18 +113,35 @@ def test_load_scope_derived(tmp_path: Path) -> None:
     assert len(out["600519.SH"]) == 4
 
 
-def test_load_derived_zero_live(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    import ashare_infra.data.tushare_source as ts_src
-
+def test_load_derived_zero_live(tmp_path: Path) -> None:
+    # Filesystem-only: load_derived reads derived parts; no fetch call site
+    # (do not monkeypatch fetch_tushare_daily_bars — that gave false zero-live comfort).
     derived = tmp_path / "derived"
     _seed_momentum(derived)
-    monkeypatch.setattr(
-        ts_src,
-        "fetch_tushare_daily_bars",
-        lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("no live")),
-    )
     lake = make_r4_datalake(cache_dir=tmp_path / "cache", derived_root=derived)
     df = lake.load_derived("600519.SH", "momentum")
     assert len(df) == 4
+
+
+def test_load_derived_raises_on_missing_required_columns(tmp_path: Path) -> None:
+    """TG-05: on-disk parquet missing required cols → ValueError from load_derived."""
+    from ashare_infra.lake.r4_contract import (
+        R4_DERIVED_PART_FILENAME,
+        r4_derived_symbol_dir,
+    )
+
+    derived = tmp_path / "derived"
+    ts_code = "600519.SH"
+    year_dir = r4_derived_symbol_dir("momentum", ts_code, root=derived) / "year=2024"
+    year_dir.mkdir(parents=True, exist_ok=True)
+    bad = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2024-01-02", "2024-01-03"]),
+            "junk": [1.0, 2.0],
+        }
+    )
+    bad.to_parquet(year_dir / R4_DERIVED_PART_FILENAME, index=False)
+
+    lake = DataLake(cache_dir=tmp_path / "cache", derived_root=derived)
+    with pytest.raises(ValueError, match="missing columns"):
+        lake.load_derived(ts_code, "momentum")

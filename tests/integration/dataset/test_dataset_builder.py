@@ -375,12 +375,13 @@ class TestDatasetBuilder:
         )
 
         builder = DatasetBuilder(config)
-        builder.build()
+        with caplog.at_level("WARNING"):
+            builder.build()
 
-        # 验证日志中包含 NaN 警告（可能会有警告，取决于数据生成）
-        # 这是一个软检查，不强制要求警告出现
+        # TG-17: pin DatasetBuilder._quality_check warning copy (builder.py),
+        # not a bare "NaN" substring that can match unrelated logs.
         log_text = caplog.text
-        assert "质量检查" in log_text or "NaN" in log_text or len(log_text) > 0
+        assert "以下列的 NaN 比例超过" in log_text
 
 
 class TestDatasetBuilderEdgeCases:
