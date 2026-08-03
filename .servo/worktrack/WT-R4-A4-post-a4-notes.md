@@ -10,7 +10,7 @@ status: "post_a4_package"
 
 # WT-R4-A4 post-A4 notes
 
-Small package after A4 Gate/Close (`pass_with_residuals`). Tip after commit: **TBD** (parent commits). Gate close writeback tip already stamped in closeout as `e0b683d`.
+Small package after A4 Gate/Close (`pass_with_residuals`). Tip: **`d3cc423`**. Gate close writeback tip stamped in closeout as `e0b683d`.
 
 ## AO-O4-A (static scan)
 
