@@ -15,7 +15,7 @@ owner: "OceanEyeFF"
 
 - updated: 2026-07-28T15:17:00+08:00
 - owner: OceanEyeFF
-- refresh_note: A4 Gate/Close pass_with_residuals; await MS Residual Confirmation Round (AC6) before final acceptance
+- refresh_note: MS-R4-001 residual confirmed + final acceptance approved 2026-08-03T19:58:00+08:00; merge to develop in progress
 
 ## Current Control Level
 
@@ -34,33 +34,33 @@ owner: "OceanEyeFF"
 - gate_evidence: worktrack/WT-R4-A4-gate-evidence.md
 - closeout_ref: worktrack/WT-R4-A4-closeout.md
 - active_task_window: none
-- selected_next_action_id: MS-R4-001-RESIDUAL-CONFIRMATION
+- selected_next_action_id: none
 - worktrack_gate_verdict: pass_with_residuals
 - worktrack_blocker: none
-- worktrack_residual_risk: soft80_accepted; 510300_basic_mf_na; 601989_trial_exclude; AO-O1_O2_O3_done; AO-O4-A_static_done; AO-O4_dynamic_deferred; A4_F1_fixed_post_a4; A4_F2_F4_doc_only; residuals_round_confirmed; ms_residual_confirmation_pending
+- worktrack_residual_risk: soft80_accepted; 510300_basic_mf_na; 601989_trial_exclude; AO-O1_O2_O3_done; AO-O4-A_static_done; AO-O4_dynamic_deferred; A4_F1_fixed_post_a4; A4_F2_F4_doc_only; residuals_round_confirmed; ms_residual_confirmation_confirmed
 - execution_not_started: false
 - active_worktrack_initialized: false
 
 ## Active Milestone
 
-- active_milestone: MS-R4-001
-- milestone_status: active
+- active_milestone: none
+- milestone_status: completed
 - milestone_kind: goal-driven
 - milestone_artifact: milestone/MS-R4-001.md
 - milestone_backlog: repo/milestone-backlog.md
 - milestone_history: repo/milestone-history.md
 - milestone_pipeline_summary:
-  - active_count: 1
+  - active_count: 0
   - planned_count: 0
-  - completed_count: 9
+  - completed_count: 10
   - superseded_count: 0
-  - note: MS-R4-001 active; all 5 WTs complete; MS residual confirmation pending; do NOT mark milestone achieved
+  - note: MS-R4-001 completed/accepted_with_residuals; active_count 0; develop merge approved
 - milestone_review_gate_ready: true
 - latest_review_status: effective_pass
 - milestone_review_count: 1
 - latest_review_checkpoint: MS-R4-001-intake-ready-2026-07-15T00:10:00+08:00
 - effective_review_pass: true
-- next_milestone_route: MS Residual Confirmation Round (AC6) → MS final acceptance / develop merge (separate approve); no full-campaign / train / Phase4 / EXEC-002
+- next_milestone_route: none planned; no full-campaign / train / Phase4 / EXEC-002
 
 ## Baseline Branch
 
@@ -80,7 +80,7 @@ owner: "OceanEyeFF"
 
 ## Current Next Action
 
-- WT-R4-A4 **closed**（Gate `pass_with_residuals`）。Next: **MS-R4-001 Residual Confirmation Round (AC6)** → then MS final acceptance / develop merge（separate approve；不自动 Init 下一 WT）。
+- MS-R4-001 **completed**（residual confirmed 2026-08-03T19:58:00+08:00；final acceptance approved）。Next: develop merge；no auto Init next WT/MS。
 
 ## Linked Formal Documents
 
@@ -116,6 +116,7 @@ owner: "OceanEyeFF"
 - final_acceptance_MS_R1_001: received on 2026-06-23T02:00:00+08:00; accepted model-layer extraction and governance. 8/8 worktracks (A1-A8), 10/10 completion signals, 6/6 acceptance criteria, 397/397 tests pass. Commit: 5da7cde.
 - final_acceptance_MS_R2_001: received on 2026-06-23T04:00:00+08:00; accepted repo directory restructuring (inputs/workspace/outputs). 11/11 worktracks, 11/11 completion signals, pytest 395/397 (2 residual path failures deferred to later milestones). History: repo/milestone-history.md § MS-R2-001.
 - final_acceptance_MS_R3_001: received on 2026-07-14T17:24:00+08:00; accepted deep cleanup. 3/3 worktracks, pytest 397/397, merge develop@296318b. History: repo/milestone-history.md § MS-R3-001.
+- final_acceptance_MS_R4_001: received on 2026-08-03T19:58:00+08:00; accepted_with_residuals after R1–R5 residual confirmation; develop merge approved. History: repo/milestone-history.md § MS-R4-001.
 - final_acceptance_MS_T1_001: received on 2026-07-14T20:11:00+08:00; accepted T-heavy test suite rewrite. 4/4 worktracks, pytest full 396/396, fast 277, cov~78%/fail_under=76, merge develop@eed3e24. History: repo/milestone-history.md § MS-T1-001.
 - milestone_brief_MS_R2_001: received on 2026-06-23T01:00:00+08:00; planned milestone registered for repo directory restructuring with 3-zone model; later expanded to 11 worktracks and completed/accepted.
 - milestone_brief_MS_R3_001: received and confirmed on 2026-07-14; decisions D1=B, D2=T2, D3=P3, D4=confirm; Init authorized by programmer message「初始化 MS-R3-001」.
@@ -249,8 +250,8 @@ owner: "OceanEyeFF"
 
 ## Handback Guard
 
-- handoff_state: wt_closed_awaiting_ms_residual_confirmation
-- last_stop_reason: WT-R4-A4 closed (pass_with_residuals); awaiting MS Residual Confirmation Round (AC6) before final acceptance; zero live; push gated
+- handoff_state: ms_accepted_merging_develop
+- last_stop_reason: MS-R4-001 residual confirmed + final acceptance approved 2026-08-03T19:58:00+08:00; merging to develop
 - last_handback_signature: WT-R4-A4/Close/2026-07-28T15:17:00+08:00
 - handback_reaffirmed_rounds: 0
 - stable_handback_threshold: 2

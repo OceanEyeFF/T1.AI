@@ -1,7 +1,7 @@
 ---
 title: "Milestone History"
 artifact_type: "milestone-history"
-updated: "2026-07-14T20:11:00+08:00"
+updated: "2026-08-03T19:58:00+08:00"
 updated_by: "cursor-with-programmer-acceptance"
 ---
 
@@ -10,6 +10,51 @@ updated_by: "cursor-with-programmer-acceptance"
 > Completed and superseded milestones are moved here from `.servo/repo/milestone-backlog.md`.
 
 ## Completed
+
+### MS-R4-001
+
+- milestone_id: MS-R4-001
+- title: TuShare 数据湖构建（精选池重组 + 可复现湖合同）
+- purpose: >
+  在 R2/R3/T1 基线上：以新 stock_pool 策略族重组可版本化精选池（≤100），
+  再以 TuShare 为默认日频源，按 R1 审计复用 + L2 limited-live 构建
+  cache/derived 可复现数据湖与质量审计。
+- status: completed
+- milestone_kind: goal-driven
+- priority: 5
+- depends_on_milestones: MS-T1-001
+- created_by: programmer
+- created_at: 2026-06-23T03:00:00+08:00
+- activated_at: 2026-07-15T00:16:00+08:00
+- completed_at: 2026-08-03T19:58:00+08:00
+- accepted_by: OceanEyeFF
+- acceptance_verdict: accepted_with_residuals
+- residual_confirmation_status: confirmed
+- residual_confirmation: .servo/repo/MS-R4-001-residual-confirmation.md
+- updated: 2026-08-03T19:58:00+08:00
+- updated_by: cursor-with-programmer-acceptance
+- artifact_path: .servo/milestone/MS-R4-001.md
+- decisions_locked: D1=B_direction, D1b=P1, D1c=C2_cap100, D2=L2, D3=R1, CG2=M1_normal, D4=lake_qa_closeout, D5=tushare_primary_akshare_backup
+- worktrack_list:
+  - WT-R4-A0 (done): 新策略准则 + ≤100 池 registry
+  - WT-R4-A1 (done): 湖/源合同 + cache inventory + schema + rate caps
+  - WT-R4-A2 (done): Cache-first DataLake path + Arch-v1 contracts
+  - WT-R4-A3 (done): limited-live fill + frequency-wall batch resume
+  - WT-R4-A4 (done): derived minimal + QA closeout
+- completion_signals: 6/6
+- acceptance_criteria: 6/6 (AC6 residual confirmation confirmed)
+- branch: milestone/MS-R4-001-tushare-datalake
+- merge_commit: pending_develop_merge
+- key_artifacts:
+  - src/ashare_infra/lake/
+  - src/ashare_infra/data/tushare_*.py
+  - src/ashare_lab/derived/
+  - inputs/data/derived/README.md
+  - .servo/repo/MS-R4-001-residual-confirmation.md
+- accepted_residuals: soft80; 510300_qfq_only; 601989_trial_exclude; A4_F2; A4_F4; AO-O4_dynamic_deferred; A4_F1_fixed_post_a4
+- final_note: >
+  MS-R4-001 residual confirmation R1–R5 已勾选确认；final acceptance approved。
+  合入 develop（分叉合并，含 infra Phase1/2 与 R4 重叠文件）。不授权 full-campaign / 训 / Phase4 / EXEC-002。
 
 ### MS-T1-001
 
