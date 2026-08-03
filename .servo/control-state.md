@@ -15,7 +15,7 @@ owner: "OceanEyeFF"
 
 - updated: 2026-07-28T15:17:00+08:00
 - owner: OceanEyeFF
-- refresh_note: MS-R4-001 residual confirmed + final acceptance approved 2026-08-03T19:58:00+08:00; merge to develop in progress
+- refresh_note: MS-R4-001 accepted_with_residuals; merged to develop @c96f7b9
 
 ## Current Control Level
 
@@ -65,18 +65,18 @@ owner: "OceanEyeFF"
 ## Baseline Branch
 
 - baseline_branch: develop
-- baseline_ref: 7453daaa7dc6275f27086bc74f3221927be415f4
+- baseline_ref: c96f7b9 (develop tip after MS-R4-001 merge)
 
 ## Branch Environment Guard
 
-- current_branch_context: milestone
-- expected_branch_context: milestone
+- current_branch_context: develop
+- expected_branch_context: develop
 - branch_context_guard_status: pass_with_caveat
 - branch_context_required_ref: refs/heads/milestone/MS-R4-001-tushare-datalake
 - active_milestone_branch: milestone/MS-R4-001-tushare-datalake
-- active_milestone_branch_sync_state: tip 60cbf22 (T5 packet; Gate/Close writeback commit pending)
+- active_milestone_branch_sync_state: merged to develop @c96f7b9; milestone branch retained
 - worktrack_branch: milestone/MS-R4-001-tushare-datalake
-- observed_checkout: milestone/MS-R4-001-tushare-datalake @ 60cbf22
+- observed_checkout: develop @c96f7b9
 
 ## Current Next Action
 
@@ -116,7 +116,7 @@ owner: "OceanEyeFF"
 - final_acceptance_MS_R1_001: received on 2026-06-23T02:00:00+08:00; accepted model-layer extraction and governance. 8/8 worktracks (A1-A8), 10/10 completion signals, 6/6 acceptance criteria, 397/397 tests pass. Commit: 5da7cde.
 - final_acceptance_MS_R2_001: received on 2026-06-23T04:00:00+08:00; accepted repo directory restructuring (inputs/workspace/outputs). 11/11 worktracks, 11/11 completion signals, pytest 395/397 (2 residual path failures deferred to later milestones). History: repo/milestone-history.md § MS-R2-001.
 - final_acceptance_MS_R3_001: received on 2026-07-14T17:24:00+08:00; accepted deep cleanup. 3/3 worktracks, pytest 397/397, merge develop@296318b. History: repo/milestone-history.md § MS-R3-001.
-- final_acceptance_MS_R4_001: received on 2026-08-03T19:58:00+08:00; accepted_with_residuals after R1–R5 residual confirmation; develop merge approved. History: repo/milestone-history.md § MS-R4-001.
+- final_acceptance_MS_R4_001: received on 2026-08-03T19:58:00+08:00; accepted_with_residuals after R1–R5 residual confirmation; develop merge @c96f7b9. History: repo/milestone-history.md § MS-R4-001.
 - final_acceptance_MS_T1_001: received on 2026-07-14T20:11:00+08:00; accepted T-heavy test suite rewrite. 4/4 worktracks, pytest full 396/396, fast 277, cov~78%/fail_under=76, merge develop@eed3e24. History: repo/milestone-history.md § MS-T1-001.
 - milestone_brief_MS_R2_001: received on 2026-06-23T01:00:00+08:00; planned milestone registered for repo directory restructuring with 3-zone model; later expanded to 11 worktracks and completed/accepted.
 - milestone_brief_MS_R3_001: received and confirmed on 2026-07-14; decisions D1=B, D2=T2, D3=P3, D4=confirm; Init authorized by programmer message「初始化 MS-R3-001」.
@@ -250,7 +250,7 @@ owner: "OceanEyeFF"
 
 ## Handback Guard
 
-- handoff_state: ms_accepted_merging_develop
+- handoff_state: ms_accepted_merged_develop
 - last_stop_reason: MS-R4-001 residual confirmed + final acceptance approved 2026-08-03T19:58:00+08:00; merging to develop
 - last_handback_signature: WT-R4-A4/Close/2026-07-28T15:17:00+08:00
 - handback_reaffirmed_rounds: 0
@@ -262,12 +262,12 @@ owner: "OceanEyeFF"
 
 > 记录最近一次 worktrack 关闭后的已验证基线，供后续续跑时快速定位。
 
-- last_verified_checkpoint: 60cbf22
-- latest_observed_checkpoint: 60cbf22
-- last_doc_catch_up_checkpoint: 60cbf22
+- last_verified_checkpoint: c96f7b9
+- latest_observed_checkpoint: c96f7b9
+- last_doc_catch_up_checkpoint: c96f7b9
 - milestone_input_checkpoint: WT-R4-A4-close-2026-07-28T15:17:00+08:00
 - checkpoint_type: git_commit
-- checkpoint_ref: 60cbf22
+- checkpoint_ref: c96f7b9
 - verified_at: 2026-07-28T15:17:00+08:00
 - if_no_commit_reason: Gate/Close writeback docs prepared; close_writeback_commit pending_programmer_commit
 - alternative_traceability:

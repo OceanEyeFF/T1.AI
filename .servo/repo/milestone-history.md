@@ -44,7 +44,7 @@ updated_by: "cursor-with-programmer-acceptance"
 - completion_signals: 6/6
 - acceptance_criteria: 6/6 (AC6 residual confirmation confirmed)
 - branch: milestone/MS-R4-001-tushare-datalake
-- merge_commit: pending_develop_merge
+- merge_commit: c96f7b9 on develop
 - key_artifacts:
   - src/ashare_infra/lake/
   - src/ashare_infra/data/tushare_*.py
