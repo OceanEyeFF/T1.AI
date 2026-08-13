@@ -20,7 +20,7 @@ python scripts/daily_pipeline.py --date 20250117 --dry-run
 | 文件 | 内容 |
 |------|------|
 | `inputs/configs/pipeline.toml` | 流水线参数（推荐目录、DB路径、日志） |
-| `inputs/configs/data_source.toml` | 数据源选择（akshare / tushare / odp） |
+| `inputs/configs/data_source.toml` | 数据源选择（tushare / odp；TuShare 单一信源） |
 
 ## 输出位置
 

@@ -36,7 +36,7 @@ T1.AI/
 │
 ├── src/ashare_infra/               # 基础设施包（湖 / sim / guard）— Phase 1+
 │   ├── lake/                       #   DataLake 唯一取数入口 + smoke + meta(stock_basic)
-│   ├── data/                       #   akshare / tushare / odp / index 适配器
+│   ├── data/                       #   tushare / odp / index 适配器
 │   ├── guard/                      #   DataScope / FetchGate / metrics / temporal
 │   └── sim/                        #   日频 paper broker + replay + BacktestEngine
 │
@@ -77,7 +77,6 @@ T1.AI/
 ├── tests/                          # 测试（pytest）
 ├── docs/                           # 文档（modules/ research/ overview/ interfaces/ archive/）
 ├── deployment/                     # 部署配置（systemd timer/service + crontab.example）
-├── .servo/                         # Harness 控制面（milestone/worktrack/control artifacts）
 │
 ├── pyproject.toml                  # Python 项目元数据
 ├── environment.yml                 # Conda 环境
@@ -130,7 +129,7 @@ T1.AI/
 | `output/recommendations/` | `outputs/predictions/` | 每日推荐 |
 | `output/reports/` | `outputs/reports/` | 评估报告 |
 | `experiments/` | 已删除 | 设计文档归入 docs/research/ |
-| `data/datasets/` | 已删除 | 旧 AkShare 数据集，后续 TuShare 重建 |
+| `data/datasets/` | 已删除 | 旧数据集目录，后续 TuShare 重建 |
 
 ## `ashare_infra` vs `ashare_lab` vs `ashare_exec`
 
@@ -153,7 +152,7 @@ T1.AI/
 - **IC / RankIC**：`ashare_infra.guard.metrics`（`ashare_lab.evaluation.metrics` 仅为 shim）
 - **禁止**：新业务代码 `from … import load_or_fetch_*`（适配器实现与 `ashare_infra.data.*` 内部除外）
 - 约定测：`tests/contract/infra/test_no_direct_load_or_fetch.py`（validator / DatasetBuilder / 主要 scripts）
-- **AkShare 缓存布局**：canonical `{cache_dir}/akshare/`；`DataLake` 仍会回读 legacy 根目录 flat CSV（WT-INFRA-002 脚注修复）
+- **TuShare 缓存布局**：canonical `{cache_dir}/tushare_qfq/{ts_code}/year=*/part.parquet`（R4 湖合同）；`DataLake` 是唯一取数入口
 
 ### Shim 保留策略
 

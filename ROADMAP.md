@@ -83,7 +83,7 @@ T1.AI 的长期目标，不是单纯堆出一个更复杂的模型，而是建�
 ### 关键交付物
 
 - TuShare `stk_mins` 或其他分钟级数据源的覆盖率、历史长度、权限、字段和成本报告；
-- AkShare 分钟接口的 smoke test 结果；
+- TuShare 分钟接口（`stk_mins`）或其它分钟级数据源的 smoke test 结果；
 - `1d` 标签和日内特征协议；
 - XGBoost / LSTM 的 `1d direction` 独立报告；
 - go / no-go 判断。

@@ -38,14 +38,12 @@ src/ashare_lab/sim/
 
 ## 快速开始（CLI）
 
-依赖已缓存的日线数据（与 `run_backtest.py` 同源，经 `DataLake` → AkShare）：
+依赖已缓存的日线数据（与 `run_backtest.py` 同源，经 `DataLake` → TuShare）：
 
 **缓存布局**（`--cache-dir`，默认 `inputs/data/cache`）：
 
 | 类型 | 路径 |
 |------|------|
-| AkShare 日线（canonical） | `{cache_dir}/akshare/{symbol}_daily_qfq_{start}_{end}.csv` |
-| AkShare legacy flat | `{cache_dir}/{symbol}_daily_qfq_...csv`（仍可读，新写入走 `akshare/`） |
 | 指数（HS300 等） | `{cache_dir}/index_{code}_daily_{start}_{end}.csv` |
 | TuShare 分区 | `{cache_dir}/tushare_qfq/{ts_code}/year=YYYY/part.parquet` |
 
@@ -178,7 +176,7 @@ class MyPlanner:
 | 量能上限 | 默认最多成交当日成交量的 5%（`max_participation`） |
 | 当日未成交 | 订单作废，**不自动顺延**到下一日 |
 
-`ReplayConfig.volume_in_lots=True`（默认）时，将 AkShare/TuShare 日线 `volume` 从「手」换算为「股」（×100）。
+`ReplayConfig.volume_in_lots=True`（默认）时，将 TuShare 日线 `volume` 从「手」换算为「股」（×100）。
 
 ### 拒单原因一览
 
@@ -207,9 +205,8 @@ SimConfig(
 
 ```
 inputs/data/cache/
-  akshare/           ← AkShare 日线（canonical）
   index_*.csv        ← 指数日线
-  tushare_qfq/       ← TuShare 分区湖
+  tushare_qfq/       ← TuShare 分区湖（canonical）
         ↓ DataLake
 ReplayEngine + PlanProvider
         ↓

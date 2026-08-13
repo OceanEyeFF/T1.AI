@@ -10,7 +10,7 @@
 
 | 层 | 状态 |
 |----|------|
-| **数据层** | TuShare（主）/ AkShare（备用），日线数据管线可用 |
+| **数据层** | TuShare（单一信源，AkShare 已移除），日线数据管线可用 |
 | **选股池** | `low_manipulation` 策略已实现，基于五维低操纵度筛选框架 |
 | **模型层** | ModelABC + registry，已注册 LSTM / XGBoost / Transformer 三种模型 |
 | **评估层** | Daily-CS IC 评估 pipeline 可用，trade-like panel 评估可用 |

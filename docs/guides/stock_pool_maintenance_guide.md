@@ -222,10 +222,10 @@ def test_empty_universe():
 
 | 数据源 | 路径 | 谁在用 |
 |---|---|---|
-| QFQ 日线 | `data/cache/tushare_qfq/` | low_manipulation（所有指标） |
-| 基本面 | `data/cache/tushare_daily_basic/` | low_manipulation（市值/换手率） |
-| 资金流向 | `data/cache/tushare_moneyflow/` | low_manipulation（大单流向） |
-| 指数行情 | `data/cache/tushare_qfq/510300.SH/` | low_manipulation（β/R² 计算） |
+| QFQ 日线 | `inputs/data/cache/tushare_qfq/` | low_manipulation（所有指标） |
+| 基本面 | `inputs/data/cache/tushare_daily_basic/` | low_manipulation（市值/换手率） |
+| 资金流向 | `inputs/data/cache/tushare_moneyflow/` | low_manipulation（大单流向） |
+| 指数行情 | `inputs/data/cache/tushare_qfq/510300.SH/` | low_manipulation（β/R² 计算） |
 
 新策略如需其他数据，在策略文件夹内自建数据加载逻辑，不修改现有数据层。
 

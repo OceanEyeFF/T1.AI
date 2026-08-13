@@ -7,8 +7,8 @@
 ```
 inputs/                         workspace/                  outputs/
 ───────                         ──────────                  ────────
-data/cache (TuShare日K+资金流) ──┐
-data/derived (高阶特征) ────────┤
+inputs/data/cache (TuShare日K+资金流) ──┐
+inputs/data/derived (高阶特征) ─┤
 pools/ (X:选股策略→股票集合) ───┤
 configs/profiles/ (Z:输入维度) ─┤
 configs/experiments/ (X×Y×Z) ──┼──→ 训练 ──→ checkpoint ──→ IC报告 ──→ reports/

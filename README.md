@@ -11,7 +11,7 @@ inputs/          ← 数据缓存 + 选股池 + 配置档案
 workspace/       ← checkpoint + 运行日志 + 认证注册表
 outputs/         ← 预测 + 报告 + 交易信号
 src/ashare_lab/  ← 模型代码（独立）
-scripts/ tests/ docs/ deployment/ .servo/
+scripts/ tests/ docs/ deployment/
 ```
 
 完整说明：[docs/architecture/repo_structure_guide.md](docs/architecture/repo_structure_guide.md)
@@ -62,8 +62,8 @@ pytest tests/
 
 ## 当前状态
 
-- **Milestone**: MS-R2-001（Repo 目录排布重构）进行中
-- **Pipeline**: ENV-000 → S0-001 → S1-001 → S2-001 → R0-001 → R1-001 → R2-001
-- **pytest**: 395/397 pass
-- **数据源**: TuShare（主）/ AkShare（备用）
-- **环境**: py311-private
+- **Milestone**: MS-R4-001（TuShare 数据湖）已合入 develop；当前无 active milestone
+- **Pipeline**: ENV-000 → R0-001 → R1-001 → R2-001 → R3-001 → S0-001 → S1-001 → S2-001 → T1-001 → R4-001（10/10 completed）
+- **pytest**: 866 passed / 10 skipped（coverage 76.88% ≥ 76 门禁）
+- **数据源**: TuShare（单一信源，AkShare 已移除）
+- **环境**: py311-private（Python 3.11 / PyTorch cu130，GPU 可用）
