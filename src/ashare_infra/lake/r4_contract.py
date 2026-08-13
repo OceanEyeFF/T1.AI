@@ -6,7 +6,7 @@ aligned with the R4 A1 lake-source contract (frozen for A2+; worktrack artifacts
 - primary source: tushare
 - adjust: qfq
 - cache_root: inputs/data/cache
-- universe: custom_research_liquidity_quality_v1 @ 1 (61)
+- universe: custom_research_liquidity_quality_v1 @ 1 (60; 601989 停牌剔除 2026-08-13)
 - history_start: 2023-01-01
 - refresh: False (R1 audit reuse; A3 owns limited-live)
 
@@ -40,7 +40,7 @@ R4_CACHE_ROOT = Path("inputs/data/cache")
 R4_HISTORY_START = "2023-01-01"
 R4_STOCK_POOL_ID = "custom_research_liquidity_quality_v1"
 R4_STOCK_POOL_VERSION = "1"
-R4_SYMBOLS_COUNT = 61
+R4_SYMBOLS_COUNT = 60
 R4_POOL_REGISTRY = Path("inputs/pools/research_liquidity_quality/")
 R4_RATE_LIMITS_CONFIG = Path("inputs/configs/tushare_rate_limits.toml")
 

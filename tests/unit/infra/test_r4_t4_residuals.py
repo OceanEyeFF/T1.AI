@@ -17,7 +17,7 @@ from ashare_infra.lake.r4_contract import (
 
 
 def test_soft80_accepted_residual_locked() -> None:
-    assert R4_SYMBOLS_COUNT == 61
+    assert R4_SYMBOLS_COUNT == 60
     assert R4_SOFT_TARGET == 80
     assert R4_HARD_CAP == 100
     assert R4_SOFT80_STATUS == "accepted_residual"

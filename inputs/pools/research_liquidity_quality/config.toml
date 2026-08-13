@@ -6,11 +6,11 @@ construction_method = "hard-filters + 5-dimension hygiene score; cache-first"
 base_universe = "main board A-shares (excl. 300/688/8/4); cache-available first"
 symbols_source = "research_liquidity_quality/symbols.csv"
 symbols_csv = "research_liquidity_quality/symbols.csv"
-symbols_count = 61
+symbols_count = 60
 rebalance_frequency = "monthly"
 effective_start = "2023-01-01"
 effective_end = ""
 is_default = false
 is_research_only = true
 owner = "stock_pool/research_liquidity_quality"
-notes = "research_liquidity_quality cache-first select (WT-R4-A0 T3/T4). selected=61; soft_target=80 (deficit=19); hard_cap=100. H5 amount unit=TuShare thousand CNY -> yi via /1e5. index_anchor 510300.SH unavailable (empty cache dir). No live pull. is_research_only=true until MS-R4 Gate. Evidence: MS-R4-001 A0 select-run（`.servo` 已移除）"
+notes = "research_liquidity_quality cache-first select (WT-R4-A0 T3/T4). selected=60 (2026-08-13 剔除停牌股 601989.SH，吸收合并自 2025-08-12 停牌); soft_target=80 (deficit=20); hard_cap=100. H5 amount unit=TuShare thousand CNY -> yi via /1e5. R4 lake landed 2026-08-13 (qfq/daily_basic/moneyflow, 3 namespaces). is_research_only=true until MS-R4 Gate."

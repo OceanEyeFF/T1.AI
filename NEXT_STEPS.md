@@ -11,7 +11,7 @@
 - **数据源**：TuShare 单一信源（akshare 已完全移除，含负向合同测试）
 - **测试**：1020 passed / 10 skipped，覆盖率 77.13%（门禁 76）
 - **数据湖**：R4 合同冻结，但 `inputs/data/cache` **尚未落盘**（P0-①）
-- **选股池**：`custom_research_liquidity_quality_v1`（61 只，research_only）已注册
+- **选股池**：`custom_research_liquidity_quality_v1`（60 只，research_only；2026-08-13 剔除停牌股 601989.SH）已注册
 
 ## 执行纪律
 
@@ -63,30 +63,43 @@
 
 ---
 
-## 阶段 1 — P0-① 数据湖落盘（批准池 61 只 limited-live）
+## 阶段 1 — P0-① 数据湖落盘（批准池 60 只 limited-live）
 
-### ☐ 1.1 限流与权限确认（~15 分钟）
-- 核对 TUSHARE_TOKEN 积分等级；`pro.query` 验证 daily/qfq/daily_basic/moneyflow/index_daily 权限
-- 记录限流上限（`inputs/configs/tushare_rate_limits.toml` L2 caps）
+### ☑ 1.1 限流与权限确认（~15 分钟）— 2026-08-13 完成
+- 已核对 TUSHARE_TOKEN 有效（56 位）；实测 6 接口全部有权限：daily / fund_daily / adj_factor / daily_basic / moneyflow / index_daily
+- 限流：L2 caps（rpm 180，daily 80000/api）已由 acquire_tushare_call 生效
+- **关键发现**：510300.SH 是 ETF——`pro.daily`/`adj_factor`/`daily_basic`/`moneyflow`/`index_daily` 对 ETF 均返回空；`fund_daily` 有数据（代码已实现回退）。真正指数日线锚点用 000300.SH
 - 验收：权限清单记录在案；无权限接口提前降级
 
-### ☐ 1.2 锚点验证（~20 分钟）
-- 510300.SH 小窗口（近 30 交易日）拉取 daily/qfq/daily_basic/moneyflow 全链路
-- 重点观察 pandas 3.0.5 兼容性、列名、复权值合理性
-- 验收：锚点数据落盘 `inputs/data/cache/tushare_qfq/510300.SH/`，schema 符合 R4 合同
+### ☑ 1.2 锚点验证（~20 分钟）— 2026-08-13 完成
+- 五链路小窗口（20240102-20240105）全部落盘验证通过：
+  - 510300.SH（ETF）→ fund_daily 回退 ✓（close 3.453→3.396 合理）
+  - 000300.SH 指数 → index_daily ✓（3386.35→3329.11 合理）
+  - 600519.SH 股票 → daily+adj_factor qfq 复权 ✓（1685→1663 合理）
+  - daily_basic（9 列）/ moneyflow（18 列）✓
+  - **pandas 3.0.5 全链路无兼容问题**
+- 落盘布局符合 R4 合同：`tushare_qfq/{ts_code}/year=YYYY/part.parquet`、index CSV、`tushare_daily_basic/`、`tushare_moneyflow/`
+- 合同测试反馈：test_r4_cache_schema_contract 从 10 skip → 6 passed + 7 failed（失败均为“全池未落盘”，1.3/1.4 完成后转绿，非 schema 漂移）
+- 验收：锚点数据落盘，schema 符合 R4 合同
 
-### ☐ 1.3 全池 qfq 日线拉取（~1-2 小时，受限流支配）
-- 61 只 × 2023-01-01 起，分批（每批 ≤10 只）+ 断点续传（复用 r4_batch_resume 机制）
-- 拉取后逐只校验：行数、日期窗口、NaN 比例
-- 验收：61/61 落盘，缺口清单输出
+### ☑ 1.3 全池 qfq 日线拉取（~1-2 小时，受限流支配）— 2026-08-13 完成
+- 60 只（原 61，601989.SH 停牌剔除）× 2023-01-01..2026-08-13，用 `tushare_batch`（chunk_symbols 分块 50+10，manifest 续传，freq-wall 自动暂停）实际耗时 ~10 分钟，failed=0
+- cache-first：lake refresh=False + 增量拉取，重复运行不重拉
+- QA（workspace/runs/r4_fill_qfq_validation.json）：60/60 完整——875 行、2023-01-03→2026-08-13、nan_ratio=0
+- **601989.SH 已于当日剔除**（与中国船舶吸收合并，2025-08-12 起停牌）：池 61→60，合同常量 R4_SYMBOLS_COUNT=60，缓存分区已删
+- 合同测试：qfq 覆盖已转绿（9 passed）；剩余 4 failed 为 daily_basic/moneyflow 未拉（1.4 范围）
+- 验收：60/60 落盘，无缺洞
 
-### ☐ 1.4 daily_basic + moneyflow 拉取（~1-2 小时）
-- 同池同窗口，同样分批断点
-- 验收：61/61 落盘，与 qfq 分区对齐
+### ☑ 1.4 daily_basic + moneyflow 拉取（~1-2 小时）— 2026-08-13 完成
+- 同池同窗口，同样 tushare_batch 分批续传，failed=0，实际 ~4 分钟
+- QA（workspace/runs/r4_fill_bm_validation.json）：moneyflow 60/60 全 ok；daily_basic 49/60 ok，11 只 nan_ratio 0.01-0.11——全部集中在 pe_ttm（亏损期无 PE）/dv_ttm（无分红）两字段，TuShare 官方自然缺失，非管道缺陷
+- 验收：60/60 落盘，与 qfq 分区对齐
 
-### ☐ 1.5 落盘 QA 与 manifest（~30 分钟）
-- 分区行数、日期覆盖、缺洞清单汇总；写入 workspace 记录
-- 验收：`make_r4_datalake` 对全池读取通过（cache-first，不触网）
+### ☑ 1.5 落盘 QA 与 manifest（~30 分钟）— 2026-08-13 完成
+- 三 namespace 全池完整：tushare_qfq 61 分区（60 池 + 510300 锚点）、daily_basic 60、moneyflow 60，missing=[]
+- cache-first 验证：make_r4_datalake(refresh=False) 全池读取零缺失（增量只补缺）
+- **合同测试 13/13 全绿**（历史 10 skip + 7 中间态失败全部转正）；全量测试 1030 passed / 0 failed / 0 skipped
+- 验收：数据湖对全池 cache-first 可用；阶段 2（合同增强）可以开始
 
 ## 阶段 2 — P0-② 合同测试恢复与增强 [D2]（紧随 1.5，~2 小时）
 

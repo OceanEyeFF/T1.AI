@@ -74,7 +74,7 @@ def _has_parts(namespace: str, ts_code: str) -> bool:
 def pool_ts_codes() -> list[str]:
     _require_cache()
     bare = _load_pool_bare_symbols()
-    assert len(bare) == R4_SYMBOLS_COUNT == 61
+    assert len(bare) == R4_SYMBOLS_COUNT == 60
     return [symbol_to_ts_code(s) for s in bare]
 
 
@@ -82,10 +82,10 @@ def pool_ts_codes() -> list[str]:
 def test_r4_pool_binding_constants() -> None:
     assert R4_STOCK_POOL_ID == "custom_research_liquidity_quality_v1"
     assert R4_STOCK_POOL_VERSION == "1"
-    assert R4_SYMBOLS_COUNT == 61
+    assert R4_SYMBOLS_COUNT == 60
     assert R4_HISTORY_START == "2023-01-01"
     bare = _load_pool_bare_symbols()
-    assert len(bare) == 61
+    assert len(bare) == 60
     # Soft80 formally accepted residual (WT-R4-A3-T4); do not require expand.
     assert R4_SOFT80_STATUS == "accepted_residual"
     assert len(bare) == R4_SYMBOLS_COUNT < R4_SOFT_TARGET
@@ -94,10 +94,10 @@ def test_r4_pool_binding_constants() -> None:
 @pytest.mark.contract
 def test_trial_subset_excludes_601989_by_default() -> None:
     bare = _load_pool_bare_symbols()
-    assert "601989" in bare  # still in registry v1@1
+    assert "601989" not in bare  # 2026-08-13 停牌剔除（吸收合并）
     trial = filter_r4_trial_symbols([symbol_to_ts_code(s) for s in bare])
     assert "601989.SH" not in trial
-    assert len(trial) == R4_SYMBOLS_COUNT - 1
+    assert len(trial) == R4_SYMBOLS_COUNT  # 排除表对当前池无交集；函数保留为防御
 
 
 @pytest.mark.contract
