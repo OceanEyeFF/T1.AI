@@ -26,8 +26,9 @@
 
 ## 阶段 0 — 穿插性基础任务（与主线并行，可随时穿插）
 
-### ☐ T0-A [D6] 本地噪音清理（~10 分钟）
+### ☑ T0-A [D6] 本地噪音清理（~10 分钟）— 2026-08-13 完成
 - 删除 gitignored 历史文档 `.claude/specs/`、`.autoworkflow/`（含 akshare/旧路径字样，仅本机噪音）
+- 连带删除同类遗留：`.bmad-core/`、`.spec-workflow/`、`.claude/commands/`（程序员确认一并删除）
 - 验收：`git status` 无变化；本机目录已清
 
 ### ☐ T0-B [D1] 配置格式统一：真 TOML（~半天）
