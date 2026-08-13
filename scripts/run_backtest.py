@@ -7,7 +7,6 @@ from pathlib import Path
 import pandas as pd
 
 from ashare_exec.strategies.momentum import MomentumTopNStrategy
-from ashare_infra.lake import DataLake
 from ashare_infra.lake.r4_contract import R4_ADJUST_DEFAULT, make_r4_datalake
 from ashare_lab.backtest.engine import BacktestConfig, BacktestEngine
 from ashare_lab.reporting import align_equity_and_benchmark, summarize_excess
@@ -24,9 +23,9 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--lookback", type=int, default=20)
     p.add_argument("--cash", type=float, default=100_000.0)
     p.add_argument("--refresh", action="store_true", help="Ignore cache and re-download")
-    p.add_argument("--source", default="akshare", choices=["akshare", "tushare"])
+    p.add_argument("--source", default="tushare", choices=["tushare"])
     p.add_argument("--cache-dir", default="inputs/data/cache")
-    p.add_argument("--out-dir", default="runs")
+    p.add_argument("--out-dir", default="outputs/reports")
     p.add_argument("--benchmark", default="000300", help="Index symbol, default CSI300=000300")
     return p.parse_args()
 
@@ -38,22 +37,14 @@ def main() -> None:
     if bad:
         raise SystemExit(f"symbols not allowed by constraints (ST/北交/科创/创业 excluded): {bad}")
     cache_dir = Path(args.cache_dir)
-    if args.source == "tushare":
-        lake = make_r4_datalake(cache_dir=cache_dir, refresh=args.refresh)
-        adjust = R4_ADJUST_DEFAULT
-    else:
-        lake = DataLake(
-            cache_dir=cache_dir,
-            default_source="akshare",
-            refresh=args.refresh,
-        )
-        adjust = "qfq"
+    lake = make_r4_datalake(cache_dir=cache_dir, refresh=args.refresh)
+    adjust = R4_ADJUST_DEFAULT
 
     data_by_symbol: dict[str, pd.DataFrame] = {}
     for symbol in symbols:
-        lake_symbol = symbol_to_ts_code(symbol) if args.source == "tushare" else symbol
+        lake_symbol = symbol_to_ts_code(symbol)
         df = lake.load_daily_bars(
-            lake_symbol, args.start, args.end, source=args.source, adjust=adjust
+            lake_symbol, args.start, args.end, source="tushare", adjust=adjust
         )
         if df.empty:
             raise SystemExit(f"empty data for {symbol}")

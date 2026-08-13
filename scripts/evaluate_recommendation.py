@@ -263,10 +263,10 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="评估推荐榜单命中率与接近度")
     parser.add_argument("--pred-file", required=False, help="预测结果文件（csv/json），需含 predicted_return")
     parser.add_argument("--actual-file", required=False, help="实际涨跌文件（csv/json），需含 actual_return")
-    parser.add_argument("--output-dir", default="data/recommendations/validation", help="报告输出目录")
+    parser.add_argument("--output-dir", default="outputs/reports/validation", help="报告输出目录")
     parser.add_argument("--top-n", type=int, default=10, help="Top-N 截断")
     parser.add_argument("--year-month", required=False, help="生成月度报告（YYYY-MM，例如 2024-12）")
-    parser.add_argument("--db-path", default="data/recommendations.db", help="RecommendationHistory SQLite 路径")
+    parser.add_argument("--db-path", default="outputs/recommendations.db", help="RecommendationHistory SQLite 路径")
 
     args = parser.parse_args(argv)
 

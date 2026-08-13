@@ -2,7 +2,7 @@
 
 > **合同 ID：** `MS-R4-001-derived-minimal-v0`（`R4_DERIVED_CONTRACT_ID`）  
 > **权威常量：** `ashare_infra.lake.r4_contract`（WT-R4-A4-T1 冻结）  
-> **Schema 文档：** `.servo/worktrack/WT-R4-A4-derived-schema.md`  
+> **Schema：** 权威常量与契约见 `ashare_infra.lake.r4_contract`（`.servo` 已移除）  
 > **构建/加载：** T2 `ashare_lab.derived`；T3 `DataLake.load_derived*` / `make_r4_datalake`
 
 ## 布局（对齐 cache year 分区）
@@ -53,7 +53,7 @@ inputs/data/derived/
 
 ## 已知限制（T1–T3 review accepted residuals）
 
-> 审查结论：`pass_with_residuals` @ `afba1f0`；**不改代码**，仅文档约定。详见 `.servo/worktrack/WT-R4-A4-t1-t3-review.md`。
+> 审查结论：`pass_with_residuals` @ `afba1f0`；**不改代码**，仅文档约定。
 
 | ID | 约定 |
 |----|------|

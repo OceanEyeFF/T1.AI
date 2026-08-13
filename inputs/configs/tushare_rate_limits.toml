@@ -1,6 +1,6 @@
 # MS-R4 approved TuShare L2 rate caps (from WT-R4-A1 accept_recommended).
 # Applies to WT-R4-A3+ limited-live; A2 does not perform live pulls.
-# Source of truth for A1 decision: .servo/worktrack/WT-R4-A1-rate-limit-recommendations.md
+# Source of truth for A1 decision: 已并入本文件（`.servo` 已移除）
 
 contract_id = "MS-R4-001-tushare-l2-caps-v1"
 status = "approved"

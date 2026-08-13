@@ -6,9 +6,9 @@ then converts them into fixed-length sequences with strict time alignment:
 label at date t only uses features from dates <= t-1.
 
 Outputs (default):
-  - data/datasets/train.parquet
-  - data/datasets/valid.parquet
-  - data/datasets/test.parquet
+  - workspace/datasets/train.parquet
+  - workspace/datasets/valid.parquet
+  - workspace/datasets/test.parquet
 """
 
 from __future__ import annotations
@@ -166,7 +166,7 @@ def _compute_labels(
 def _load_bars(source: str, symbol: str, start: str, end: str, cache_dir: Path) -> pd.DataFrame:
     from ashare_lab.symbols import symbol_to_odp_equity_symbol, symbol_to_ts_code
 
-    if source not in {"akshare", "tushare", "odp"}:
+    if source not in {"tushare", "odp"}:
         raise ValueError(f"unsupported --source: {source}")
 
     if source == "tushare":
@@ -285,12 +285,12 @@ def main() -> None:
     parser.add_argument("--stock-pool-export-dir", default="output/stock_pools", help="导出的股票池产物目录")
     parser.add_argument(
         "--source",
-        default="akshare",
-        choices=["akshare", "tushare", "odp"],
+        default="tushare",
+        choices=["tushare", "odp"],
         help="Data source",
     )
     parser.add_argument("--cache-dir", default="inputs/data/cache", help="Cache dir for daily bars")
-    parser.add_argument("--output-dir", default="data/datasets", help="Output dir for parquet files")
+    parser.add_argument("--output-dir", default="workspace/datasets", help="Output dir for parquet files")
     parser.add_argument("--seq-len", type=int, default=20, help="Sequence length (default: 20)")
     parser.add_argument("--stride", type=int, default=1, help="Sliding window stride (default: 1)")
     parser.add_argument("--valid-weeks", type=int, default=26, help="Validation weeks in fixed split mode")

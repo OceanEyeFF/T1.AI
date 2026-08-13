@@ -25,7 +25,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from ashare_lab.data.akshare_source import AkshareDailyBarsRequest, load_or_fetch_daily_bars
 from ashare_lab.data.odp_source import (
     ODPHistoricalRequest,
     load_or_fetch_historical_bars as load_or_fetch_odp_historical_bars,
@@ -337,9 +336,6 @@ def _load_tushare_fund_daily_cache_or_live(
     retries: int = 3,
 ) -> pd.DataFrame:
     cols = ["open", "high", "low", "close", "volume", "amount"]
-    if source == "akshare":
-        return pd.DataFrame(index=pd.DatetimeIndex([], name="date"), columns=cols)
-
     cache_ds = "tushare_fund_daily"
     cached = _load_tushare_cache_only(
         ts_code=ts_code,
@@ -414,26 +410,6 @@ def _parse_sector_etf_map(path: Path, symbols: list[str]) -> dict[str, str]:
     return out
 
 
-def _load_akshare(
-    symbol: str, start: str, end: str, cache_dir: Path, retries: int = 3
-) -> pd.DataFrame:
-    req = AkshareDailyBarsRequest(symbol=symbol, start_date=start, end_date=end, adjust="qfq")
-    last_err: Exception | None = None
-    for i in range(retries):
-        try:
-            return load_or_fetch_daily_bars(req, cache_dir / "akshare")
-        except Exception as e:  # noqa: BLE001
-            last_err = e
-            wait_s = 1.0 + float(i)
-            print(
-                f"[warn] {symbol} akshare attempt={i + 1}/{retries} failed: {type(e).__name__}: {e}; sleep={wait_s}s"
-            )
-            time.sleep(wait_s)
-    if last_err is not None:
-        print(f"[warn] {symbol} akshare all retries failed: {type(last_err).__name__}: {last_err}")
-    return pd.DataFrame(columns=["open", "high", "low", "close", "volume", "amount"])
-
-
 def _parse_symbol_list(raw: str) -> list[str]:
     out = [str(x).strip() for x in str(raw).split(",") if str(x).strip()]
     return sorted(dict.fromkeys(out))
@@ -499,8 +475,6 @@ def _load_bars(source: str, symbol: str, start: str, end: str, cache_dir: Path) 
         return _load_tushare_cache_with_extras(symbol, start, end, cache_dir)
     if source == "tushare_live":
         return _load_tushare_live(symbol, start, end, cache_dir)
-    if source == "akshare":
-        return _load_akshare(symbol, start, end, cache_dir)
     raise ValueError(f"unsupported source: {source}")
 
 
@@ -1192,12 +1166,12 @@ def main() -> None:
     parser.add_argument(
         "--stock-pool-export-dir", default="output/stock_pools", help="导出的股票池产物目录"
     )
-    parser.add_argument("--cache-dir", default="data/cache")
+    parser.add_argument("--cache-dir", default="inputs/data/cache")
     parser.add_argument(
         "--source",
         default="tushare_live",
-        choices=["akshare", "tushare_cache", "tushare_live"],
-        help="行情来源：akshare 在线拉取、tushare 本地缓存或 tushare 在线拉取",
+        choices=["tushare_cache", "tushare_live"],
+        help="行情来源：tushare 本地缓存或 tushare 在线拉取",
     )
     parser.add_argument(
         "--request-interval-seconds",
@@ -1231,7 +1205,7 @@ def main() -> None:
         help="是否追加 1 日 high/low/close 标签（label_1d_high/low/close）",
     )
     parser.add_argument(
-        "--output-dir", default="data/datasets/lstm_sector70_19d_mkt_20210101_20260120"
+        "--output-dir", default="workspace/datasets/lstm_sector70_19d_mkt_20210101_20260120"
     )
     parser.add_argument(
         "--feature-profile",

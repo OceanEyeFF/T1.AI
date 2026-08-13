@@ -5,7 +5,7 @@
 - 支持从 JSON/CSV 读取推荐列表；
   - JSON：支持 engine.save_as_json 输出结构（date + 3d/5d/10d）
   - CSV：支持 rank/symbol/score(or predicted_return) + 可选 date/rec_date 列
-- 支持 --source 在 akshare/tushare/odp 之间切换（默认 akshare）
+- 支持 --source 在 tushare/odp 之间切换（默认 tushare）
 - 支持 --horizon 设置验证天数（默认 5）
 - 输出验证报告到控制台，并可通过 --output 保存 JSON 报告
 - 可选通过 --save-to-db 写入 RecommendationHistory（推荐+验证结果）
@@ -32,7 +32,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from ashare_lab.recommendation import (  # noqa: E402
-    AkshareSourceAdapter,
     ODPSourceAdapter,
     RecommendationHistory,
     RecommendationValidator,
@@ -45,14 +44,14 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--input", required=True, help="输入推荐文件路径（.json 或 .csv）")
     parser.add_argument(
         "--source",
-        choices=["akshare", "tushare", "odp"],
-        default="akshare",
-        help="数据源（默认 akshare）",
+        choices=["tushare", "odp"],
+        default="tushare",
+        help="数据源（默认 tushare）",
     )
     parser.add_argument("--horizon", type=int, default=5, help="验证天数（交易日，默认 5）")
     parser.add_argument("--output", default="", help="保存 JSON 报告的路径（可选）")
     parser.add_argument("--save-to-db", action="store_true", help="是否写入 RecommendationHistory（可选）")
-    parser.add_argument("--db-path", default="data/recommendations.db", help="SQLite 数据库路径（默认 data/recommendations.db）")
+    parser.add_argument("--db-path", default="outputs/recommendations.db", help="SQLite 数据库路径（默认 outputs/recommendations.db）")
     return parser.parse_args(argv)
 
 
@@ -245,8 +244,6 @@ def _load_recommendations(input_path: Path) -> tuple[Any, str]:
 
 def _create_data_source(source: str) -> Any:
     """根据 --source 创建数据源适配器。"""
-    if source == "akshare":
-        return AkshareSourceAdapter()
     if source == "tushare":
         return TushareSourceAdapter()
     if source == "odp":
@@ -288,11 +285,11 @@ def _format_console_report(report: Mapping[str, Any]) -> str:
 
 def run(
     input_path: str | Path,
-    source: str = "akshare",
+    source: str = "tushare",
     horizon: int = 5,
     output: str | Path | None = None,
     save_to_db: bool = False,
-    db_path: str | Path = "data/recommendations.db",
+    db_path: str | Path = "outputs/recommendations.db",
 ) -> dict[str, Any]:
     """执行验证并返回结构化报告 dict。"""
     in_path = Path(input_path)
@@ -349,7 +346,7 @@ def main(argv: list[str] | None = None) -> int:
         print(_format_console_report(report))
         return 0
     except Exception as exc:
-        source = getattr(args, "source", "akshare")
+        source = getattr(args, "source", "tushare")
         msg = str(exc).strip() or exc.__class__.__name__
         print(f"错误: {msg}", file=sys.stderr)
         if source == "tushare":

@@ -994,7 +994,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default="",
         help="optional: save effective merged config (after CLI overrides) to JSON",
     )
-    parser.add_argument("--dataset-dir", default="data/datasets/lstm_sector70_19d_mkt_20210101_20260120")
+    parser.add_argument("--dataset-dir", default="workspace/datasets/lstm_sector70_19d_mkt_20210101_20260120")
     parser.add_argument("--backbone", choices=list(BACKBONES), default="lstm")
     parser.add_argument("--seq-len", type=int, default=20)
     parser.add_argument("--train-window-weeks", type=int, default=None, help="训练窗口（周），默认 78")

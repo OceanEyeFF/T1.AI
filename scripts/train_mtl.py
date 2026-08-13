@@ -164,7 +164,7 @@ def build_dataloaders(
 def main() -> None:
     parser = argparse.ArgumentParser(description="MTL Transformer 训练脚本")
     parser.add_argument("--config", type=str, required=True, help="YAML配置文件路径")
-    parser.add_argument("--dataset", type=str, default=None, help="数据集目录（默认: data/datasets）")
+    parser.add_argument("--dataset", type=str, default=None, help="数据集目录（默认: workspace/datasets）")
     parser.add_argument("--dry-run", action="store_true", help="使用合成数据快速验证流程")
     parser.add_argument("--incremental", action="store_true", help="运行增量训练（带门控、warm-start、原子写入）")
     parser.add_argument("--current-date", type=str, default=None, help="增量训练用当前日期（YYYY-MM-DD）")
@@ -242,7 +242,7 @@ def main() -> None:
         max_epochs = 1
 
     seq_len = _as_int(data_cfg.get("seq_len", model.config.min_seq_len), model.config.min_seq_len)
-    dataset_dir = Path(args.dataset or data_cfg.get("dataset_dir", "data/datasets"))
+    dataset_dir = Path(args.dataset or data_cfg.get("dataset_dir", "workspace/datasets"))
 
     metric = str(train_cfg.get("early_stopping_metric", "val_ic"))
     if metric != "val_ic":
@@ -264,7 +264,7 @@ def main() -> None:
         )
 
     model_dir = Path(output_cfg.get("model_dir", "models"))
-    log_dir = Path(output_cfg.get("log_dir", "logs"))
+    log_dir = Path(output_cfg.get("log_dir", "workspace/runs"))
 
     if args.incremental:
         current_date = args.current_date or datetime.now().date().isoformat()

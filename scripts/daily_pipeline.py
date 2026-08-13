@@ -38,7 +38,6 @@ from ashare_lab.features import (  # noqa: E402
 from ashare_lab.models.transformer import create_mtl_model  # noqa: E402
 from ashare_lab.pipeline import DailyPipelineOrchestrator  # noqa: E402
 from ashare_lab.recommendation import (  # noqa: E402
-    AkshareSourceAdapter,
     ODPSourceAdapter,
     TushareSourceAdapter,
 )
@@ -175,7 +174,7 @@ class DummyDryRunFeatureBuilder:
 
 def _build_data_source(data_source_config_path: str | Path) -> tuple[Any, Any]:
     cfg = _load_yaml(data_source_config_path)
-    default_source = str(cfg.get("default_source") or "akshare")
+    default_source = str(cfg.get("default_source") or "tushare")
     sources = cfg.get("sources") or {}
     selected = sources.get(default_source) or {}
     cache_dir = Path(str(selected.get("cache_dir") or "inputs/data/cache"))
@@ -195,7 +194,7 @@ def _build_data_source(data_source_config_path: str | Path) -> tuple[Any, Any]:
             prefer_rest=bool(selected.get("prefer_rest", False)),
         )
     else:
-        data_source = AkshareSourceAdapter(cache_dir=cache_dir, adjust="qfq", refresh=False)
+        raise ValueError(f"不支持的数据源: {default_source}")
 
     calendar_source = HS300IndexCalendarSource(cache_dir=cache_dir, refresh=False)
     return data_source, calendar_source

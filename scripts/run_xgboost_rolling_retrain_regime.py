@@ -382,7 +382,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default="",
         help="optional: save effective merged config (after CLI overrides) to JSON",
     )
-    parser.add_argument("--dataset-dir", default="data/datasets/lstm_quick8_52d_no_hist_hl_20230101_20260120_ts")
+    parser.add_argument("--dataset-dir", default="workspace/datasets/lstm_quick8_52d_no_hist_hl_20230101_20260120_ts")
     parser.add_argument("--seq-len", type=int, default=20)
     parser.add_argument("--feature-mode", choices=list(FEATURE_MODES), default="auto")
     parser.add_argument("--train-window-weeks", type=int, default=None, help="训练窗口（周），默认 104")

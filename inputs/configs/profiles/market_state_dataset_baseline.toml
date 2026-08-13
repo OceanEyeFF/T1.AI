@@ -18,7 +18,7 @@ test_weeks = 26
 horizons = "3,5,10"
 label_mode = "close_to_close"
 include_1d_hlc_labels = true
-output_dir = "data/datasets/lstm_sector70_19d_mkt_20210101_20260120"
+output_dir = "workspace/datasets/lstm_sector70_19d_mkt_20210101_20260120"
 
 feature_profile = "compact44"
 include_short_term_features = true

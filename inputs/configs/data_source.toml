@@ -1,20 +1,18 @@
 # =============================================================================
-# data_source.toml — lab/scripts 全局默认源（历史双轨）
+# data_source.toml — lab/scripts 全局默认源
 # AO-O3 (WT-R4-A4-T4): 本文件 ≠ MS-R4 湖合同权威入口。
 #
-# 双轨说明：
-#   1) 本文件 `default_source` 仍可为 akshare，供部分 lab/脚本历史默认读取。
+# 说明：
+#   1) AkShare 已从项目移除（单一信源 TuShare）；本文件默认源固定为 tushare。
 #   2) MS-R4 / DataLake 主合同以 `ashare_infra.lake.r4_contract.make_r4_datalake`
 #      为准（TuShare primary、qfq、refresh=False、cache=`inputs/data/cache`）。
-#      见 `.servo/worktrack/WT-R4-A1-lake-source-contract.md`。
+#      （R4 A1 湖/源合同要点已并入本文档；`.servo` 已移除）
 #   3) `DatasetConfig.source` 代码默认已是 `"tushare"`（R4）；与本文件 default
 #      解耦——改本文件不会自动改 DatasetBuilder / make_r4_datalake。
 # =============================================================================
-default_source: "akshare"  # 可选: akshare, tushare, odp（lab 历史默认；非 R4 湖权威）
-fallback: "akshare"
+default_source: "tushare"  # 可选: tushare, odp（TuShare 单一信源）
+fallback: "tushare"
 sources:
-  akshare:
-    description: "本地免费数据源，适合回测与开发；非 R4 主合同"
   tushare:
     description: "TuShare Pro — MS-R4 日频湖 primary（请用 DataLake / make_r4_datalake）"
     token_env: "TUSHARE_TOKEN"

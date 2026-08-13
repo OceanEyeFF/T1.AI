@@ -13,4 +13,4 @@ effective_end = ""
 is_default = false
 is_research_only = true
 owner = "stock_pool/research_liquidity_quality"
-notes = "research_liquidity_quality cache-first select (WT-R4-A0 T3/T4). selected=61; soft_target=80 (deficit=19); hard_cap=100. H5 amount unit=TuShare thousand CNY -> yi via /1e5. index_anchor 510300.SH unavailable (empty cache dir). No live pull. is_research_only=true until MS-R4 Gate. Evidence: .servo/worktrack/WT-R4-A0-data-gaps.md + WT-R4-A0-t3-select-run-notes.json"
+notes = "research_liquidity_quality cache-first select (WT-R4-A0 T3/T4). selected=61; soft_target=80 (deficit=19); hard_cap=100. H5 amount unit=TuShare thousand CNY -> yi via /1e5. index_anchor 510300.SH unavailable (empty cache dir). No live pull. is_research_only=true until MS-R4 Gate. Evidence: MS-R4-001 A0 select-run（`.servo` 已移除）"

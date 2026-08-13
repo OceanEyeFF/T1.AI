@@ -13,7 +13,6 @@ venv/
 
 inputs/data/cache/
 inputs/data/derived/**/year=*/
-data/cache/
 workspace/checkpoints/
 workspace/runs/
 workspace/r4_a4_qa/*-run.log
@@ -47,7 +46,6 @@ outputs/reports/
 output/
 
 # 数据集（本地构建产物，不跟踪）
-data/datasets/
 models/
 
 # Skill 部署目录（本地，不从远端同步）

@@ -8,9 +8,9 @@ symbols = "600519,000333,601318"
 # 2) or symbols csv (comment out symbols above)
 # symbols_csv = "data/symbols_lstm_sectors_70.csv"
 
-source = "akshare"
+source = "tushare"
 cache_dir = "inputs/data/cache"
-output_dir = "data/datasets/sequence_baseline_20230101_20260120"
+output_dir = "workspace/datasets/sequence_baseline_20230101_20260120"
 
 seq_len = 20
 stride = 1
