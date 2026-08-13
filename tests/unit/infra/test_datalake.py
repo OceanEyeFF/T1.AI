@@ -12,8 +12,8 @@ from ashare_infra.guard.scope import DataScope
 from ashare_infra.lake import DataLake
 
 
-def test_datalake_akshare_wrap(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    import ashare_infra.data.akshare_source as ak
+def test_datalake_tushare_wrap(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import ashare_infra.data.tushare_source as ts
 
     frames = pd.DataFrame(
         {
@@ -31,15 +31,15 @@ def test_datalake_akshare_wrap(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
         _ = req, cache_dir, refresh
         return frames.copy()
 
-    monkeypatch.setattr(ak, "load_or_fetch_daily_bars", fake_load)
-    lake = DataLake(cache_dir=tmp_path, default_source="akshare")
-    df = lake.load_daily_bars("000001", "20240101", "20240131")
+    monkeypatch.setattr(ts, "load_or_fetch_daily_bars", fake_load)
+    lake = DataLake(cache_dir=tmp_path, default_source="tushare")
+    df = lake.load_daily_bars("600519.SH", "20240101", "20240131")
     assert len(df) == 1
     assert float(df.iloc[0]["close"]) == 10.5
 
 
 def test_datalake_scope_bars(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    import ashare_infra.data.akshare_source as ak
+    import ashare_infra.data.tushare_source as ts
 
     def fake_load(req, cache_dir, refresh=False):
         _ = cache_dir, refresh
@@ -49,15 +49,15 @@ def test_datalake_scope_bars(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
             index=idx,
         )
 
-    monkeypatch.setattr(ak, "load_or_fetch_daily_bars", fake_load)
-    lake = DataLake(cache_dir=tmp_path, default_source="akshare")
+    monkeypatch.setattr(ts, "load_or_fetch_daily_bars", fake_load)
+    lake = DataLake(cache_dir=tmp_path, default_source="tushare")
     scope = DataScope(
-        symbols=frozenset({"000001", "600519"}),
+        symbols=frozenset({"600519.SH", "000001.SZ"}),
         window_start=date(2024, 1, 1),
         window_end=date(2024, 1, 31),
     )
     out = lake.load_scope_bars(scope)
-    assert set(out) == {"000001", "600519"}
+    assert set(out) == {"600519.SH", "000001.SZ"}
 
 
 def test_datalake_as_of_truncates_future_bars(tmp_path: Path) -> None:
@@ -142,26 +142,6 @@ def test_datalake_load_index_daily_as_of(tmp_path: Path, monkeypatch: pytest.Mon
     assert list(df.index.date) == [date(2024, 1, 2), date(2024, 1, 3)]
 
 
-def test_datalake_akshare_reads_legacy_flat_cache(tmp_path: Path) -> None:
-    """WT-INFRA-002: flat pre-DataLake AkShare CSV under cache root still resolves."""
-    legacy_path = tmp_path / "600519_daily_qfq_20240101_20240105.csv"
-    pd.DataFrame(
-        {
-            "date": pd.to_datetime(["2024-01-02", "2024-01-03"]),
-            "open": [10.0, 10.5],
-            "high": [11.0, 11.5],
-            "low": [9.5, 10.0],
-            "close": [10.5, 11.0],
-            "volume": [1000.0, 1100.0],
-        }
-    ).to_csv(legacy_path, index=False)
-
-    lake = DataLake(cache_dir=tmp_path, default_source="akshare")
-    df = lake.load_daily_bars("600519", "20240101", "20240105", source="akshare")
-    assert len(df) == 2
-    assert float(df.iloc[-1]["close"]) == 11.0
-
-
 def test_datalake_smoke_without_loader_raises(tmp_path: Path) -> None:
     lake = DataLake(cache_dir=tmp_path, default_source="smoke")
     with pytest.raises(RuntimeError, match="requires an injected loader"):
@@ -174,44 +154,8 @@ def test_datalake_unsupported_source_raises(tmp_path: Path) -> None:
         lake.load_daily_bars(
             "600000", "20240101", "20240105", source="not-a-source"  # type: ignore[arg-type]
         )
-
-
-def test_datalake_akshare_refresh_skips_legacy_flat(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """refresh=True must not short-circuit via legacy flat CSV."""
-    import ashare_infra.data.akshare_source as ak
-
-    legacy_path = tmp_path / "600519_daily_qfq_20240101_20240105.csv"
-    pd.DataFrame(
-        {
-            "date": pd.to_datetime(["2024-01-02"]),
-            "open": [10.0],
-            "high": [11.0],
-            "low": [9.5],
-            "close": [10.5],
-            "volume": [1000.0],
-        }
-    ).to_csv(legacy_path, index=False)
-
-    called: list[bool] = []
-
-    def fake_load(req, cache_dir, refresh=False):
-        _ = req, cache_dir
-        called.append(refresh)
-        return pd.DataFrame(
-            {
-                "open": [99.0],
-                "high": [99.0],
-                "low": [99.0],
-                "close": [99.0],
-                "volume": [1.0],
-            },
-            index=pd.to_datetime(["2024-01-02"]),
+    # akshare 已移除：同样按 unsupported source 拒绝
+    with pytest.raises(ValueError, match="unsupported source"):
+        lake.load_daily_bars(
+            "600000", "20240101", "20240105", source="akshare"  # type: ignore[arg-type]
         )
-
-    monkeypatch.setattr(ak, "load_or_fetch_daily_bars", fake_load)
-    lake = DataLake(cache_dir=tmp_path, default_source="akshare", refresh=True)
-    df = lake.load_daily_bars("600519", "20240101", "20240105", source="akshare")
-    assert called == [True]
-    assert float(df.iloc[0]["close"]) == 99.0

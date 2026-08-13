@@ -22,7 +22,7 @@ class _NoopFeature(BaseFeature):
         return pd.Series(dtype=float)
 
 
-def _config(tmp_path: Path, *, source: str = "akshare") -> DatasetConfig:
+def _config(tmp_path: Path, *, source: str = "tushare") -> DatasetConfig:
     return DatasetConfig(
         name="wb_lake",
         symbols=["600519"],
@@ -40,7 +40,7 @@ def test_builder_holds_datalake(tmp_path: Path) -> None:
     builder = DatasetBuilder(_config(tmp_path))
     assert isinstance(builder._lake, DataLake)
     assert builder._lake.cache_dir == tmp_path
-    assert builder._lake.default_source == "akshare"
+    assert builder._lake.default_source == "tushare"
 
 
 def test_builder_tushare_uses_r4_factory(tmp_path: Path) -> None:
@@ -54,7 +54,6 @@ def test_resolve_lake_symbol_by_source(tmp_path: Path) -> None:
     builder = DatasetBuilder(_config(tmp_path, source="tushare"))
     assert builder._resolve_lake_symbol("600519", "tushare") == "600519.SH"
     assert builder._resolve_lake_symbol("000001", "odp") == "000001.SZ"
-    assert builder._resolve_lake_symbol("600519", "akshare") == "600519"
 
 
 def test_load_stock_data_calls_lake(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

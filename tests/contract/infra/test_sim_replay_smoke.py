@@ -20,7 +20,7 @@ def test_run_sim_replay_seeded_cache(tmp_path: Path) -> None:
     # Copy the seeded cache into tmp so a cache miss can never write real
     # (network) data back into the committed fixture tree.
     cache = tmp_path / "cache"
-    shutil.copytree(fx.seeded_cache_dir() / "akshare", cache)
+    shutil.copytree(fx.seeded_cache_dir() / "tushare_qfq", cache / "tushare_qfq")
     proc = subprocess.run(
         [
             sys.executable,

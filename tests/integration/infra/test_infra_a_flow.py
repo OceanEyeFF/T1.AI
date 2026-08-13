@@ -15,22 +15,29 @@ from ashare_infra.sim.session import TestSession
 from tests.support import infra_a as fx
 
 
-def test_i1_datalake_reads_seeded_akshare_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_i1_datalake_reads_seeded_tushare_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """DataLake is the only entry; wrap load_or_fetch with seeded cache hits."""
-    import ashare_infra.data.akshare_source as ak
+    import ashare_infra.data.tushare_source as ts
 
-    seeded = fx.seeded_cache_dir() / "akshare"
+    seeded = fx.seeded_cache_dir() / "tushare_qfq"
+
+    def _to_ts(sym: str) -> str:
+        return f"{sym}.{'SH' if sym.startswith('6') else 'SZ'}"
 
     def fake_load(req, cache_dir, refresh=False):
         _ = cache_dir, refresh
-        path = seeded / f"{req.symbol}_daily_{req.adjust}_{req.start_date}_{req.end_date}.csv"
-        if not path.exists():
+        symbol_dir = seeded / _to_ts(req.symbol)
+        if not symbol_dir.exists():
             return pd.DataFrame()
-        df = pd.read_csv(path, parse_dates=["date"]).set_index("date").sort_index()
-        return df
+        frames = []
+        for part in sorted(symbol_dir.glob("year=*/part.parquet")):
+            df = pd.read_parquet(part)
+            df["date"] = pd.to_datetime(df["date"])
+            frames.append(df.set_index("date").sort_index())
+        return pd.concat(frames).sort_index()
 
-    monkeypatch.setattr(ak, "load_or_fetch_daily_bars", fake_load)
-    lake = DataLake(cache_dir=tmp_path, default_source="akshare")
+    monkeypatch.setattr(ts, "load_or_fetch_daily_bars", fake_load)
+    lake = DataLake(cache_dir=tmp_path, default_source="tushare")
     scope = fx.make_scope(symbols={"600000", "000001"}, include_meta=False)
     bars = lake.load_scope_bars(scope)
     assert set(bars) == {"600000", "000001"}

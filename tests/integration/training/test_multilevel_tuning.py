@@ -18,7 +18,7 @@ from scripts.run_multilevel_tuning import (
 
 def _mock_lstm_config() -> dict:
     return {
-        "dataset_dir": "data/datasets/mock",
+        "dataset_dir": "workspace/datasets/mock",
         "feature_mode": "auto",
         "features": ["return_1d", "return_5d"],
         "seq_len": 20,
@@ -64,7 +64,7 @@ def _mock_lstm_config() -> dict:
 
 def _mock_xgb_base() -> dict:
     return {
-        "dataset_dir": "data/datasets/mock",
+        "dataset_dir": "workspace/datasets/mock",
         "feature_mode": "auto",
         "features": ["return_1d", "return_5d"],
         "seq_len": 20,
@@ -182,7 +182,7 @@ def test_multilevel_tuning_dry_run_works_without_baseline_reports(tmp_path: Path
         "\n".join(
             [
                 "[run_lstm_rolling_retrain_dim19_regime]",
-                'dataset_dir = "data/datasets/mock"',
+                'dataset_dir = "workspace/datasets/mock"',
                 'backbone = "lstm"',
                 "seq_len = 20",
                 "hidden_size = 64",
@@ -200,7 +200,7 @@ def test_multilevel_tuning_dry_run_works_without_baseline_reports(tmp_path: Path
         "\n".join(
             [
                 "[run_xgboost_rolling_retrain_regime]",
-                'dataset_dir = "data/datasets/mock"',
+                'dataset_dir = "workspace/datasets/mock"',
                 "n_estimators = 10",
                 "max_depth = 3",
                 "learning_rate = 0.05",

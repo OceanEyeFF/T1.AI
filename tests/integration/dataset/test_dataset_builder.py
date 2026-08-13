@@ -16,8 +16,8 @@ from ashare_lab.features.momentum import Return1D, Return5D, Return20D
 from ashare_lab.features.volume import AmountChange, VolumeChange, VolumeRatio
 from ashare_lab.symbols import symbol_to_odp_equity_symbol, symbol_to_ts_code
 
-# AO-O2 (WT-R4-A4-T4): fixtures seed akshare-style CSV caches; tests that use
-# them must set source="akshare". Default DatasetConfig.source is tushare (R4).
+# AO-O2 (WT-R4-A4-T4): fixtures seed TuShare qfq partition caches; tests use
+# source="tushare" (DatasetConfig default since R4).
 
 
 @pytest.fixture
@@ -38,11 +38,11 @@ def temp_output_dir(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def sample_stock_cache(temp_cache_dir: Path) -> Path:
-    """创建测试股票数据缓存（DataLake akshare 布局：cache/akshare/）。"""
+    """创建测试股票数据缓存（R4 TuShare qfq 分区布局：cache/tushare_qfq/{ts_code}/）。"""
+    from ashare_infra.data.tushare_source import _write_partitioned
+
     # 创建 30 天的测试数据（足够计算 20 日动量）
     dates = pd.date_range("2024-01-01", periods=30, freq="D")
-    ak_dir = temp_cache_dir / "akshare"
-    ak_dir.mkdir(parents=True, exist_ok=True)
 
     for symbol in ["600519", "000333"]:
         # 生成模拟价格数据
@@ -52,19 +52,21 @@ def sample_stock_cache(temp_cache_dir: Path) -> Path:
 
         df = pd.DataFrame(
             {
-                "date": dates,
                 "open": prices - 0.5,
                 "high": prices + 1.0,
                 "low": prices - 1.0,
                 "close": prices,
                 "volume": 1000000 + np.random.randint(-100000, 100000, size=30),
                 "amount": prices * (1000000 + np.random.randint(-100000, 100000, size=30)),
-            }
+            },
+            index=dates,
         )
+        df.index.name = "date"
 
-        # 保存到缓存（模拟 akshare 缓存格式）
-        cache_file = ak_dir / f"{symbol}_daily_qfq_20240101_20240130.csv"
-        df.to_csv(cache_file, index=False)
+        # 保存到缓存（模拟 tushare_qfq 分区格式）
+        _write_partitioned(
+            df, temp_cache_dir / "tushare_qfq" / symbol_to_ts_code(symbol)
+        )
 
     return temp_cache_dir
 
@@ -125,7 +127,7 @@ class TestDatasetBuilder:
             label_type="excess_return",
             train_end_date="20240121",  # 70% split
             valid_end_date="20240125",  # 85% split
-            source="akshare",
+            source="tushare",
             cache_dir=sample_stock_cache,
             output_dir=temp_output_dir,
         )
@@ -162,7 +164,7 @@ class TestDatasetBuilder:
             label_type="forward_return",
             train_end_date="20240121",
             valid_end_date="20240125",
-            source="akshare",
+            source="tushare",
             cache_dir=sample_stock_cache,
             output_dir=temp_output_dir,
         )
@@ -205,7 +207,7 @@ class TestDatasetBuilder:
             label_type="forward_return",
             train_end_date="20240121",
             valid_end_date="20240125",
-            source="akshare",
+            source="tushare",
             cache_dir=sample_stock_cache,
             output_dir=temp_output_dir,
         )
@@ -250,7 +252,7 @@ class TestDatasetBuilder:
             label_type="excess_return",
             train_end_date="20240121",
             valid_end_date="20240125",
-            source="akshare",
+            source="tushare",
             cache_dir=sample_stock_cache,
             output_dir=temp_output_dir,
         )
@@ -308,7 +310,7 @@ class TestDatasetBuilder:
             benchmark_code="000300",
             train_end_date="20240121",
             valid_end_date="20240125",
-            source="akshare",
+            source="tushare",
             cache_dir=sample_stock_cache,
             output_dir=temp_output_dir,
         )
@@ -338,7 +340,7 @@ class TestDatasetBuilder:
             label_type="forward_return",
             train_end_date="20240121",
             valid_end_date="20240125",
-            source="akshare",
+            source="tushare",
             cache_dir=sample_stock_cache,
             output_dir=temp_output_dir,
         )
@@ -370,7 +372,7 @@ class TestDatasetBuilder:
             label_type="forward_return",
             train_end_date="20240121",
             valid_end_date="20240125",
-            source="akshare",
+            source="tushare",
             cache_dir=sample_stock_cache,
             output_dir=temp_output_dir,
             nan_threshold=0.1,  # 降低阈值以触发警告
@@ -425,7 +427,7 @@ class TestDatasetBuilderEdgeCases:
             label_type="forward_return",
             train_end_date="20240121",
             valid_end_date="20240125",
-            source="akshare",
+            source="tushare",
             cache_dir=sample_stock_cache,
             output_dir=temp_output_dir,
         )

@@ -10,7 +10,7 @@
 ## Cases
 
 - Constructor holds DataLake
-- Resolve: tushare→ts_code, odp→yfinance, akshare passthrough
+- Resolve: tushare→ts_code, odp→yfinance
 - Spy: `_load_stock_data` → `load_daily_bars`; benchmark → `load_index_daily`
 
 ## Invariants

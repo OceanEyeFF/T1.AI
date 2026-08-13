@@ -3,7 +3,7 @@
 | Field | Content |
 |-------|---------|
 | purpose | Recommendation validate behavior + **Phase 2 cutover locks** |
-| SUT | adapters (`Akshare`/`Tushare`/`ODP`/`HS300`), `RecommendationValidator.validate` |
+| SUT | adapters (`Tushare`/`ODP`/`HS300`), `RecommendationValidator.validate` |
 | phase | Pre-existing + Phase 2 T1 |
 | run | `pytest tests/unit/recommendation/test_recommendation_validator.py -q` |
 

@@ -90,7 +90,7 @@ def test_validate_json_input_and_output_report(tmp_path: Path, monkeypatch: pyte
     assert "验证日期" in stdout
 
     report = json.loads(out_path.read_text(encoding="utf-8"))
-    assert report["source"] == "akshare"
+    assert report["source"] == "tushare"
     assert int(report["horizon"]) == 5
     assert report["rec_date"] == "2025-01-02"
     assert report["validation_date"] == "2025-01-09"

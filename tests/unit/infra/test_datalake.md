@@ -2,18 +2,17 @@
 
 | Field | Content |
 |-------|---------|
-| purpose | Lock DataLake façade routing: bars / scope / as_of / index / AkShare legacy |
+| purpose | Lock DataLake façade routing: bars / scope / as_of / index / TuShare |
 | SUT | `ashare_infra.lake.DataLake` |
-| phase | Phase 1 + Phase 2 (T0 `load_index_daily`, legacy flat cache) |
+| phase | Phase 1 + Phase 2 (T0 `load_index_daily`) |
 | run | `pytest tests/unit/infra/test_datalake.py -q` |
 
 ## Cases
 
-- AkShare wrap via mocked `load_or_fetch_daily_bars`
+- TuShare wrap via mocked `load_or_fetch_daily_bars`
 - `load_scope_bars` multi-symbol
 - `as_of` truncation on bars / scope / index
 - `load_index_daily` happy path
-- Legacy flat AkShare CSV under cache root
 - `source=smoke` without loader → `RuntimeError`
 - Unsupported source → `ValueError`
 - `refresh=True` skips legacy flat short-circuit

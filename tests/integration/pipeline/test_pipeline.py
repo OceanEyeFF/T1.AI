@@ -28,8 +28,8 @@ def test_daily_pipeline_cli_dry_run(tmp_path, capsys):
     data_source_cfg.write_text(
         json.dumps(
             {
-                "default_source": "akshare",
-                "sources": {"akshare": {"cache_dir": str(tmp_path / "cache")}},
+                "default_source": "tushare",
+                "sources": {"tushare": {"cache_dir": str(tmp_path / "cache")}},
             },
             ensure_ascii=False,
             indent=2,

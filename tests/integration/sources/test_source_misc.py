@@ -6,27 +6,9 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from ashare_lab.data import akshare_source as ak_src
 from ashare_lab.data import index_source as idx_src
 from ashare_lab.data import tushare_source as ts_src
 from ashare_lab.data.tushare_source import _date_ranges_to_fetch, TushareDailyBarsRequest
-
-
-def test_akshare_normalize_empty() -> None:
-    empty = pd.DataFrame()
-    out = ak_src._normalize_akshare_daily(empty)
-    assert out.empty
-
-
-def test_akshare_load_returns_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_fetch(req):
-        return pd.DataFrame()
-
-    monkeypatch.setattr(ak_src, "fetch_akshare_daily_bars", fake_fetch)
-    req = ak_src.AkshareDailyBarsRequest("000001", "20240101", "20240102")
-    df = ak_src.load_or_fetch_daily_bars(req, cache_dir=tmp_path)
-    assert df.empty
-    assert not list(tmp_path.glob("*.csv"))
 
 
 def test_index_source_cache_read(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -47,8 +29,8 @@ def test_index_source_cache_read(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     def fail_fetch(req):  # pragma: no cover - should not be called
         raise AssertionError("fetch should not run")
 
-    monkeypatch.setattr(idx_src, "fetch_akshare_index_daily", fail_fetch)
-    req = idx_src.AkshareIndexDailyRequest("000300", "20240101", "20240103")
+    monkeypatch.setattr(idx_src, "fetch_index_daily", fail_fetch)
+    req = idx_src.IndexDailyRequest("000300", "20240101", "20240103")
     df = idx_src.load_or_fetch_index_daily(req, cache_dir=tmp_path)
     assert len(df) == 3
     assert df.index[0] == pd.Timestamp("2024-01-01")
@@ -59,18 +41,18 @@ def test_index_source_fetch_and_cache(tmp_path: Path, monkeypatch: pytest.Monkey
         dates = pd.date_range("2024-02-01", periods=2, freq="D")
         return pd.DataFrame(
             {
-                "日期": dates,
-                "开盘": [1, 1.1],
-                "最高": [1.2, 1.3],
-                "最低": [0.9, 1.0],
-                "收盘": [1.0, 1.1],
-                "成交量": [100, 110],
-                "成交额": [1000, 1100],
+                "trade_date": dates.strftime("%Y%m%d"),
+                "open": [1, 1.1],
+                "high": [1.2, 1.3],
+                "low": [0.9, 1.0],
+                "close": [1.0, 1.1],
+                "vol": [100, 110],
+                "amount": [1000, 1100],
             }
         )
 
-    monkeypatch.setattr(idx_src, "fetch_akshare_index_daily", fake_fetch)
-    req = idx_src.AkshareIndexDailyRequest("000300", "20240201", "20240202")
+    monkeypatch.setattr(idx_src, "fetch_index_daily", fake_fetch)
+    req = idx_src.IndexDailyRequest("000300", "20240201", "20240202")
     df = idx_src.load_or_fetch_index_daily(req, cache_dir=tmp_path, refresh=True)
     assert len(df) == 2
     assert (tmp_path / "index_000300_daily_20240201_20240202.csv").exists()

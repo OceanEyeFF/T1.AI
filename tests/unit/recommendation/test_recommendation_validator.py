@@ -91,21 +91,6 @@ def test_tushare_source_adapter_converts_symbol_to_ts_code(tmp_path: Path, monke
     assert list(bars["600519"].columns) == list(v._REQUIRED_DAILY_COLS)
 
 
-def test_akshare_source_adapter_schema_fill(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_load(req: Any, cache_dir: Path, refresh: bool = False) -> pd.DataFrame:
-        _ = (req, cache_dir, refresh)
-        # 故意只返回 close，验证适配器会补齐字段
-        return _df_with_close(["2025-01-02"], [10.0])
-
-    import ashare_lab.data.akshare_source as ak_src
-
-    monkeypatch.setattr(ak_src, "load_or_fetch_daily_bars", fake_load)
-
-    adapter = v.AkshareSourceAdapter(cache_dir=tmp_path)
-    bars = adapter.fetch_daily_bars(["000001"], start_date="2025-01-02", end_date="2025-01-02")
-    assert list(bars["000001"].columns) == list(v._REQUIRED_DAILY_COLS)
-
-
 def test_odp_source_adapter_converts_symbol_and_fills_schema(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -689,35 +674,14 @@ def test_validator_default_return_mode() -> None:
 def test_adapters_reuse_single_datalake(tmp_path: Path) -> None:
     from ashare_infra.lake import DataLake
 
-    ak = v.AkshareSourceAdapter(cache_dir=tmp_path)
     ts = v.TushareSourceAdapter(cache_dir=tmp_path)
     odp = v.ODPSourceAdapter(cache_dir=tmp_path)
     cal = v.HS300IndexCalendarSource(cache_dir=tmp_path)
 
-    for adapter in (ak, ts, odp):
+    for adapter in (ts, odp):
         assert isinstance(adapter._lake, DataLake)
     assert isinstance(cal._lake, DataLake)
-    assert ak._lake is not ts._lake
-
-
-def test_akshare_adapter_fetch_goes_through_datalake(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    adapter = v.AkshareSourceAdapter(cache_dir=tmp_path)
-    calls: list[tuple[str, str, str]] = []
-
-    def fake_load(symbol, start, end, *, source="akshare", adjust="qfq"):
-        calls.append((symbol, start, end))
-        _ = source, adjust
-        return _df_with_close(["2025-01-02"], [10.0])
-
-    monkeypatch.setattr(adapter._lake, "load_daily_bars", fake_load)
-    bars = adapter.fetch_daily_bars(["600000"], "2025-01-02", "2025-01-03")
-    assert calls == [("600000", "20250102", "20250103")]
-    assert "600000" in bars
-    lake_id = id(adapter._lake)
-    adapter.fetch_daily_bars(["000001"], "2025-01-02", "2025-01-03")
-    assert id(adapter._lake) == lake_id
+    assert ts._lake is not odp._lake
 
 
 def test_hs300_calendar_goes_through_datalake(
