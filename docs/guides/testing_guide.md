@@ -52,8 +52,8 @@ bash scripts/run_tests_cov.sh
 
 ### Infra A 清单（WT-INFRA-001-TQA）
 
-白盒 Guard/Lake/Sim + 跨层 I* + 入口 C/Smoke。详见
-`.servo/worktrack/WT-INFRA-001-tqa-gap-report.md`。
+白盒 Guard/Lake/Sim + 跨层 I* + 入口 C/Smoke。
+（历史 TQA gap 报告随 `.servo` 已移除）
 
 Phase 1–2 白盒索引与每文件配套文档：
 [docs/guides/infra_phase12_whitebox.md](infra_phase12_whitebox.md)
@@ -88,6 +88,4 @@ pytest -q --cov=ashare_lab               # cov（读 pyproject fail_under）
 
 ## 相关
 
-- Milestone：`.servo/milestone/MS-T1-001.md`
-- Inventory：`.servo/worktrack/WT-T1-A1-inventory.md`
-- R4 延后交接：`.servo/worktrack/WT-T1-A4-r4-handoff.md`
+- 测试体系历史：MS-T1-001（`.servo` 已移除，历史记录不再保留于仓库）

@@ -103,16 +103,11 @@ outputs/reports/         # 评估报告不跟踪
 
 ---
 
-## 7. Harness 控制面
+## 7. 工作流追踪（历史）
 
-`.servo/` 是 Harness 分层闭环控制系统的 artifact 目录：
-
-- `control-state.md` — 控制面状态（Scope/Function/Route/Branch）
-- `milestone/` — Milestone artifact
-- `worktrack/` — Worktrack contract / evidence / closeout
-- `repo/` — Repo 级 artifact（backlog / history / snapshot）
-
-**Harness 控制回路**：`Observe → Decide → Init → Dispatch → Verify → Judge → Close → Refresh`
+原 Harness 分层闭环控制系统的 artifact 目录 `.servo/`（milestone / worktrack / control-state）
+已于 2026-08 移除。Milestone 历史不再保留于仓库，工作规划以 `NEXT_STEPS.md` / `ROADMAP.md`
+及常规 git 提交历史为准。
 
 ---
 
