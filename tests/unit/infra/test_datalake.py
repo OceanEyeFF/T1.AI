@@ -114,18 +114,38 @@ def test_datalake_load_index_daily(tmp_path: Path, monkeypatch: pytest.MonkeyPat
         index=pd.to_datetime(["2024-01-02"]),
     )
     frames.index.name = "date"
-    seen: list[object] = []
+    seen: list[tuple[object, object, bool]] = []
 
     def fake_load(req, cache_dir, refresh=False):
-        _ = cache_dir, refresh
-        seen.append(req)
+        seen.append((req, cache_dir, refresh))
         return frames.copy()
 
     monkeypatch.setattr(idx, "load_or_fetch_index_daily", fake_load)
-    lake = DataLake(cache_dir=tmp_path)
-    df = lake.load_index_daily("000300", "20240101", "20240131")
-    assert seen and getattr(seen[0], "symbol") == "000300"
+    lake = DataLake(cache_dir=tmp_path, tushare_token="tk-1", refresh=True)
+    df = lake.load_index_daily("000300", date(2024, 1, 1), "2024-01-31")
+    assert seen and getattr(seen[0][0], "symbol") == "000300"
+    # 全参数透传合同（token/日期规范化/refresh/cache_dir）
+    req, cache_dir_seen, refresh_seen = seen[0]
+    assert req.token == "tk-1"
+    assert req.start_date == "20240101"
+    assert req.end_date == "20240131"
+    assert refresh_seen is True
+    assert cache_dir_seen == tmp_path
     assert float(df.iloc[0]["close"]) == 3005.0
+
+
+def test_datalake_load_index_daily_rejects_invalid_date_format(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import ashare_infra.data.index_source as idx
+
+    monkeypatch.setattr(
+        idx, "load_or_fetch_index_daily",
+        lambda *a, **k: pytest.fail("invalid date must fail before fetch"),
+    )
+    lake = DataLake(cache_dir=tmp_path)
+    with pytest.raises(ValueError, match="expected YYYYMMDD"):
+        lake.load_index_daily("000300", "2024/01/01", "20240131")
 
 
 def test_datalake_load_index_daily_as_of(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

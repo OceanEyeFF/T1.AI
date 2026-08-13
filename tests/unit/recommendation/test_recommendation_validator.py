@@ -748,3 +748,38 @@ def test_validate_uses_guard_metrics_module(
     assert ic_calls and rank_calls
     assert result.ic == pytest.approx(0.42)
     assert result.rank_ic == pytest.approx(0.41)
+
+
+# --- 边界用例（双路 CodeReview P2：_get_open_on / _next_trade_day 未覆盖分支） ---
+
+
+def test_get_open_on_edge_cases() -> None:
+    from ashare_lab.recommendation.validator import _get_open_on
+
+    assert _get_open_on(None, pd.Timestamp("2024-01-02")) is None
+    assert _get_open_on(pd.DataFrame(), pd.Timestamp("2024-01-02")) is None
+    no_open = pd.DataFrame({"close": [1.0]}, index=pd.to_datetime(["2024-01-02"]))
+    assert _get_open_on(no_open, pd.Timestamp("2024-01-02")) is None
+    nan_open = pd.DataFrame(
+        {"open": [float("nan")]}, index=pd.to_datetime(["2024-01-02"])
+    )
+    assert _get_open_on(nan_open, pd.Timestamp("2024-01-02")) is None
+    missing_date = pd.DataFrame(
+        {"open": [1.0]}, index=pd.to_datetime(["2024-01-02"])
+    )
+    assert _get_open_on(missing_date, pd.Timestamp("2024-01-03")) is None
+    ok = pd.DataFrame({"open": [3.5]}, index=pd.to_datetime(["2024-01-02"]))
+    assert _get_open_on(ok, pd.Timestamp("2024-01-02")) == 3.5
+
+
+def test_next_trade_day_edge_cases() -> None:
+    from ashare_lab.recommendation import validator as v
+
+    validator = v.RecommendationValidator(data_source=_FakeDailyBarsSource({}))
+    dates = pd.to_datetime(["2024-01-02", "2024-01-03", "2024-01-04"])
+
+    assert validator._next_trade_day(dates, pd.Timestamp("2024-01-02")) == pd.Timestamp("2024-01-03")
+    # 最后一日 → None
+    assert validator._next_trade_day(dates, pd.Timestamp("2024-01-04")) is None
+    # 不在日历中 → None
+    assert validator._next_trade_day(dates, pd.Timestamp("2024-01-05")) is None

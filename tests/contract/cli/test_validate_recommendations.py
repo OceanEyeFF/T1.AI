@@ -307,3 +307,20 @@ def test_source_create_failure_prints_tushare_hint(tmp_path: Path, monkeypatch: 
     assert code == 1
     err = capsys.readouterr().err
     assert "提示: 使用 TuShare" in err
+
+
+def test_create_data_source_dispatch_real_factory(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """真实 _create_data_source 分派（此前测试直接替换整个工厂，三分支从未被测）。"""
+    import scripts.validate_recommendations as vr
+
+    tushare = object()
+    odp = object()
+    monkeypatch.setattr(vr, "TushareSourceAdapter", lambda: tushare)
+    monkeypatch.setattr(vr, "ODPSourceAdapter", lambda: odp)
+
+    assert vr._create_data_source("tushare") is tushare
+    assert vr._create_data_source("odp") is odp
+    with pytest.raises(ValueError, match="不支持的数据源: akshare"):
+        vr._create_data_source("akshare")

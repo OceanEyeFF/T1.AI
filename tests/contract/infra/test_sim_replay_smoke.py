@@ -51,3 +51,44 @@ def test_run_sim_replay_seeded_cache(tmp_path: Path) -> None:
     assert len(kids) == 1
     assert (kids[0] / "equity.csv").exists()
     assert (kids[0] / "diagnostics.csv").exists()
+
+
+@pytest.mark.contract
+def test_sim_replay_rejects_akshare_source() -> None:
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_sim_replay.py",
+            "--symbol", "600000",
+            "--start", "20240102",
+            "--end", "20240115",
+            "--source", "akshare",
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "PYTHONPATH": "src:."},
+        check=False,
+    )
+    assert proc.returncode == 2, proc.stderr + proc.stdout
+    assert "invalid choice" in proc.stderr
+
+
+@pytest.mark.contract
+def test_sim_replay_disallowed_symbol_exits() -> None:
+    proc = subprocess.run(
+        [
+            sys.executable,
+            "scripts/run_sim_replay.py",
+            "--symbol", "300001",  # 创业板：universe 约束外
+            "--start", "20240102",
+            "--end", "20240115",
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "PYTHONPATH": "src:."},
+        check=False,
+    )
+    assert proc.returncode != 0
+    assert "not allowed" in proc.stderr

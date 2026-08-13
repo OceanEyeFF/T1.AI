@@ -10,7 +10,13 @@
 - **环境**：`py311-private`（Python 3.11 + PyTorch cu130，RTX 3080 Ti GPU 可用）
 - **数据源**：TuShare 单一信源（akshare 依赖与代码已完全移除）
 - **清理**：旧 raw 缓存（`data/`）、5 个退役脚本、`.servo` 控制面已移除
-- **测试**：861 passed / 10 skipped，覆盖率 76.88%（门禁 76）
+- **测试**：1020 passed / 10 skipped，覆盖率 77.13%（门禁 76）
+
+### 双路 CodeReview 已完成（2026-08-13）
+
+CodeX(gpt-5.6-sol/max) + Pi SubAgent(deepseek-v4-pro) 对重构测试完整性双路审查：
+5 个 P0 缺陷 + 1 个 P0 测试防护空洞全部修复，P1 缺口已补测，全量回归绿。
+残余项见文末“已知债”。
 
 ### 已有资产
 
@@ -31,6 +37,13 @@
 - **1d 超短线**独立研究线尚未启动（需分钟级数据验证）
 - **决策模型**的 I/O 协议尚未冻结
 - **认证注册表** `workspace/registry/certified.json` 为空
+
+## 已知债（不阻塞主线）
+
+- `.toml` 后缀混用 YAML 内容（pipeline/data_source/model_mtl），解析器不统一
+- 真实湖合同测试（test_r4_cache_schema_contract）在 `inputs/data/cache` 缺失时全部 skip（P0-① 落盘后恢复）
+- deployment/*.service 路径按部署机修改
+- ruff 存量 lint 债 364 项（ruff 0.5→0.16 升级暴露，未动）
 
 ---
 

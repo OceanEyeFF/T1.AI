@@ -121,8 +121,8 @@ def test_build_train_command_contains_required_flags() -> None:
         python_exec="python",
         model="lstm",
         args_dict=base,
-        report_path=Path("output/reports/a.json"),
-        oos_path=Path("output/reports/a_oos.parquet"),
+        report_path=Path("outputs/reports/a.json"),
+        oos_path=Path("outputs/reports/a_oos.parquet"),
     )
     cmd_text = " ".join(cmd)
     assert "scripts/run_lstm_rolling_retrain_dim19_regime.py" in cmd_text
@@ -137,8 +137,8 @@ def test_build_train_command_prefers_config_file() -> None:
         python_exec="python",
         model="lstm",
         args_dict=base,
-        report_path=Path("output/reports/a.json"),
-        oos_path=Path("output/reports/a_oos.parquet"),
+        report_path=Path("outputs/reports/a.json"),
+        oos_path=Path("outputs/reports/a_oos.parquet"),
         config_file=Path("inputs/configs/experiments/lstm_rolling_baseline.toml"),
     )
     assert "--config-file" in cmd
@@ -163,7 +163,7 @@ def test_filter_train_args_drops_non_parser_keys() -> None:
 def test_run_compare_requires_protocol_check(tmp_path: Path) -> None:
     out = _run_compare(
         python_exec="python",
-        report_paths=[Path("output/reports/a.json"), Path("output/reports/b.json")],
+        report_paths=[Path("outputs/reports/a.json"), Path("outputs/reports/b.json")],
         output_dir=tmp_path,
         tag_prefix="unit",
         execute=False,

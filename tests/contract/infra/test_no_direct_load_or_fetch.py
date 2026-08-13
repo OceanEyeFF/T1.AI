@@ -94,6 +94,45 @@ def _any_load_or_fetch_import(path: Path) -> list[str]:
     return hits
 
 
+def _called_load_or_fetch_names(path: Path) -> list[str]:
+    """别名旁路检测：``import x as y; y.load_or_fetch_*()`` 级别的直接调用。"""
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    module_aliases: dict[str, str] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                module_aliases[alias.asname or alias.name.split(".")[0]] = alias.name
+        elif isinstance(node, ast.ImportFrom):
+            mod = node.module or ""
+            for alias in node.names:
+                module_aliases[alias.asname or alias.name] = f"{mod}.{alias.name}"
+
+    hits: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if isinstance(func, ast.Attribute) and func.attr.startswith("load_or_fetch"):
+            if isinstance(func.value, ast.Name) and func.value.id in module_aliases:
+                target = module_aliases[func.value.id]
+                if not any(target.startswith(p) for p in ALLOWED_PREFIXES):
+                    hits.append(f"{target} (via {func.value.id}.{func.attr})")
+    return hits
+
+
+def _called_load_or_fetch_from_text(source: str) -> list[str]:
+    """测试辅助：对源码片段执行同一扫描（用于锁死扫描器自身行为）。"""
+    import tempfile
+
+    with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False, encoding="utf-8") as fh:
+        fh.write(source)
+        tmp = Path(fh.name)
+    try:
+        return _called_load_or_fetch_names(tmp)
+    finally:
+        tmp.unlink()
+
+
 @pytest.mark.parametrize("path", LEGACY_SCAN_TARGETS, ids=lambda p: p.name)
 def test_legacy_scan_targets_zero_forbidden(path: Path) -> None:
     """Regression: old SCAN_TARGETS still have zero forbidden imports."""
@@ -142,3 +181,31 @@ def test_deferred_allowlist_covers_all_current_offenders() -> None:
     assert set(found) == set(ALLOWLISTED_DEFERRED_PATHS), (
         f"unexpected offenders={found}; allowlist={sorted(ALLOWLISTED_DEFERRED_PATHS)}"
     )
+
+
+def test_scanner_detects_module_alias_bypass() -> None:
+    """锁死扫描器自身行为：import 别名直调 load_or_fetch 必须被抓到。"""
+    hits = _called_load_or_fetch_from_text(
+        "import ashare_lab.data.tushare_source as ts\n"
+        "def f(req, cache):\n"
+        "    return ts.load_or_fetch_daily_bars(req, cache)\n"
+    )
+    assert hits == ["ashare_lab.data.tushare_source (via ts.load_or_fetch_daily_bars)"]
+
+
+def test_scanner_ignores_allowed_prefix_and_non_calls() -> None:
+    """ashare_infra.lake 前缀的别名调用豁免；普通属性访问不误报。"""
+    hits = _called_load_or_fetch_from_text(
+        "import ashare_infra.lake as lk\n"
+        "def f(req, cache):\n"
+        "    return lk.load_or_fetch_daily_bars(req, cache)\n"
+        "def g(x):\n"
+        "    return x.load_or_fetch_daily_bars\n"  # 非调用，不应命中
+    )
+    assert hits == []
+
+
+@pytest.mark.parametrize("path", _iter_scan_py_files(), ids=lambda p: str(p.relative_to(REPO_ROOT)))
+def test_full_tree_zero_alias_bypass_calls(path: Path) -> None:
+    hits = _called_load_or_fetch_names(path)
+    assert hits == [], f"{path} 通过别名直调 load_or_fetch*: {hits}"
