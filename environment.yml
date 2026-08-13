@@ -35,8 +35,7 @@ dependencies:
   # pip 依赖（conda 没有的包）
   - pip
   - pip:
-      # A股数据源
-      - akshare>=1.13
+      # A股数据源（TuShare 单一信源，已移除 AkShare）
       - tushare>=1.2
       - xgboost>=3.2
       - optuna>=3.6
