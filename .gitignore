@@ -52,3 +52,6 @@ models/
 .agents/skills/
 .claude/skills/
 .logs/
+# 三区模型输出产物（脚本运行生成）
+outputs/stock_pools/
+workspace/datasets/

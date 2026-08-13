@@ -5,8 +5,8 @@
 ## 入口
 
 ```bash
-# 标准运行（使用当天日期）
-python scripts/daily_pipeline.py
+# 标准运行（指定目标日期，必填 --date）
+python scripts/daily_pipeline.py --date 20250117
 
 # 指定日期 + 自定义配置
 python scripts/daily_pipeline.py --date 20250117 --config inputs/configs/pipeline.toml
@@ -52,7 +52,7 @@ journalctl -u daily-pipeline.service
 
 ## 监控
 
-`configs/pipeline.yaml` 中的 monitoring 段（迁移后路径 TBD）：
+`inputs/configs/pipeline.toml` 中的 monitoring 段：
 
 - `rolling_window_days: 20` — 滚动窗口天数
 - `horizon: 5` — 监控 horizon

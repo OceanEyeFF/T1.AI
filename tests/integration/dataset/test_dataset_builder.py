@@ -20,6 +20,17 @@ from ashare_lab.symbols import symbol_to_odp_equity_symbol, symbol_to_ts_code
 # source="tushare" (DatasetConfig default since R4).
 
 
+@pytest.fixture(autouse=True)
+def _never_touch_network(monkeypatch: pytest.MonkeyPatch) -> None:
+    """集成测试绝不触网：cache-miss 必须是显式失败而非静默 fetch。"""
+    import ashare_infra.data.index_source as idx
+
+    def boom(req: object) -> pd.DataFrame:
+        raise AssertionError(f"集成测试不得触网（fetch_index_daily 被调用）: {req}")
+
+    monkeypatch.setattr(idx, "fetch_index_daily", boom)
+
+
 @pytest.fixture
 def temp_cache_dir(tmp_path: Path) -> Path:
     """创建临时缓存目录"""
@@ -41,7 +52,8 @@ def sample_stock_cache(temp_cache_dir: Path) -> Path:
     """创建测试股票数据缓存（R4 TuShare qfq 分区布局：cache/tushare_qfq/{ts_code}/）。"""
     from ashare_infra.data.tushare_source import _write_partitioned
 
-    # 创建 30 天的测试数据（足够计算 20 日动量）
+    # 创建 30 天的测试数据（足够计算 20 日动量）；固定 seed 保证可复现
+    np.random.seed(42)
     dates = pd.date_range("2024-01-01", periods=30, freq="D")
 
     for symbol in ["600519", "000333"]:
@@ -74,6 +86,7 @@ def sample_stock_cache(temp_cache_dir: Path) -> Path:
 @pytest.fixture
 def sample_benchmark_cache(temp_cache_dir: Path) -> Path:
     """创建测试基准数据缓存"""
+    np.random.seed(7)
     dates = pd.date_range("2024-01-01", periods=30, freq="D")
     base_price = 3000.0
     prices = base_price + np.cumsum(np.random.randn(30) * 5)
@@ -91,8 +104,9 @@ def sample_benchmark_cache(temp_cache_dir: Path) -> Path:
     )
 
     # 保存到缓存（模拟指数数据缓存格式）
-    # 格式应匹配 index_source.py: index_{symbol}_daily_{start}_{end}.csv
-    cache_file = temp_cache_dir / "index_000300_daily_20240101_20240130.csv"
+    # 格式匹配 index_source.py（缓存键按 ts_code 规范化）:
+    # index_{ts_code}_daily_{start}_{end}.csv
+    cache_file = temp_cache_dir / "index_000300.SH_daily_20240101_20240130.csv"
     df.to_csv(cache_file, index=False)
 
     return temp_cache_dir

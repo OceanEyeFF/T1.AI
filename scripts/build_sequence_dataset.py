@@ -172,12 +172,9 @@ def _load_bars(source: str, symbol: str, start: str, end: str, cache_dir: Path) 
     if source == "tushare":
         lake = make_r4_datalake(cache_dir=cache_dir)
         lake_symbol = symbol_to_ts_code(symbol)
-    else:
+    else:  # odp
         lake = DataLake(cache_dir=cache_dir, default_source=source)  # type: ignore[arg-type]
-        if source == "odp":
-            lake_symbol = symbol_to_odp_equity_symbol(symbol)
-        else:
-            lake_symbol = symbol
+        lake_symbol = symbol_to_odp_equity_symbol(symbol)
     return lake.load_daily_bars(
         lake_symbol, start, end, source=source, adjust=R4_ADJUST_DEFAULT  # type: ignore[arg-type]
     )
@@ -267,7 +264,7 @@ def _argparse_allowed_keys(parser: argparse.ArgumentParser) -> set[str]:
     return {a.dest for a in parser._actions if a.dest != "help"}
 
 
-def main() -> None:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Build sequence dataset and save Parquet splits.")
     parser.add_argument("--config-file", default="", help="JSON/TOML config file path (args mapping)")
     parser.add_argument(
@@ -275,14 +272,14 @@ def main() -> None:
         default="",
         help="optional: save effective merged config (after CLI overrides) to JSON",
     )
-    parser.add_argument("--start", required=True, help="Start date YYYYMMDD")
-    parser.add_argument("--end", required=True, help="End date YYYYMMDD")
+    parser.add_argument("--start", help="Start date YYYYMMDD（可经 --config-file 提供）")
+    parser.add_argument("--end", help="End date YYYYMMDD（可经 --config-file 提供）")
     parser.add_argument("--symbols", help="Comma-separated symbols, e.g. 600519,000333")
     parser.add_argument("--symbols-csv", help="CSV file containing symbols (column: symbol/code/ts_code)")
     parser.add_argument("--stock-pool-id", default="", help="从 registry 读取股票池成员")
     parser.add_argument("--stock-pool-version", default="", help="股票池版本，留空则要求 registry 内仅有单版本")
     parser.add_argument("--stock-pool-registry-dir", default="inputs/pools", help="股票池 registry 目录")
-    parser.add_argument("--stock-pool-export-dir", default="output/stock_pools", help="导出的股票池产物目录")
+    parser.add_argument("--stock-pool-export-dir", default="outputs/stock_pools", help="导出的股票池产物目录")
     parser.add_argument(
         "--source",
         default="tushare",
@@ -323,6 +320,11 @@ def main() -> None:
         action="store_true",
         help="append 1-day high/low/close labels: label_1d_high,label_1d_low,label_1d_close",
     )
+    return parser
+
+
+def main() -> None:
+    parser = _build_parser()
     pre_args, _ = parser.parse_known_args()
     config_section_used: str | None = None
     if pre_args.config_file:
@@ -330,10 +332,14 @@ def main() -> None:
         overrides, config_section_used = extract_arg_overrides(
             config_path=pre_args.config_file,
             allowed_keys=allowed_keys,
-            section_candidates=(CONFIG_SECTION_NAME, "build_dataset", "dataset"),
+            section_candidates=(CONFIG_SECTION_NAME, "dataset"),
         )
         parser.set_defaults(**overrides)
     args = parser.parse_args()
+    if args.source not in {"tushare", "odp"}:
+        parser.error(f"--source 仅支持 tushare/odp，收到: {args.source!r}")
+    if not args.start or not args.end:
+        parser.error("--start 与 --end 为必填项（可由 --config-file 提供）")
     config_file_resolved = (
         str(Path(args.config_file).resolve()) if str(args.config_file).strip() else ""
     )

@@ -202,7 +202,7 @@ def _resolve_symbols_input(
 ) -> tuple[list[str], dict[str, str]]:
     symbols_csv_text = str(symbols_csv or "").strip()
     if str(stock_pool_id).strip():
-        if symbols_csv_text and Path(symbols_csv_text) != Path(DEFAULT_SYMBOLS_CSV):
+        if symbols_csv_text:
             raise ValueError("use either stock_pool_id or symbols_csv, not both")
         record = get_stock_pool_record(
             stock_pool_registry_dir,
@@ -224,7 +224,9 @@ def _resolve_symbols_input(
             "registry_path": record.registry_path,
         }
 
-    resolved_symbols = _parse_symbols(Path(symbols_csv_text or DEFAULT_SYMBOLS_CSV))
+    if not symbols_csv_text:
+        raise ValueError("either --stock-pool-id or --symbols-csv is required")
+    resolved_symbols = _parse_symbols(Path(symbols_csv_text))
     return resolved_symbols, {
         "stock_pool_id": "",
         "stock_pool_version": "",
@@ -1141,7 +1143,7 @@ def _argparse_allowed_keys(parser: argparse.ArgumentParser) -> set[str]:
     return {a.dest for a in parser._actions if a.dest != "help"}
 
 
-def main() -> None:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Build sequence parquet dataset with market state features."
     )
@@ -1164,7 +1166,7 @@ def main() -> None:
         "--stock-pool-registry-dir", default="inputs/pools", help="股票池 registry 目录"
     )
     parser.add_argument(
-        "--stock-pool-export-dir", default="output/stock_pools", help="导出的股票池产物目录"
+        "--stock-pool-export-dir", default="outputs/stock_pools", help="导出的股票池产物目录"
     )
     parser.add_argument("--cache-dir", default="inputs/data/cache")
     parser.add_argument(
@@ -1297,6 +1299,11 @@ def main() -> None:
         default=0.05,
         help="TuShare fut_daily 翻页间隔秒数（默认 0.05）",
     )
+    return parser
+
+
+def main() -> None:
+    parser = _build_parser()
     pre_args, _ = parser.parse_known_args()
     config_section_used: str | None = None
     if pre_args.config_file:
@@ -1308,6 +1315,8 @@ def main() -> None:
         )
         parser.set_defaults(**overrides)
     args = parser.parse_args()
+    if args.source not in {"tushare_cache", "tushare_live"}:
+        parser.error(f"--source 仅支持 tushare_cache/tushare_live，收到: {args.source!r}")
     config_file_resolved = (
         str(Path(args.config_file).resolve()) if str(args.config_file).strip() else ""
     )

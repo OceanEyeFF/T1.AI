@@ -66,7 +66,7 @@ class PrevCloseLimitPlanner:
         return []
 
 
-def _parse_args() -> argparse.Namespace:
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Replay local paper broker on daily OHLCV cache.")
     p.add_argument("--symbol", required=True, help="e.g. 600519")
     p.add_argument("--start", required=True, help="YYYYMMDD")
@@ -77,7 +77,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--cache-dir", default="inputs/data/cache")
     p.add_argument("--out-dir", default="outputs/sim")
     p.add_argument("--refresh", action="store_true")
-    return p.parse_args()
+    return p.parse_args(argv)
 
 
 def main() -> None:

@@ -207,7 +207,7 @@ def _render_monthly_markdown_report(
     return "\n".join(lines)
 
 
-def _generate_monthly_report(year_month: str, db_path: str | Path) -> Path:
+def _generate_monthly_report(year_month: str, db_path: str | Path, output_dir: str | Path) -> Path:
     """从 RecommendationHistory 读取数据并生成月度 Markdown 报告。"""
     from ashare_lab.recommendation import RecommendationHistory
 
@@ -252,7 +252,7 @@ def _generate_monthly_report(year_month: str, db_path: str | Path) -> Path:
         recommendations=recommendations,
     )
 
-    output_dir = Path("output/reports")
+    output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / f"{year_month}_report.md"
     output_path.write_text(markdown, encoding="utf-8")
@@ -289,7 +289,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
     if args.year_month:
-        report_path = _generate_monthly_report(args.year_month, args.db_path)
+        report_path = _generate_monthly_report(args.year_month, args.db_path, args.output_dir)
         print(
             json.dumps(
                 {"year_month": args.year_month, "report_path": str(report_path)},

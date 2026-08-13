@@ -86,7 +86,7 @@ def _parse_args() -> argparse.Namespace:
         default="configs/experiments/xgb_rolling_baseline.toml",
         help="base JSON/TOML config used as defaults for each trial",
     )
-    p.add_argument("--output-dir", default="output/reports/auto_tune_xgb")
+    p.add_argument("--output-dir", default="outputs/reports/auto_tune_xgb")
     p.add_argument("--study-name", default="xgb_rolling_auto_tune")
     p.add_argument("--storage", default="", help="optuna storage URL, empty -> sqlite in output-dir")
     p.add_argument("--n-trials", type=int, default=40, help="number of new trials; 0 means summarize existing trials only")

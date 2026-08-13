@@ -50,7 +50,7 @@ def _resolve_oos_path(report_path: Path, report: dict[str, Any]) -> tuple[Path |
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="审计报告 OOS parquet 覆盖率（用于 strict daily-CS 比较）")
     p.add_argument("--reports", nargs="+", required=True, help="报告 JSON 路径列表")
-    p.add_argument("--output-dir", default="output/reports")
+    p.add_argument("--output-dir", default="outputs/reports")
     p.add_argument("--tag", default=datetime.now().strftime("%Y%m%d"))
     return p
 

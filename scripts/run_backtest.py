@@ -14,7 +14,7 @@ from ashare_lab.symbols import symbol_to_ts_code
 from ashare_lab.universe import is_allowed_a_share_symbol
 
 
-def _parse_args() -> argparse.Namespace:
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser()
     p.add_argument("--symbols", required=True, help="Comma-separated, e.g. 600519,000333")
     p.add_argument("--start", required=True, help="YYYYMMDD")
@@ -27,7 +27,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument("--cache-dir", default="inputs/data/cache")
     p.add_argument("--out-dir", default="outputs/reports")
     p.add_argument("--benchmark", default="000300", help="Index symbol, default CSI300=000300")
-    return p.parse_args()
+    return p.parse_args(argv)
 
 
 def main() -> None:

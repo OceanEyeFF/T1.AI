@@ -48,7 +48,7 @@ def _normalize_index_daily(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def fetch_index_daily(req: IndexDailyRequest) -> pd.DataFrame:  # pragma: no cover
+def fetch_index_daily(req: IndexDailyRequest) -> pd.DataFrame:
     """调用 TuShare ``index_daily`` 获取指数日线（成交量单位为手，金额为千元）。"""
     import os
 
@@ -76,7 +76,9 @@ def load_or_fetch_index_daily(
     req: IndexDailyRequest, cache_dir: Path, refresh: bool = False
 ) -> pd.DataFrame:
     cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_path = cache_dir / f"index_{req.symbol}_daily_{req.start_date}_{req.end_date}.csv"
+    cache_path = cache_dir / (
+        f"index_{_to_index_ts_code(req.symbol)}_daily_{req.start_date}_{req.end_date}.csv"
+    )
     if cache_path.exists() and not refresh:
         df = pd.read_csv(cache_path, parse_dates=["date"])
         return df.set_index("date").sort_index()

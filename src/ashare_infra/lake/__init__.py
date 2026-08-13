@@ -199,8 +199,6 @@ class DataLake:
             df = truncate_as_of(df, as_of, inclusive=True)
         return df
 
-        return df
-
     def resolved_derived_root(self) -> Path:
         """Resolved derived root (explicit ``derived_root`` or R4 default)."""
         if self.derived_root is not None:

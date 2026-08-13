@@ -50,10 +50,6 @@ markers = [
 
 [tool.coverage.run]
 source = ["src/ashare_lab", "src/ashare_infra", "src/ashare_exec"]
-omit = [
-  "scripts/run_backtest.py",
-  "scripts/train_mtl.py",
-]
 
 [tool.coverage.report]
 # Acc-balanced (MS-T1-001 / WT-T1-A4): measured TOTAL 78% on 2026-07-14;

@@ -1,5 +1,5 @@
 [build_sequence_dataset_market_state]
-symbols_csv = "data/symbols_lstm_sectors_70.csv"
+stock_pool_id = "custom_research_liquidity_quality_v1"
 cache_dir = "inputs/data/cache"
 source = "tushare_live"
 request_interval_seconds = 0.8
@@ -23,8 +23,9 @@ output_dir = "workspace/datasets/lstm_sector70_19d_mkt_20210101_20260120"
 feature_profile = "compact44"
 include_short_term_features = true
 
-sector_etf_map_csv = "data/mappings/sector_etf_map.csv"
-include_sector_etf_features = true
+include_sector_etf_features = false
+
+# sector_etf_map_csv = "inputs/data/mappings/sector_etf_map.csv"  # 板块 ETF 映射需另行准备
 
 include_odp_commodity_features = false
 commodity_source = "odp"

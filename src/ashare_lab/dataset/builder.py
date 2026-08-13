@@ -129,7 +129,7 @@ class DatasetBuilder:
             return symbol_to_ts_code(symbol)
         if source == "odp":
             return symbol_to_odp_equity_symbol(symbol)
-        return symbol
+        raise ValueError(f"不支持的数据源: {source}")
 
     def _load_benchmark_data(self) -> None:
         """加载基准数据（沪深300）"""

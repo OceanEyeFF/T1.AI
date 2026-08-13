@@ -2,11 +2,8 @@
 start = "20230101"
 end = "20260120"
 
-# Choose one input mode:
-# 1) symbols list
-symbols = "600519,000333,601318"
-# 2) or symbols csv (comment out symbols above)
-# symbols_csv = "data/symbols_lstm_sectors_70.csv"
+# 选股来源：注册表股票池（research_liquidity_quality，61 只）
+stock_pool_id = "custom_research_liquidity_quality_v1"
 
 source = "tushare"
 cache_dir = "inputs/data/cache"

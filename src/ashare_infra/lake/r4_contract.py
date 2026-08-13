@@ -1,7 +1,7 @@
 """MS-R4 A1-bound DataLake factory (cache-first TuShare primary).
 
 Consumers should prefer ``make_r4_datalake`` for R4 lake work so defaults stay
-aligned with ``WT-R4-A1-lake-source-contract`` (frozen_for_A2):
+aligned with the R4 A1 lake-source contract (frozen for A2+; worktrack artifacts removed):
 
 - primary source: tushare
 - adjust: qfq

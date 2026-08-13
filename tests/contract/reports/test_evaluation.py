@@ -129,10 +129,19 @@ def test_cli_year_month_generates_markdown(tmp_path, monkeypatch):
 
     from scripts.evaluate_recommendation import main
 
-    main(["--year-month", year_month, "--db-path", str(db_path)])
+    out_dir = tmp_path / "outputs" / "reports"
+    main(
+        [
+            "--year-month", year_month,
+            "--db-path", str(db_path),
+            "--output-dir", str(out_dir),
+        ]
+    )
 
-    report_path = tmp_path / "output" / "reports" / f"{year_month}_report.md"
+    report_path = out_dir / f"{year_month}_report.md"
     assert report_path.exists()
+    # 旧单数路径不得再生（回归锁：月度分支曾硬编码 output/reports）
+    assert not (tmp_path / "output").exists()
 
     content = report_path.read_text(encoding="utf-8")
     assert f"# {year_month} 推荐系统月度报告" in content

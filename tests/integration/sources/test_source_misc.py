@@ -12,7 +12,7 @@ from ashare_lab.data.tushare_source import _date_ranges_to_fetch, TushareDailyBa
 
 
 def test_index_source_cache_read(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    cache_file = tmp_path / "index_000300_daily_20240101_20240103.csv"
+    cache_file = tmp_path / "index_000300.SH_daily_20240101_20240103.csv"
     dates = pd.date_range("2024-01-01", periods=3, freq="D")
     pd.DataFrame(
         {
@@ -37,25 +37,36 @@ def test_index_source_cache_read(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 
 
 def test_index_source_fetch_and_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # 契约：fetch 返回的已是标准化帧（date 索引 + _INDEX_FIELDS 列）
     def fake_fetch(req):
         dates = pd.date_range("2024-02-01", periods=2, freq="D")
-        return pd.DataFrame(
+        df = pd.DataFrame(
             {
-                "trade_date": dates.strftime("%Y%m%d"),
-                "open": [1, 1.1],
+                "open": [1.0, 1.1],
                 "high": [1.2, 1.3],
                 "low": [0.9, 1.0],
                 "close": [1.0, 1.1],
-                "vol": [100, 110],
+                "volume": [100, 110],
                 "amount": [1000, 1100],
-            }
+            },
+            index=dates,
         )
+        df.index.name = "date"
+        return df
 
     monkeypatch.setattr(idx_src, "fetch_index_daily", fake_fetch)
     req = idx_src.IndexDailyRequest("000300", "20240201", "20240202")
     df = idx_src.load_or_fetch_index_daily(req, cache_dir=tmp_path, refresh=True)
     assert len(df) == 2
-    assert (tmp_path / "index_000300_daily_20240201_20240202.csv").exists()
+    cache_file = tmp_path / "index_000300.SH_daily_20240201_20240202.csv"
+    assert cache_file.exists()
+
+    # round-trip：二次读取命中缓存且内容一致（fetch 必须不再被调用）
+    monkeypatch.setattr(
+        idx_src, "fetch_index_daily", lambda _: pytest.fail("cache hit must not fetch")
+    )
+    cached = idx_src.load_or_fetch_index_daily(req, cache_dir=tmp_path)
+    pd.testing.assert_frame_equal(cached, df, check_freq=False)
 
 
 def test_date_ranges_to_fetch_both_sides() -> None:

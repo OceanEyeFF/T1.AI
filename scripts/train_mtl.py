@@ -13,8 +13,8 @@
   - 可选包含 meta 列：date, symbol, mask（不参与训练）
 
 示例：
-    python scripts/train_mtl.py --config configs/model_mtl.yaml
-    python scripts/train_mtl.py --config configs/model_mtl.yaml --dry-run
+    python scripts/train_mtl.py --config inputs/configs/profiles/model_mtl.toml
+    python scripts/train_mtl.py --config inputs/configs/profiles/model_mtl.toml --dry-run
 """
 
 from __future__ import annotations
@@ -217,7 +217,7 @@ def main() -> None:
             inc_cfg = replace(inc_cfg, warm_start_checkpoint=Path("__warm_start_disabled__"))
 
     if not args.incremental and not args.no_warm_start:
-        model_dir = Path(output_cfg.get("model_dir", "models"))
+        model_dir = Path(output_cfg.get("model_dir", "workspace/checkpoints"))
         ckpt = model_dir / "latest_mtl.pt"
         if ckpt.exists():
             try:
@@ -260,10 +260,10 @@ def main() -> None:
     if inferred_input_dim != model.config.input_dim:
         print(
             f"[warn] model.input_dim={model.config.input_dim} but dataset input_dim={inferred_input_dim}; "
-            f"consider updating configs/model_mtl.yaml"
+            f"consider updating inputs/configs/profiles/model_mtl.toml"
         )
 
-    model_dir = Path(output_cfg.get("model_dir", "models"))
+    model_dir = Path(output_cfg.get("model_dir", "workspace/checkpoints"))
     log_dir = Path(output_cfg.get("log_dir", "workspace/runs"))
 
     if args.incremental:

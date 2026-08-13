@@ -2,8 +2,8 @@
 """Production daily pipeline entrypoint (Phase 3).
 
 Usage:
-  python scripts/daily_pipeline.py --date 20250117 --config configs/pipeline.yaml
-  python scripts/daily_pipeline.py --date 20250117 --config configs/pipeline.yaml --dry-run
+  python scripts/daily_pipeline.py --date 20250117 --config inputs/configs/pipeline.toml
+  python scripts/daily_pipeline.py --date 20250117 --config inputs/configs/pipeline.toml --dry-run
 """
 
 from __future__ import annotations

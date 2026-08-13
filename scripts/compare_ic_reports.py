@@ -401,7 +401,7 @@ def build_parser() -> argparse.ArgumentParser:
         default="required",
         help="auto: 优先使用 OOS parquet 计算 daily-CS；off: 禁用；required: 无 daily-CS 则报错",
     )
-    p.add_argument("--output-dir", default="output/reports")
+    p.add_argument("--output-dir", default="outputs/reports")
     p.add_argument("--tag", default=datetime.now().strftime("%Y%m%d"))
     p.add_argument("--allow-empty-common-months", action="store_true", help="允许公共 OOS 月份为空（默认报错）")
     p.add_argument("--gate-mean-ic-5-10", type=float, default=0.05)
