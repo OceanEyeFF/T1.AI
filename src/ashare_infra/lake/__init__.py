@@ -20,7 +20,7 @@ from ashare_infra.lake.meta import (
     stock_basic_to_lifecycle_map,
 )
 
-SourceKind = Literal["akshare", "tushare", "odp", "smoke"]
+SourceKind = Literal["tushare", "odp", "smoke"]
 
 # (symbol, start_yyyymmdd, end_yyyymmdd, adjust) -> DataFrame
 LakeLoader = Callable[[str, str, str, str], pd.DataFrame]
@@ -131,8 +131,8 @@ class DataLake:
         """Load (or fetch+cache) daily OHLCV for one symbol.
 
         Symbol convention is per-source: tushare expects ts_code (``600519.SH``),
-        akshare/odp expect bare codes. Volume units also differ: akshare/tushare
-        report lots (手), odp/yfinance reports shares — set
+        odp expects bare codes. Volume units also differ: tushare reports
+        lots (手), odp/yfinance reports shares — set
         ``ReplayConfig.volume_in_lots=False`` when replaying odp frames.
         """
         src = source or self.default_source
@@ -174,20 +174,23 @@ class DataLake:
         *,
         as_of: date | None = None,
     ) -> pd.DataFrame:
-        """Load (or fetch+cache) index daily bars via ``index_source`` (AkShare).
+        """Load (or fetch+cache) index daily bars via ``index_source`` (TuShare).
 
         Cache files live under ``{cache_dir}/index_{symbol}_daily_{start}_{end}.csv``
         (same layout as the adapter; no extra nesting).
         """
         from ashare_infra.data.index_source import (
-            AkshareIndexDailyRequest,
+            IndexDailyRequest,
             load_or_fetch_index_daily,
         )
 
         start_s = _yyyymmdd(start)
         end_s = _yyyymmdd(end)
-        req = AkshareIndexDailyRequest(
-            symbol=symbol, start_date=start_s, end_date=end_s
+        req = IndexDailyRequest(
+            symbol=symbol,
+            start_date=start_s,
+            end_date=end_s,
+            token=self.tushare_token,
         )
         df = load_or_fetch_index_daily(
             req, cache_dir=self.cache_dir, refresh=self.refresh
@@ -309,33 +312,8 @@ class DataLake:
             return self.loader(symbol, start, end, adjust)
 
         # tushare nests its own cache_ns (tushare_qfq/…) under cache_dir;
-        # akshare uses cache_dir/akshare/; odp_source self-namespaces under
-        # cache_dir/odp/ (pass cache_dir unmodified — do not add another odp/).
-        if source == "akshare":
-            from ashare_infra.data.akshare_source import (
-                AkshareDailyBarsRequest,
-                load_or_fetch_daily_bars,
-            )
-
-            req = AkshareDailyBarsRequest(
-                symbol=symbol, start_date=start, end_date=end, adjust=adjust
-            )
-            canonical_dir = self.cache_dir / "akshare"
-            cache_name = f"{symbol}_daily_{adjust}_{start}_{end}.csv"
-            # Backward-compat: pre-DataLake code wrote flat CSVs directly under
-            # cache_dir/. Read those only when the canonical file is absent;
-            # canonical hits are served by load_or_fetch_daily_bars itself so we
-            # do not duplicate its cache-read logic here.
-            if not self.refresh:
-                canonical_path = canonical_dir / cache_name
-                legacy_path = self.cache_dir / cache_name
-                if not canonical_path.exists() and legacy_path.exists():
-                    frame = pd.read_csv(legacy_path, parse_dates=["date"])
-                    return frame.set_index("date").sort_index()
-            return load_or_fetch_daily_bars(
-                req, cache_dir=canonical_dir, refresh=self.refresh
-            )
-
+        # odp_source self-namespaces under cache_dir/odp/ (pass cache_dir
+        # unmodified — do not add another odp/).
         if source == "tushare":
             from ashare_infra.data.tushare_source import (
                 TushareDailyBarsRequest,

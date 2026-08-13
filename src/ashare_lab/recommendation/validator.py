@@ -95,45 +95,6 @@ from ashare_lab.symbols import symbol_to_odp_equity_symbol as _symbol_to_odp_equ
 from ashare_lab.symbols import symbol_to_ts_code as _symbol_to_ts_code
 
 
-class AkshareSourceAdapter:
-    """AkShare 数据源适配器（经 DataLake）。"""
-
-    def __init__(
-        self,
-        cache_dir: Path | None = None,
-        adjust: str = "qfq",
-        refresh: bool = False,
-    ) -> None:
-        self.cache_dir = cache_dir or Path("inputs/data/cache")
-        self.adjust = adjust
-        self.refresh = refresh
-        from ashare_infra.lake import DataLake
-
-        self._lake = DataLake(
-            cache_dir=self.cache_dir,
-            default_source="akshare",
-            refresh=self.refresh,
-        )
-
-    def fetch_daily_bars(
-        self,
-        symbols: Sequence[str],
-        start_date: str,
-        end_date: str,
-    ) -> dict[str, pd.DataFrame]:
-        start = _to_yyyymmdd(start_date)
-        end = _to_yyyymmdd(end_date)
-
-        out: dict[str, pd.DataFrame] = {}
-        for symbol in symbols:
-            sym = str(symbol)
-            df = self._lake.load_daily_bars(
-                sym, start, end, source="akshare", adjust=self.adjust
-            )
-            out[sym] = _ensure_daily_schema(df)
-        return out
-
-
 class TushareSourceAdapter:
     """TuShare 数据源适配器（自动处理 symbol → ts_code；经 DataLake）。"""
 

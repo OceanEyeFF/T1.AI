@@ -22,7 +22,6 @@ __all__ = [
     "aggregate_primary_trend_scores",
     "rank_primary_trend_scores",
     "DailyBarsSource",
-    "AkshareSourceAdapter",
     "ODPSourceAdapter",
     "TushareSourceAdapter",
     "ValidationResult",
@@ -40,7 +39,6 @@ if TYPE_CHECKING:  # pragma: no cover - 仅用于类型提示
         rank_primary_trend_scores,
     )
     from .validator import (
-        AkshareSourceAdapter,
         DailyBarsSource,
         ODPSourceAdapter,
         RecommendationValidator,
@@ -83,14 +81,12 @@ def __getattr__(name: str) -> Any:  # pragma: no cover - 运行时按需触发
 
     if name in {
         "DailyBarsSource",
-        "AkshareSourceAdapter",
         "ODPSourceAdapter",
         "TushareSourceAdapter",
         "ValidationResult",
         "RecommendationValidator",
     }:
         from .validator import (
-            AkshareSourceAdapter,
             DailyBarsSource,
             ODPSourceAdapter,
             RecommendationValidator,
@@ -100,7 +96,6 @@ def __getattr__(name: str) -> Any:  # pragma: no cover - 运行时按需触发
 
         return {
             "DailyBarsSource": DailyBarsSource,
-            "AkshareSourceAdapter": AkshareSourceAdapter,
             "ODPSourceAdapter": ODPSourceAdapter,
             "TushareSourceAdapter": TushareSourceAdapter,
             "ValidationResult": ValidationResult,

@@ -1,6 +1,6 @@
 """Smoke fetch backend — network-free simulated download / scope ops for Infra.
 
-Use this to exercise FetchGate + DataLake without TuShare/AkShare:
+Use this to exercise FetchGate + DataLake without TuShare:
 
 - ``simulate_download`` — maintain-fetch: materialize catalog bars into smoke cache
 - ``simulate_add_stocks`` — ROOT add_symbols + optional auto-download

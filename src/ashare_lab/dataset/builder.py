@@ -23,7 +23,7 @@ from ashare_lab.symbols import symbol_to_odp_equity_symbol, symbol_to_ts_code
 
 logger = logging.getLogger(__name__)
 
-SourceKind = Literal["akshare", "tushare", "odp"]
+SourceKind = Literal["tushare", "odp"]
 
 
 @dataclass
@@ -40,7 +40,7 @@ class DatasetConfig:
     split_method: str = "fixed_window"  # 'fixed_window' or 'rolling_window'
     train_end_date: str | None = None  # YYYYMMDD
     valid_end_date: str | None = None  # YYYYMMDD
-    source: SourceKind = "tushare"  # R4/A1 primary; override for akshare/odp
+    source: SourceKind = "tushare"  # R4 primary; override for odp
     cache_dir: Path = field(default_factory=lambda: Path("inputs/data/cache"))
     output_dir: Path = field(default_factory=lambda: Path("workspace/datasets"))
     nan_threshold: float = 0.2  # 缺失数据阈值（超过警告）
@@ -101,7 +101,7 @@ class DatasetBuilder:
         """加载所有股票的行情数据"""
         logger.info(f"加载 {len(self.config.symbols)} 只股票数据...")
         source = self.config.source
-        if source not in ("akshare", "tushare", "odp"):
+        if source not in ("tushare", "odp"):
             raise ValueError(f"不支持的数据源: {source}")
 
         for symbol in self.config.symbols:

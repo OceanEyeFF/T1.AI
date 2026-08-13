@@ -31,7 +31,7 @@ class PlanProvider(Protocol):
 @dataclass(frozen=True)
 class ReplayConfig:
     sim: SimConfig = field(default_factory=SimConfig)
-    # AkShare/TuShare daily volume is in lots (手 = 100 shares);
+    # TuShare daily volume is in lots (手 = 100 shares);
     # ODP/yfinance volume is already in shares → set False for odp frames.
     # Auto-detection by source is deferred (L2 residual); callers must set this.
     volume_in_lots: bool = True
