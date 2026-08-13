@@ -40,10 +40,14 @@ CodeX(gpt-5.6-sol/max) + Pi SubAgent(deepseek-v4-pro) 对重构测试完整性�
 
 ## 已知债（不阻塞主线）
 
-- `.toml` 后缀混用 YAML 内容（pipeline/data_source/model_mtl），解析器不统一
-- 真实湖合同测试（test_r4_cache_schema_contract）在 `inputs/data/cache` 缺失时全部 skip（P0-① 落盘后恢复）
-- deployment/*.service 路径按部署机修改
-- ruff 存量 lint 债 364 项（ruff 0.5→0.16 升级暴露，未动）
+详见 [docs/maintenance/debt_remediation_plan.md](docs/maintenance/debt_remediation_plan.md)：
+
+- **D2（P1）**：真实湖合同测试在 `inputs/data/cache` 缺失时全部 skip —— P0-① 落盘后立即修复
+- **D1（P2）**：`.toml` 后缀混用 YAML 内容（pipeline/data_source/model_mtl），解析器不统一
+- **D3（P3）**：deployment/*.service 硬编码机器路径，待 install.sh 模板化
+- **D4（P3）**：ruff 存量 lint 债 364 项，三批清理（机械→手动→语义）
+- **D5（P3）**：审查 P2 残余测试深度项（adapter kwargs 锁定、真实 loader 消费 fixture 等 4 项）
+- **D6（P3）**：gitignored 历史文档本地噪音（可选清理）
 
 ---
 
