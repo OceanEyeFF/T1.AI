@@ -142,9 +142,10 @@
 - 数字留档：协议文档 §7 Baseline Ledger；产物 outputs/reports/（本地 artifact）
 - 修复过程中发现：rolling 脚本 feature-mode 默认 dim19 与新数据集 11 特征不匹配 → 用 --feature-mode auto；XGB 依赖补装
 
-### ☐ 3.2 月胜率分布 + trade-like Top-N 面板
-- 补充月度胜率分布统计与 trade-like panel 评估
-- 验收：两个评估脚本可用且产出可对比报告
+### ☑ 3.2 月胜率分布 + trade-like Top-N 面板 — 2026-08-14 完成
+- 新脚本 `scripts/compare_trade_like_panels.py`：panel 汇总 + 逐月超额收益矩阵 → outputs/reports/ic_trade_panel_<tag>.md（2 项 CLI 合同测试锁定）
+- 基线面板结论：XGB **pass**（日胜率 60.2%、月胜率 66.7%、连续负月 1）；LSTM **fail**（日胜率 44.2%、连续负日 19 天——重要风险信号）
+- 与 IC 门禁互补：XGB RankIC 差 0.0031 未过 strict 门禁，但 panel 无相反风险信号；整体维持 continue-research
 
 ### ☐ 3.3 评估门禁协议执行版
 - `docs/research/mainline_3510d_evaluation_gate_protocol.md` 更新为可执行门禁（阈值/命令/产物清单）

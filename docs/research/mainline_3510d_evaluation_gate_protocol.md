@@ -131,3 +131,14 @@ A3 只能在本协议下组织优化候选：
 | lag-1 drop | ≥ 0.01 | 0.0004 / 0.0033 | 0.0058 / 0.0021 |
 
 **结论：continue-research**。RankIC 未达门禁（XGB 距 0.08 仅 0.0031）；time_reverse 部分未过。lag-1 阈值对 daily 滚动预测（相邻日 target 重叠 90%+）判别力弱——后续协议修订应改为 lag≥5 或重叠感知阈值。
+
+## 8. Trade-like Panel Ledger（3.2，2026-08-14）
+
+`scripts/compare_trade_like_panels.py --reports <a.json> <b.json> --tag <tag>` 产出 `outputs/reports/ic_trade_panel_<tag>.md`（汇总 + 逐月超额矩阵）。
+
+| 报告 | 日胜率 | 月胜率 | 日均超额 | 最差月 | 连续负日 | 连续负月 | pass_gate |
+|---|---:|---:|---:|---:|---:|---:|---|
+| LSTM baseline | 44.2% | 33.3% | +0.105% | -1.25% | 19 | 2 | fail |
+| XGB baseline | 60.2% | 66.7% | +0.233% | -0.27% | 7 | 1 | pass |
+
+解释：panel 是研究判断辅助面（不等同真实回测）。XGB panel 通过 + IC 门禁差 0.0031 → 优先在 4.x 伪信号排查中检查 XGB 信号的 RankIC 短板；LSTM 连续负日 19 天在真实交易中不可接受，暂不作为优化基线。
