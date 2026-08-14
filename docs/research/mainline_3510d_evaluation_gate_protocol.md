@@ -115,6 +115,45 @@ A3 只能在本协议下组织优化候选：
 - 先修复产物协议和可比较性，再解释模型优劣。
 - 把 random-label 和行业 / 市值中性化列为后续防伪增强项；未覆盖时保留 `continue-research`。
 
+## 6b. Executable Command Chain（3.3 执行版，2026-08-14 实测可照抄）
+
+数据构建（60 只池，profile 已锁定）：
+
+```bash
+python scripts/build_sequence_dataset.py \
+  --config-file inputs/configs/profiles/sequence_dataset_baseline.toml
+```
+
+滚动实验（新数据集必须 `--feature-mode auto`；dim19 默认仅兼容旧 19 维数据集）：
+
+```bash
+python scripts/run_lstm_rolling_retrain_dim19_regime.py \
+  --dataset-dir workspace/datasets/sequence_baseline_20230101_20260813 \
+  --feature-mode auto \
+  --save-oos-parquet outputs/reports/<name>_oos.parquet \
+  --report outputs/reports/<name>.json
+
+python scripts/run_xgboost_rolling_retrain_regime.py \
+  --dataset-dir workspace/datasets/sequence_baseline_20230101_20260813 \
+  --save-oos-parquet outputs/reports/<name>_oos.parquet \
+  --report outputs/reports/<name>.json
+```
+
+审计 + strict 比较 + 面板 + 防伪（tag 统一）：
+
+```bash
+python scripts/audit_ic_reports.py --reports outputs/reports/a.json outputs/reports/b.json --tag <tag>
+python scripts/compare_ic_reports.py --reports outputs/reports/a.json outputs/reports/b.json \
+  --metric-source raw --monthly-source raw --daily-cs-mode required --check-protocol --tag <tag>
+python scripts/compare_trade_like_panels.py --reports outputs/reports/a.json outputs/reports/b.json --tag <tag>
+python scripts/run_sanity_checks.py --oos-parquet outputs/reports/<name>_oos.parquet \
+  --horizon 5 --random-label-trials 3 --random-label-horizons 3,5,10 \
+  --random-label-output outputs/reports/random_label_<name>_h5.json \
+  --output outputs/reports/sanity_<name>_h5.json
+```
+
+产物清单（outputs/reports/，本地 artifact）：`<name>.json`、`<name>_oos.parquet`、`ic_report_oos_coverage_<tag>.{json,md}`、`ic_monthly_comparison_<tag>.{json,md}`、`ic_trade_panel_<tag>.md`、`sanity_*_h{5,10}.json`、`random_label_*.json`。
+
 ## 7. Baseline Ledger（基线留档，2026-08-14 3.1 复跑）
 
 数据集：`sequence_baseline_20230101_20260813`（research_liquidity_quality_v1 60 只，11 特征 × seq_len 20，test 2026-02-09..2026-08-13）。产物目录：`outputs/reports/`（本地 artifact，不入库）。

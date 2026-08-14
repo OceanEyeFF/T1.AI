@@ -147,9 +147,10 @@
 - 基线面板结论：XGB **pass**（日胜率 60.2%、月胜率 66.7%、连续负月 1）；LSTM **fail**（日胜率 44.2%、连续负日 19 天——重要风险信号）
 - 与 IC 门禁互补：XGB RankIC 差 0.0031 未过 strict 门禁，但 panel 无相反风险信号；整体维持 continue-research
 
-### ☐ 3.3 评估门禁协议执行版
-- `docs/research/mainline_3510d_evaluation_gate_protocol.md` 更新为可执行门禁（阈值/命令/产物清单）
-- 验收：文档命令可照抄执行
+### ☑ 3.3 评估门禁协议执行版 — 2026-08-14 完成
+- 协议文档更新：路径三区对齐（outputs/reports）、§6b 新增执行版命令链（build→rolling→audit→compare→panel→sanity，全部实测）、§7/§8 基线 ledger、random-label/neutralization 缺口声明更新
+- 逐条照抄实测：audit/compare/panel/sanity（含 random-label 3 trials 全 pass）均产出预期文件
+- 验收达成：文档命令可照抄执行，产物清单完整
 
 ## 阶段 4 — P0-④ 伪信号系统性排查（~2 天）
 
