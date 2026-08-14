@@ -113,18 +113,25 @@
 - 保留合法 YAML 场景：`mtl_finetune.load_yaml` 工具函数、builder metadata.yaml
 - 验收：`tomllib` 能解析全部 6 个 configs；无 YAML 假 TOML 残留；全量绿
 
-### ☐ 2.1 skip → 硬断言
-- `test_r4_cache_schema_contract.py` 移除 cache 缺失 skip（落盘后 10 skip → 10 pass）
-- 验收：10 项真实通过
+### ☑ 2.1 skip → 硬断言 — 2026-08-13 完成
+- `_require_cache` 由 pytest.skip 改硬断言（缺失即合同违约）；13/13 真实通过
+- 唯一保留 skip：derived 树（T2 前可选，合同设计语义，非 cache 合同）
 
-### ☐ 2.2 深度增强（并入 D5 相关项：真实 loader 消费 fixture、交易日缺口用例）
+### ☑ 2.2 深度增强 — 2026-08-13 完成
+- 全池×全分区遍历：60 只 × 3 namespace × 全部 year= 分区，schema/年份对齐/非空硬断言
+- 起点锁定：全池 earliest ∈ [2023-01-01, +31d]（不再抽样 5 只）
+- 连续性：gap>15 自然日即失败，豁免登记制——全池 4 处断档全部经 TuShare suspend_d 官方记录验证后登记（002554/600150/601088/603019，真实停牌）
+- 尾部新鲜度 ≤21d；目录双向一致（qfq=池∪{510300}，basic/mf=池）
+- 测试即时抓到 603019/600150/601088/002554 四只真实停牌——合同测试有效性实证
+- 验收：20/20 通过（注入漂移可拦截：已实际拦截 4 处非豁免断档）
 - 遍历全部 symbols/parts；锁定历史起点（≈2023-01 首个交易日，合理容差）与连续性（交易日缺口检查——自然断档豁免表：长假/停牌）；manifest 与分区文件集合交叉校验
 - 真实 loader 消费 fixture：fixture 不手工拼 parquet，改走 `load_or_fetch_daily_bars` 真实写入链路（离线 seam）
 - 验收：人为注入 schema 漂移/缺数可被拦截
 
-### ☐ 2.3 与 committed fixture 合同互补
-- 确认 `test_seeded_cache_schema.py`（永不 skip）与真实湖合同（落盘后硬断言）双层防护成立
-- 验收：双层测试均绿
+### ☑ 2.3 双层防护成立 — 2026-08-13 完成
+- 第 1 层 seeded fixture（永不 skip，0 处 pytest.skip）：schema/布局/无旧布局 + **真实 loader 链路 offline round-trip**（D5：fetch seam→_write_partitioned→读回，锁定写读链路本身）
+- 第 2 层真实湖（cache 缺失即合同违约，0 处 skip）：2.1+2.2 全部硬断言
+- 验收：contract/infra 154 passed；全量 1039 passed；覆盖率 77.11%
 
 ## 阶段 3 — P0-③ 评估范式固化（~1 天）
 
