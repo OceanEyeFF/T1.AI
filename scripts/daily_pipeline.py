@@ -17,7 +17,6 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Iterable
 
-import yaml
 
 # Keep consistent with other scripts: allow running from repo root.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -43,6 +42,10 @@ from ashare_lab.recommendation import (  # noqa: E402
 )
 from ashare_lab.recommendation.validator import HS300IndexCalendarSource  # noqa: E402
 from ashare_lab.universe import is_allowed_a_share_symbol  # noqa: E402
+try:  # noqa: E402
+    from scripts.config_io import load_mapping_config
+except ImportError:  # 直接以脚本运行时 scripts/ 在 sys.path 上
+    from config_io import load_mapping_config
 
 logger = logging.getLogger(__name__)
 
@@ -60,15 +63,13 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return p.parse_args(argv)
 
 
-def _load_yaml(path: str | Path) -> dict[str, Any]:
-    raw = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
-    if not isinstance(raw, dict):
-        raise ValueError(f"YAML config must be a mapping: {path}")
-    return raw
+def _load_config(path: str | Path) -> dict[str, Any]:
+    """配置统一走 config_io（TOML；JSON 兼容，YAML 已废弃）。"""
+    return load_mapping_config(path)
 
 
 def _configure_logging(config_path: str | Path) -> None:
-    cfg = _load_yaml(config_path)
+    cfg = _load_config(config_path)
     logging_cfg = cfg.get("logging") or {}
     level_name = str(logging_cfg.get("level") or "INFO").upper()
     fmt = str(logging_cfg.get("format") or "%(asctime)s [%(levelname)s] %(name)s - %(message)s")
@@ -173,7 +174,7 @@ class DummyDryRunFeatureBuilder:
 
 
 def _build_data_source(data_source_config_path: str | Path) -> tuple[Any, Any]:
-    cfg = _load_yaml(data_source_config_path)
+    cfg = _load_config(data_source_config_path)
     default_source = str(cfg.get("default_source") or "tushare")
     sources = cfg.get("sources") or {}
     selected = sources.get(default_source) or {}
@@ -206,7 +207,7 @@ def _load_model(model_config_path: str | Path, checkpoint_path: str | Path):
     except Exception as exc:  # pragma: no cover
         raise RuntimeError("PyTorch (torch) is required to run the production pipeline") from exc
 
-    cfg = _load_yaml(model_config_path)
+    cfg = _load_config(model_config_path)
     model_cfg = cfg.get("model") or {}
     model = create_mtl_model(
         input_dim=int(model_cfg.get("input_dim", 10)),

@@ -11,7 +11,6 @@ import tomllib
 from pathlib import Path
 
 import pytest
-import yaml
 
 from ashare_lab.stock_pool.registry import get_stock_pool_record
 from tests.support.paths import REPO_ROOT
@@ -72,9 +71,7 @@ def test_market_state_profile_referenced_paths_exist() -> None:
 
 @pytest.mark.contract
 def test_model_mtl_profile_outputs_in_three_zone() -> None:
-    cfg = yaml.safe_load(
-        (PROFILE_ROOT / "model_mtl.toml").read_text(encoding="utf-8")
-    )
+    cfg = _load_toml("inputs/configs/profiles/model_mtl.toml")
     out = cfg["output"]
     assert out["model_dir"] == "workspace/checkpoints"
     assert out["log_dir"] == "workspace/runs"

@@ -31,7 +31,7 @@
 - 连带删除同类遗留：`.bmad-core/`、`.spec-workflow/`、`.claude/commands/`（程序员确认一并删除）
 - 验收：`git status` 无变化；本机目录已清
 
-### ☐ T0-B [D1] 配置格式统一：真 TOML（~半天）
+### ☑ T0-B [D1] 配置格式统一 — 并入阶段 2.0 完成（2026-08-13）
 1. `inputs/configs/{pipeline,data_source}.toml` + `profiles/model_mtl.toml` 由 YAML 内容转真 TOML
 2. `scripts/daily_pipeline.py:_load_yaml` → tomllib；`scripts/train_mtl.py` yaml.safe_load → tomllib
 3. 新增合同测试：`inputs/configs/**/*.toml` 全部可被 `tomllib.loads` 解析
@@ -101,14 +101,25 @@
 - **合同测试 13/13 全绿**（历史 10 skip + 7 中间态失败全部转正）；全量测试 1030 passed / 0 failed / 0 skipped
 - 验收：数据湖对全池 cache-first 可用；阶段 2（合同增强）可以开始
 
-## 阶段 2 — P0-② 合同测试恢复与增强 [D2]（紧随 1.5，~2 小时）
+## 阶段 2 — P0-② 合同测试恢复与增强 [D2]（紧随 1.5，~2 小时 + 前置 D1）
+
+### ☑ 2.0 [D1] 配置转真 TOML — 2026-08-13 完成
+- 3 配置转写完成（注释全保留）；消费方 daily_pipeline/train_mtl → config_io.load_mapping_config（scripts/ 双 import 兼容）、orchestrator/core.py → tomllib(+tomli fallback)
+- 4 处测试同步（含 tests/support/toml_utils.py 新助手）；合法 YAML 场景保留（metadata.yaml、load_yaml 工具）
+- 验收：6 个 configs 全部 tomllib 可解析；全量 1031 passed；覆盖率 77.11%
+- 转写：`pipeline.toml`、`data_source.toml`、`profiles/model_mtl.toml`（保留全部注释）
+- 切消费方：`scripts/daily_pipeline.py` / `scripts/train_mtl.py` 的 `_load_yaml` → `config_io.load_mapping_config`；`orchestrator/core.py` yaml.safe_load → tomllib(+tomli fallback)
+- 同步测试：`test_profile_paths_contract`（model_mtl 段）、`test_daily_pipeline_prod` fixture（JSON 伪 YAML → TOML）、`test_pipeline.py`（yaml.dump → TOML）、`test_models.py:434`
+- 保留合法 YAML 场景：`mtl_finetune.load_yaml` 工具函数、builder metadata.yaml
+- 验收：`tomllib` 能解析全部 6 个 configs；无 YAML 假 TOML 残留；全量绿
 
 ### ☐ 2.1 skip → 硬断言
 - `test_r4_cache_schema_contract.py` 移除 cache 缺失 skip（落盘后 10 skip → 10 pass）
 - 验收：10 项真实通过
 
-### ☐ 2.2 深度增强
-- 遍历全部 symbols/parts；锁定历史起点（≈2023-01 首个交易日，合理容差）与连续性；manifest 与分区文件集合交叉校验
+### ☐ 2.2 深度增强（并入 D5 相关项：真实 loader 消费 fixture、交易日缺口用例）
+- 遍历全部 symbols/parts；锁定历史起点（≈2023-01 首个交易日，合理容差）与连续性（交易日缺口检查——自然断档豁免表：长假/停牌）；manifest 与分区文件集合交叉校验
+- 真实 loader 消费 fixture：fixture 不手工拼 parquet，改走 `load_or_fetch_daily_bars` 真实写入链路（离线 seam）
 - 验收：人为注入 schema 漂移/缺数可被拦截
 
 ### ☐ 2.3 与 committed fixture 合同互补

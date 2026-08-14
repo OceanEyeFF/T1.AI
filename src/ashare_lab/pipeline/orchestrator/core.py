@@ -21,7 +21,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
-import yaml
+try:  # Python 3.11+
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - Python <=3.10 fallback
+    import tomli as tomllib
 
 from ashare_lab.recommendation import RecommendationEngine, RecommendationHistory, RecommendationValidator
 
@@ -191,7 +194,7 @@ class DailyPipelineOrchestrator:
         calendar_source: Any,
     ) -> None:
         self.config_path = Path(config_path)
-        raw = yaml.safe_load(self.config_path.read_text(encoding="utf-8")) or {}
+        raw = tomllib.loads(self.config_path.read_text(encoding="utf-8"))
         if not isinstance(raw, Mapping):
             raise ValueError("pipeline config must be a mapping")
 

@@ -1,31 +1,32 @@
-pipeline:
-  default_top_n: 10
-  default_horizons: [3, 5, 10]
-  recommendation_dir: "outputs/predictions"
-  report_dir: "outputs/reports"
-  db_path: "outputs/recommendations.db"
-  run_meta_path: "workspace/runs/pipeline_runs.jsonl"
+[pipeline]
+default_top_n = 10
+default_horizons = [3, 5, 10]
+recommendation_dir = "outputs/predictions"
+report_dir = "outputs/reports"
+db_path = "outputs/recommendations.db"
+run_meta_path = "workspace/runs/pipeline_runs.jsonl"
 
-error_handling:
-  retry_attempts: 3
-  retry_backoff_seconds: [2, 5, 10]
-  allow_stale_data: true
-  allow_training_skip: true
-  allow_validation_skip: false
+[error_handling]
+retry_attempts = 3
+retry_backoff_seconds = [2, 5, 10]
+allow_stale_data = true
+allow_training_skip = true
+allow_validation_skip = false
 
-logging:
-  level: INFO
-  format: "%(asctime)s [%(levelname)s] %(name)s - %(message)s"
-  # 不配置 file：日志由包装脚本 tee 落盘，避免双重写入同一日志文件
+[logging]
+level = "INFO"
+format = "%(asctime)s [%(levelname)s] %(name)s - %(message)s"
+# 不配置 file：日志由包装脚本 tee 落盘，避免双重写入同一日志文件
 
-monitoring:
-  enabled: true
-  rolling_window_days: 20
-  horizon: 5
-  ic_threshold: 0.04
-  hit_rate_threshold: 0.55
-  retrain_trigger_mode: "auto"  # auto / manual
-  retrain_threshold:
-    ic_degrade_ratio: 0.3
-    consecutive_low_days: 5
-  retrain_strategy: "incremental"  # incremental / full
+[monitoring]
+enabled = true
+rolling_window_days = 20
+horizon = 5
+ic_threshold = 0.04
+hit_rate_threshold = 0.55
+retrain_trigger_mode = "auto"  # auto / manual
+retrain_strategy = "incremental"  # incremental / full
+
+[monitoring.retrain_threshold]
+ic_degrade_ratio = 0.3
+consecutive_low_days = 5

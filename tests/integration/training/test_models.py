@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import torch
-import yaml
+import tomllib
 
 import sys
 
@@ -431,8 +431,8 @@ def test_early_stopping_triggers_when_val_ic_stalls(tmp_path: Path):
     assert out["epochs_ran"] == 3  # first epoch sets best, then 2 stalls -> stop
 
 
-def test_model_mtl_yaml_parses():
-    cfg = yaml.safe_load(Path("inputs/configs/profiles/model_mtl.toml").read_text(encoding="utf-8"))
+def test_model_mtl_toml_parses():
+    cfg = tomllib.loads(Path("inputs/configs/profiles/model_mtl.toml").read_text(encoding="utf-8"))
     assert isinstance(cfg, dict)
     assert cfg["model"]["input_dim"] == 11
     assert cfg["model"]["min_seq_len"] == 20

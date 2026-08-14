@@ -8,6 +8,7 @@ import pytest
 
 from ashare_lab.pipeline.orchestrator import DailyPipelineOrchestrator, retry_with_backoff
 from ashare_lab.recommendation import RecommendationHistory
+from tests.support.toml_utils import dump_mapping_toml
 
 
 class FakeUniverseFilter:
@@ -116,7 +117,7 @@ class FakeCalendarSource:
         return df
 
 
-def _write_pipeline_yaml(tmp_path: Path, **overrides) -> Path:
+def _write_pipeline_toml(tmp_path: Path, **overrides) -> Path:
     cfg = {
         "pipeline": {
             "default_top_n": 3,
@@ -141,8 +142,8 @@ def _write_pipeline_yaml(tmp_path: Path, **overrides) -> Path:
         else:
             cfg[k] = v
 
-    path = tmp_path / "pipeline.yaml"
-    path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
+    path = tmp_path / "pipeline.toml"
+    path.write_text(dump_mapping_toml(cfg), encoding="utf-8")
     return path
 
 
@@ -184,7 +185,7 @@ def test_retry_with_backoff_reraise_false_returns_none():
 
 
 def test_orchestrator_end_to_end_success_with_validation(tmp_path):
-    config_path = _write_pipeline_yaml(tmp_path, error_handling={"allow_validation_skip": False})
+    config_path = _write_pipeline_toml(tmp_path, error_handling={"allow_validation_skip": False})
 
     universe = FakeUniverseFilter(["000001", "000002", "600519"])
     feature_builder = FakeFeatureBuilder()
@@ -243,7 +244,7 @@ def test_orchestrator_end_to_end_success_with_validation(tmp_path):
 
 
 def test_orchestrator_graceful_degrade_on_data_refresh_failure(tmp_path):
-    config_path = _write_pipeline_yaml(tmp_path, error_handling={"allow_stale_data": True})
+    config_path = _write_pipeline_toml(tmp_path, error_handling={"allow_stale_data": True})
 
     universe = FakeUniverseFilter(["000001", "000002", "600519"])
     feature_builder = FakeFeatureBuilder()
@@ -269,7 +270,7 @@ def test_orchestrator_graceful_degrade_on_data_refresh_failure(tmp_path):
 
 
 def test_orchestrator_validation_failure_fails_when_not_allowed(tmp_path):
-    config_path = _write_pipeline_yaml(tmp_path, error_handling={"allow_validation_skip": False})
+    config_path = _write_pipeline_toml(tmp_path, error_handling={"allow_validation_skip": False})
 
     universe = FakeUniverseFilter(["000001", "000002", "600519"])
     feature_builder = FakeFeatureBuilder()
@@ -300,7 +301,7 @@ def test_orchestrator_validation_failure_fails_when_not_allowed(tmp_path):
 
 
 def test_orchestrator_record_run_failure_is_tolerated(tmp_path, monkeypatch):
-    config_path = _write_pipeline_yaml(tmp_path)
+    config_path = _write_pipeline_toml(tmp_path)
 
     universe = FakeUniverseFilter(["000001", "000002", "600519"])
     feature_builder = FakeFeatureBuilder()
@@ -327,7 +328,7 @@ def test_internal_helpers_and_branches(tmp_path):
     import ashare_lab.pipeline.orchestrator.core as core
 
     # invalid config shape
-    bad_cfg = tmp_path / "bad.yaml"
+    bad_cfg = tmp_path / "bad.toml"
     bad_cfg.write_text("- 1\n- 2\n", encoding="utf-8")
     with pytest.raises(ValueError):
         DailyPipelineOrchestrator(
@@ -339,7 +340,7 @@ def test_internal_helpers_and_branches(tmp_path):
             calendar_source=FakeCalendarSource(),
         )
 
-    cfg = _write_pipeline_yaml(tmp_path)
+    cfg = _write_pipeline_toml(tmp_path)
     orch = DailyPipelineOrchestrator(
         config_path=cfg,
         model=FakeModel([0.1, 0.2, 0.3]),

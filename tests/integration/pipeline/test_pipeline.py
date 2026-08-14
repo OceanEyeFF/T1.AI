@@ -1,12 +1,14 @@
 import json
 
+from tests.support.toml_utils import dump_mapping_toml
+
 from scripts.daily_pipeline import main as pipeline_main
 
 
 def test_daily_pipeline_cli_dry_run(tmp_path, capsys):
-    pipeline_cfg = tmp_path / "pipeline.yaml"
+    pipeline_cfg = tmp_path / "pipeline.toml"
     pipeline_cfg.write_text(
-        json.dumps(
+        dump_mapping_toml(
             {
                 "pipeline": {
                     "default_top_n": 3,
@@ -17,22 +19,18 @@ def test_daily_pipeline_cli_dry_run(tmp_path, capsys):
                 },
                 "error_handling": {"retry_attempts": 1, "retry_backoff_seconds": [0]},
                 "logging": {"level": "INFO", "format": "%(message)s"},
-            },
-            ensure_ascii=False,
-            indent=2,
+            }
         ),
         encoding="utf-8",
     )
 
-    data_source_cfg = tmp_path / "data_source.yaml"
+    data_source_cfg = tmp_path / "data_source.toml"
     data_source_cfg.write_text(
-        json.dumps(
+        dump_mapping_toml(
             {
                 "default_source": "tushare",
                 "sources": {"tushare": {"cache_dir": str(tmp_path / "cache")}},
-            },
-            ensure_ascii=False,
-            indent=2,
+            }
         ),
         encoding="utf-8",
     )
@@ -62,9 +60,9 @@ def test_daily_pipeline_cli_dry_run(tmp_path, capsys):
 
 
 def test_daily_pipeline_cli_dry_run_with_odp_source(tmp_path, capsys):
-    pipeline_cfg = tmp_path / "pipeline.yaml"
+    pipeline_cfg = tmp_path / "pipeline.toml"
     pipeline_cfg.write_text(
-        json.dumps(
+        dump_mapping_toml(
             {
                 "pipeline": {
                     "default_top_n": 3,
@@ -75,22 +73,18 @@ def test_daily_pipeline_cli_dry_run_with_odp_source(tmp_path, capsys):
                 },
                 "error_handling": {"retry_attempts": 1, "retry_backoff_seconds": [0]},
                 "logging": {"level": "INFO", "format": "%(message)s"},
-            },
-            ensure_ascii=False,
-            indent=2,
+            }
         ),
         encoding="utf-8",
     )
 
-    data_source_cfg = tmp_path / "data_source.yaml"
+    data_source_cfg = tmp_path / "data_source.toml"
     data_source_cfg.write_text(
-        json.dumps(
+        dump_mapping_toml(
             {
                 "default_source": "odp",
                 "sources": {"odp": {"cache_dir": str(tmp_path / "cache"), "provider": "yfinance"}},
-            },
-            ensure_ascii=False,
-            indent=2,
+            }
         ),
         encoding="utf-8",
     )

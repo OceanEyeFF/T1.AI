@@ -30,7 +30,11 @@ from typing import Iterable, Tuple
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-import yaml
+
+try:
+    from scripts.config_io import load_mapping_config
+except ImportError:  # 直接以脚本运行时 scripts/ 在 sys.path 上
+    from config_io import load_mapping_config
 
 from ashare_lab.dataset.sequence_parquet import load_sequence_parquet
 from ashare_lab.evaluation.metrics import information_coefficient
@@ -52,9 +56,9 @@ from ashare_lab.training.mtl_finetune import (
 )
 
 
-def _load_yaml(path: Path) -> dict:
-    with path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+def _load_config(path: Path) -> dict:
+    """配置统一走 config_io（TOML；JSON 兼容，YAML 已废弃）。"""
+    return load_mapping_config(path)
 
 
 def _latest_checkpoint(save_dir: Path) -> Path | None:
@@ -176,7 +180,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=42, help="随机种子")
     args = parser.parse_args()
 
-    cfg = _load_yaml(Path(args.config))
+    cfg = _load_config(Path(args.config))
     model_cfg = cfg.get("model", {})
     train_cfg = cfg.get("training", {})
     data_cfg = cfg.get("data", {})

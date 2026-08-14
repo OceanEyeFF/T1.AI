@@ -10,18 +10,19 @@
 #   3) `DatasetConfig.source` 代码默认已是 `"tushare"`（R4）；与本文件 default
 #      解耦——改本文件不会自动改 DatasetBuilder / make_r4_datalake。
 # =============================================================================
-default_source: "tushare"  # 可选: tushare, odp（TuShare 单一信源）
-fallback: "tushare"
-sources:
-  tushare:
-    description: "TuShare Pro — MS-R4 日频湖 primary（请用 DataLake / make_r4_datalake）"
-    token_env: "TUSHARE_TOKEN"
-    cache_dir: "inputs/data/cache"
-  odp:
-    description: "OpenBB ODP 数据源（默认 yfinance provider）"
-    provider: "yfinance"
-    interval: "1d"
-    # 可选：当本机运行 ODP REST 服务时启用（默认优先 SDK）
-    # base_url: "http://127.0.0.1:8000"
-    # prefer_rest: true
-    cache_dir: "inputs/data/cache"
+default_source = "tushare"  # 可选: tushare, odp（TuShare 单一信源）
+fallback = "tushare"
+
+[sources.tushare]
+description = "TuShare Pro — MS-R4 日频湖 primary（请用 DataLake / make_r4_datalake）"
+token_env = "TUSHARE_TOKEN"
+cache_dir = "inputs/data/cache"
+
+[sources.odp]
+description = "OpenBB ODP 数据源（默认 yfinance provider）"
+provider = "yfinance"
+interval = "1d"
+# 可选：当本机运行 ODP REST 服务时启用（默认优先 SDK）
+# base_url = "http://127.0.0.1:8000"
+# prefer_rest = true
+cache_dir = "inputs/data/cache"
