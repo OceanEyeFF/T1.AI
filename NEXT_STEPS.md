@@ -135,9 +135,12 @@
 
 ## 阶段 3 — P0-③ 评估范式固化（~1 天）
 
-### ☐ 3.1 Daily-CS IC/RankIC 基线复跑
-- 用落盘数据跑现有 daily_cs pipeline，产出基线数字
-- 验收：基线报告入 `outputs/reports/`，命令可重复执行
+### ☑ 3.1 Daily-CS IC/RankIC 基线复跑 — 2026-08-14 完成
+- 数据集重建：`sequence_baseline_20230101_20260813`（60 只 × 11 特征 × seq20，test 2026-02-09..2026-08-13；profile end 同步 20260813）
+- LSTM（auto 特征）+ XGB 滚动重训 → OOS parquet + 报告 → audit + compare + sanity（h5/h10）
+- 基线结论：**continue-research**——RankIC 0.0664/0.0769 < 0.08（XGB 距门禁 0.0031）；time_reverse 部分未过；lag-1 阈值对 daily 重预测判别力弱（记入协议修订项）
+- 数字留档：协议文档 §7 Baseline Ledger；产物 outputs/reports/（本地 artifact）
+- 修复过程中发现：rolling 脚本 feature-mode 默认 dim19 与新数据集 11 特征不匹配 → 用 --feature-mode auto；XGB 依赖补装
 
 ### ☐ 3.2 月胜率分布 + trade-like Top-N 面板
 - 补充月度胜率分布统计与 trade-like panel 评估

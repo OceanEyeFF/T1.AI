@@ -34,7 +34,7 @@
 
 ```bash
 python "scripts/audit_ic_reports.py" \
-  --reports "output/reports/<report_a>.json" "output/reports/<report_b>.json" \
+  --reports "outputs/reports/<report_a>.json" "outputs/reports/<report_b>.json" \
   --tag <tag>
 ```
 
@@ -42,7 +42,7 @@ python "scripts/audit_ic_reports.py" \
 
 ```bash
 python "scripts/compare_ic_reports.py" \
-  --reports "output/reports/<report_a>.json" "output/reports/<report_b>.json" \
+  --reports "outputs/reports/<report_a>.json" "outputs/reports/<report_b>.json" \
   --metric-source raw \
   --monthly-source raw \
   --daily-cs-mode required \
@@ -54,7 +54,7 @@ python "scripts/compare_ic_reports.py" \
 
 ```bash
 python "scripts/compare_ic_reports.py" \
-  --reports "output/reports/<report_a>.json" "output/reports/<report_b>.json" \
+  --reports "outputs/reports/<report_a>.json" "outputs/reports/<report_b>.json" \
   --metric-source calibrated \
   --monthly-source calibrated \
   --daily-cs-mode required \
@@ -66,14 +66,14 @@ python "scripts/compare_ic_reports.py" \
 
 ```bash
 python "scripts/run_sanity_checks.py" \
-  --oos-parquet "output/reports/<candidate>_oos.parquet" \
+  --oos-parquet "outputs/reports/<candidate>_oos.parquet" \
   --horizon 5 \
-  --output "output/reports/sanity_<candidate>_h5.json"
+  --output "outputs/reports/sanity_<candidate>_h5.json"
 
 python "scripts/run_sanity_checks.py" \
-  --oos-parquet "output/reports/<candidate>_oos.parquet" \
+  --oos-parquet "outputs/reports/<candidate>_oos.parquet" \
   --horizon 10 \
-  --output "output/reports/sanity_<candidate>_h10.json"
+  --output "outputs/reports/sanity_<candidate>_h10.json"
 ```
 
 ## 4. Gate Thresholds
@@ -94,10 +94,10 @@ python "scripts/run_sanity_checks.py" \
 - lag-1 后 IC 有足够下降。
 - 标签成熟日与交易时点必须由 `evaluation_protocol` 和训练/报告链路显式表达。
 
-当前缺口：
+当前缺口（2026-08-14 更新）：
 
-- 独立 random-label 实验尚未作为单独 CLI 固化；当前 shuffle check 只能作为近似防伪面。
-- 行业 / 市值中性化门禁尚未有可跑模块；相关结论只能标记为未覆盖，不得视作通过。
+- random-label 实验已固化于 `scripts/run_sanity_checks.py`（`--random-label-trials` / `--random-label-threshold` / `--random-label-horizons`）。
+- 中性化门禁已固化于同一脚本（`--neutralization-output` / `--neutralization-horizons`），但行业/市值分组数据源尚未落盘，运行需先提供分组映射；未提供时相关结论只能标记为未覆盖，不得视作通过。
 
 ## 5. Interpretation Rules
 
@@ -114,3 +114,20 @@ A3 只能在本协议下组织优化候选：
 - 使用同一 OOS 窗口和同一报告字段比较 LSTM、XGBoost 与轻量融合。
 - 先修复产物协议和可比较性，再解释模型优劣。
 - 把 random-label 和行业 / 市值中性化列为后续防伪增强项；未覆盖时保留 `continue-research`。
+
+## 7. Baseline Ledger（基线留档，2026-08-14 3.1 复跑）
+
+数据集：`sequence_baseline_20230101_20260813`（research_liquidity_quality_v1 60 只，11 特征 × seq_len 20，test 2026-02-09..2026-08-13）。产物目录：`outputs/reports/`（本地 artifact，不入库）。
+
+| 指标 | 门禁 | LSTM | XGB |
+|---|---:|---:|---:|
+| mean(IC_5_10) | ≥ 0.05 | 0.0536 | 0.0568 |
+| mean(RankIC_5_10) | ≥ 0.08 | 0.0664 | 0.0769 |
+| 月胜率 | ≥ 60% | 71.4% | 71.4% |
+| 最差月 | ≥ -0.10 | -0.0628 | -0.0129 |
+| 连续负月 | ≤ 2 | 1 | 1 |
+| shuffle | abs≈0 | pass | pass |
+| time_reverse | abs≈0 | fail (h5/h10) | h5 pass / h10 fail |
+| lag-1 drop | ≥ 0.01 | 0.0004 / 0.0033 | 0.0058 / 0.0021 |
+
+**结论：continue-research**。RankIC 未达门禁（XGB 距 0.08 仅 0.0031）；time_reverse 部分未过。lag-1 阈值对 daily 滚动预测（相邻日 target 重叠 90%+）判别力弱——后续协议修订应改为 lag≥5 或重叠感知阈值。

@@ -1,13 +1,13 @@
 [build_sequence_dataset]
 start = "20230101"
-end = "20260120"
+end = "20260813"
 
-# 选股来源：注册表股票池（research_liquidity_quality，61 只）
+# 选股来源：注册表股票池（research_liquidity_quality，60 只；601989 停牌剔除）
 stock_pool_id = "custom_research_liquidity_quality_v1"
 
 source = "tushare"
 cache_dir = "inputs/data/cache"
-output_dir = "workspace/datasets/sequence_baseline_20230101_20260120"
+output_dir = "workspace/datasets/sequence_baseline_20230101_20260813"
 
 seq_len = 20
 stride = 1
