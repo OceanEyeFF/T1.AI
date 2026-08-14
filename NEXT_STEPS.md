@@ -42,11 +42,11 @@
 - `ruff check --fix --select I001,B009,UP006,PLR0402`；RUF100 逐条复核 noqa 是否仍必要
 - 验收：该批规则计数归零、全量绿（独立提交）
 
-### ☐ T0-D [D5] 测试深度补强（~2 小时）
-1. validator 适配器测试 `assert_has_calls` 锁定 source/adjust/token/refresh/调用次数与顺序
-2. `test_infra_a_flow` 改真实 `load_or_fetch_daily_bars` 消费 fixture（不再内联重实现）
-3. 动态 fixture 增加明确的交易日缺口用例（周末缺口）
-- 验收：全量绿（独立提交）
+### ☑ T0-D [D5] 测试深度补强 — 2026-08-13 完成
+1. ✓ 新增 `tests/contract/recommendation/test_adapter_kwargs_contract.py`（9 项）：make_r4_datalake 构造参数透传、load_daily_bars 的 source/adjust/日期规范化、ODP odp_* 字段、HS300 日期规范化、三 adapter 拒绝未知 kwargs
+2. ✓ `test_infra_a_flow.test_i1` 改薄 shim 委托**真实** load_or_fetch_daily_bars 读写链路（fetch 哨兵防触网，不再内联重实现读取）
+3. ✓ 新增 `test_i1b_weekend_gap_no_rows`：周末缺口用例 + 与 manifest calendar 一一对应
+- 验收：全量 1050 passed；覆盖率 77.11%
 
 ### ☐ T0-E [D4-B] ruff 手动批（~3 小时）
 - F401（确认无副作用导入）/UP035/RUF046/SIM118/FLY002/SIM102 逐文件小修
