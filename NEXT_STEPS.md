@@ -175,15 +175,19 @@
 - **后续动作（已完成）**：数据集重建（51235 样本）+ 双基线重跑（v2）——v1→v2 对照证实跨停牌污染贡献伪信号
 - 全量 1063 passed
 
-## 阶段 5 — P0-⑤ 模型同窗比较（~2 天）
+## 阶段 5 — P0-⑤ 模型同窗比较（2026-09-02 完成）
 
-### ☐ 5.1 LSTM / XGBoost 同窗同标签训练
-- 同一窗口、同一标签、同一数据集训练两模型
-- 验收：训练日志与 checkpoint 落盘
+### ☑ 5.1 LSTM / XGBoost 同窗同标签训练 — 2026-09-02 完成
+- 同数据集（sequence_baseline_20230101_20260813）同窗口（rolling 26 周）同标签（close_to_close 3/5/10d+1d）训练 LSTM/XGB
+- 产物：训练日志（workspace/runs/3.1_*_v2.log）、OOS parquet、报告 JSON（outputs/reports/*_v2*）
+- checkpoint 说明：rolling 脚本支持 --save-weekly-checkpoints；认证（P1 certified.json）时必选，认证前无消费方（记入 P1 前置）
 
-### ☐ 5.2 IC/收益一致性结论
-- 两模型 IC、RankIC、面板收益对比；主模型选择结论
-- 验收：结论报告；`workspace/registry/certified.json` 落第一个认证记录或明确否决理由
+### ☑ 5.2 IC/收益一致性结论 — 2026-09-02 完成
+- 结论报告：outputs/reports/5.2_same_window_comparison_v2.md
+- **两模型均未过认证门禁**（RankIC 0.0649/0.0596 < 0.08；panel 均 fail）→ certified.json 落**明确否决记录**（status=rejected + 理由 + candidates 快照）
+- 主模型无唯一解：IC 口径 LSTM 略优（RankIC 0.0649 vs 0.0596）；trade-like 口径 XGB 更稳（连续负日 9 vs 19、月胜率 50% vs 33%）；均不显著
+- LSTM 连续负日 19 天真实交易不可接受（即使 RankIC 略高）
+- alpha_score 维持 candidate research signal（协议 §5）；P1 按窗口/重训/loss 实验后重新评估认证
 
 ---
 

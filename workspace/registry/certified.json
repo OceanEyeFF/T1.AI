@@ -1,0 +1,35 @@
+{
+  "status": "rejected",
+  "rejected_at": "2026-09-02T00:00:00+08:00",
+  "rejection_reason": "同窗比较 (5.2) LSTM/XGB 均未过评估门禁：RankIC_5_10 0.0649/0.0596 < 0.08；trade-like panel 均 fail（LSTM 连续负日 19，XGB 月胜率 50%）。按 gate protocol §4/§5 为 continue-research，认证条件未满足。",
+  "pairs": {},
+  "candidates": {
+    "lstm_baseline_v2_mainline_3510d": {
+      "pool": "custom_research_liquidity_quality_v1",
+      "model": "lstm",
+      "config_profile": "sequence_baseline_20230101_20260813_auto_feat",
+      "ic_series": {
+        "5d": {
+          "mean_daily_cs": 0.0514,
+          "rank_mean_daily_cs": 0.0649
+        }
+      },
+      "panel_gate": false,
+      "candidate_at": "2026-09-02"
+    },
+    "xgb_baseline_v2_mainline_3510d": {
+      "pool": "custom_research_liquidity_quality_v1",
+      "model": "xgboost",
+      "config_profile": "sequence_baseline_20230101_20260813_auto_feat",
+      "ic_series": {
+        "5d": {
+          "mean_daily_cs": 0.0492,
+          "rank_mean_daily_cs": 0.0596
+        }
+      },
+      "panel_gate": false,
+      "candidate_at": "2026-09-02"
+    }
+  },
+  "updated": "2026-09-02T00:00:00+08:00"
+}
