@@ -370,11 +370,18 @@ def load_or_fetch_daily_bars(
 
     # qfq/hfq：任何需要抓取的情形都整段重取（覆盖旧缓存 span ∪ 请求区间），
     # 保证整个缓存序列共享同一个复权基准。
+    # 唯一例外：增量区间完全位于 existing 之前的"前端边缘"（如请求 start=20230101
+    # 而缓存从 2023-01-03 起的元旦周末边缘）——前端拼接无复权接缝，且该区间通常
+    # 无交易日数据；整段重取会导致每次读取都全量重拉（4.3 审计发现）。
     if ranges and adjust_mode != "raw" and not existing.empty:
-        span_start = min(start, existing.index.min())
-        span_end = max(end, existing.index.max())
-        ranges = [(span_start, span_end)]
-        existing = pd.DataFrame(columns=SUPPORTED_FIELDS)
+        only_leading = all(
+            fetch_end < existing.index.min() for fetch_start, fetch_end in ranges
+        )
+        if not only_leading:
+            span_start = min(start, existing.index.min())
+            span_end = max(end, existing.index.max())
+            ranges = [(span_start, span_end)]
+            existing = pd.DataFrame(columns=SUPPORTED_FIELDS)
 
     fetched_frames: list[pd.DataFrame] = []
     for fetch_start, fetch_end in ranges:

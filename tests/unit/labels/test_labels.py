@@ -406,3 +406,48 @@ class TestMultiHorizonLabel:
 
         with pytest.raises(ValueError, match="不支持的 label_mode"):
             label.compute(sample_stock_data)
+
+
+class TestSuspensionGapMask:
+    """4.3：行间停牌（无行断档）标签应置 NaN。"""
+
+    def test_gap_detected_and_label_nan(self) -> None:
+        # 构造含真实停牌（行间断档 18 天）的序列：2024-01-01 起每日一行，
+        # 在 index 3 之后断档 18 天（停牌），复牌日为 index 4。
+        dates = list(pd.date_range("2024-01-01", periods=4, freq="D")) + [
+            pd.Timestamp("2024-01-05") + pd.Timedelta(days=18)
+        ] + list(pd.date_range("2024-01-24", periods=6, freq="D"))
+        n = len(dates)
+        df = pd.DataFrame(
+            {
+                "open": np.arange(n, dtype=float) + 10,
+                "high": np.arange(n, dtype=float) + 11,
+                "low": np.arange(n, dtype=float) + 9,
+                "close": np.arange(n, dtype=float) + 10,
+                "volume": np.full(n, 1_000_000.0),
+            },
+            index=pd.DatetimeIndex(dates),
+        )
+        label = MultiHorizonLabel(horizons=[3, 5])  # 只用 3/5 待 3d 窗口跨停牌
+        result = label.compute(df)
+        # index 2（停牌前最后一天）：3 日窗口跨 18 天断档 → NaN
+        assert pd.isna(result.iloc[2]["label_3d"]), "跨停牌标签应为 NaN"
+        # index 4（复牌日）之前的标签不跨停牌（index 0 的 3 日窗口 = 0,1,2 无断档）
+        assert pd.notna(result.iloc[0]["label_3d"]), "无停牌窗口标签应有效"
+
+    def test_normal_gap_under_threshold_kept(self) -> None:
+        # 正常 1 周缺口（<15 天）不应误杀
+        dates = list(pd.date_range("2024-01-01", periods=3, freq="D")) + [
+            pd.Timestamp("2024-01-04") + pd.Timedelta(days=7)
+        ] + list(pd.date_range("2024-01-12", periods=5, freq="D"))
+        n = len(dates)
+        df = pd.DataFrame(
+            {
+                "close": np.arange(n, dtype=float) + 10,
+                "volume": np.full(n, 1_000_000.0),
+            },
+            index=pd.DatetimeIndex(dates),
+        )
+        label = MultiHorizonLabel(horizons=[3])
+        result = label.compute(df)
+        assert pd.notna(result.iloc[0]["label_3d"]), "7 天缺口不应触发停牌标记"

@@ -27,6 +27,9 @@ def _window_has_issue(mask: pd.Series, window: int) -> pd.Series:
     具体规则：
         - 停牌：volume == 0
         - 缺价：close 为 NaN
+        - 行间停牌：相邻行情日断档 > MAX_NATURAL_GAP_DAYS（长假最长 ~11 自然日，
+          >15 即真实停牌；TuShare 停牌日不产生行，_window_has_issue 无法感知，
+          需通过 index 断档检测——4.3 审计发现）
     """
     # 先计算滚动最大值，再向前平移 window，使得 index t 对应窗口 (t+1, t+window)
     return (
@@ -35,6 +38,27 @@ def _window_has_issue(mask: pd.Series, window: int) -> pd.Series:
         .shift(-window)
         .astype(bool)
     )
+
+
+MAX_NATURAL_GAP_DAYS = 15  # 与合同测试 2.2 的断档阈值一致（长假 ~11 天，>15=停牌）
+
+
+def _suspension_gap_mask(index: pd.DatetimeIndex, window: int) -> pd.Series:
+    """行间停牌掩码：窗口 (i+1, i+window) 内任一行间断档 > MAX_NATURAL_GAP_DAYS 即标记。
+
+    返回与 index 对齐的 bool Series（t 为 True = 该行标签窗口跨真实停牌）。
+    """
+    idx = pd.DatetimeIndex(index)
+    if len(idx) < 2:
+        return pd.Series(False, index=idx)
+    gap_days = idx.to_series().diff().dt.days
+    suspension = (gap_days > MAX_NATURAL_GAP_DAYS).fillna(False)
+    # suspension 为 True 的位置是“断档后的第一个交易日”；
+    # 向前 window 行内存在断档 → 窗口跨停牌：滚动求和后平移
+    susp_int = suspension.astype(int)
+    count = susp_int.rolling(window=window, min_periods=window).sum().shift(-window).fillna(0)
+    # count > 0 表示从 t 到 t+window 的行间存在真实停牌断档
+    return count > 0
 
 
 @dataclass(frozen=True)
@@ -105,6 +129,7 @@ class MultiHorizonLabel:
 
             # 停牌掩码：如果未来窗口内任何一天缺价/停牌，label 置为 NaN
             invalid = _window_has_issue(issue_mask, h + shift_offset)
+            invalid = invalid | _suspension_gap_mask(data.index, h + shift_offset)
             label_df[label_col_for_horizon(h)] = forward_ret.mask(invalid)
 
         return label_df
@@ -171,7 +196,7 @@ class OneDayHLCLabel:
             | volume_next.isna()
             | (volume_next == 0)
         )
-        invalid = base_issue | next_issue
+        invalid = base_issue | next_issue | _suspension_gap_mask(data.index, 1)
 
         out = pd.DataFrame(index=data.index)
         out["label_1d_high"] = (high_next / base - 1.0).mask(invalid)
