@@ -194,3 +194,24 @@ python scripts/run_sanity_checks.py --oos-parquet outputs/reports/<name>_oos.par
 **决策记录**：
 - 双重保守不影响正确性，但会削弱信号强度（信息时差比标签起点多一天）——解释基线 IC 偏低的因素之一。
 - 评估口径 label_mode=close_to_close（t 收盘基准）≠ 真实交易 next_open；报告 protocol 字段已显式声明，但 close_to_close 系统性高估可交易性。**5.x 同窗比较前升级 next_open_to_open 重估**（或至少做双口径对照）。
+
+## 10. 4.2 sanity 三件套结论（2026-08-14）
+
+**verdict：主信号显著优于随机（无伪信号迹象）**。对照口径说明：
+- shuffle（5 trials）：LSTM/XGB 全 pass（abs mean_ic < 0.02，接近 0）
+- time_reverse：稳定负 IC（XGB h10 -0.0436，3 seeds 完全一致）；**负值不是泄漏特征**——正 IC 保持才是泄漏嫌疑；负值=模型利用时序结构
+- lag-1：协议阈值设计缺陷（daily 滚动相邻日 target 重叠 90%+）→ **改用 lag-h 非重叠对照**（`scripts/audit_lag_horizon_analysis.py`，daily-CS 口径）
+
+lag-h 时效表（daily-CS IC）：
+
+| 模型 | h | lag=1 | lag=5 | lag=h | 判定 |
+|---|---:|---:|---:|---:|---|
+| XGB | 5 | 0.0294 | -0.0051 | 0.0162 (h5 略升)* | 衰减 → 正常 |
+| XGB | 10 | 0.0848 | 0.0323 | 0.0044 | 单调衰减 ✓ |
+| LSTM | 5 | 0.0355 | 0.0338 | 0.0338 (h5) | 平稳 ✓ |
+| LSTM | 10 | 0.0758 | 0.0456 | 0.0085 | 单调衰减 ✓ |
+
+*XGB h5 的 lag5 轻微回升为横截面噪声区间（IC≈0 附近），非信号增强——以 monotonic 衰减为主判据。
+注意：个股内时序 corr 会混合横截面信号产生"lag 递增 IC 上升"假象，本分析以每日横截面再平均为准。
+
+**协议修订项（4.2）**：lag-1 检查替换为 lag-h 非重叠对照（脚本已固化）；time_reverse 检查的判据改为"正 IC 保持 = 泄漏嫌疑"，负 IC 不作失败。

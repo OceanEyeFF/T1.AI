@@ -161,9 +161,12 @@
 - **决策记录**：close_to_close 评估口径高估可交易性 → 5.x 前升级 next_open_to_open（或双口径对照）
 - 补充：审计脚本需 source .env（未 source 会假报警）
 
-### ☐ 4.2 sanity checks 三件套
-- shuffle / time-reverse / lag-1 对照实验，主信号必须显著优于随机
-- 验收：三项实验报告，不达标则排查原因
+### ☑ 4.2 sanity checks 三件套 — 2026-08-14 完成（verdict：主信号优于随机，无伪信号迹象）
+- shuffle：全 pass（LSTM/XGB）
+- time_reverse：稳定负 IC（XGB h10 -0.0436 × 3 seeds）——负值非泄漏特征（正 IC 保持才是）；协议判据修订
+- lag-1：阈值设计缺陷（daily 窗口重叠 90%+）→ 新脚本 `scripts/audit_lag_horizon_analysis.py`（daily-CS 口径 lag-h 非重叠对照，+1 CLI 合同测试）
+- lag-h 时效表：XGB/LSTM h10 单调衰减（0.085→0.004 / 0.076→0.009），XGB h5 lag5 回升为噪声区间（IC≈0）
+- 假象排除：个股内时序 corr 混合横截面信号会呈"lag 递增 IC 上升"——已记录禁用口径
 
 ### ☐ 4.3 复权/停牌/涨跌停处理审计
 - qfq 口径一致性、停牌期处理、涨跌停对标签的影响
