@@ -26,6 +26,19 @@ scripts/ tests/ docs/ deployment/
 
 详见 [docs/architecture/xyz_test_matrix.md](docs/architecture/xyz_test_matrix.md)
 
+## 当前主线（2026-09 状态）
+
+主线已固化为五段式流程，评估与复现均为受测试保护的可执行合同：
+
+```
+数据湖落盘 → 数据集构建 → 模型滚动训练 → 评估门禁（daily-CS IC/RankIC + sanity + panel）→ 认证注册表
+```
+
+- **执行入口（唯一）**：[NEXT_STEPS.md](NEXT_STEPS.md)（各阶段完成记录与债务台账）
+- **评估门禁协议**：[docs/research/mainline_3510d_evaluation_gate_protocol.md](docs/research/mainline_3510d_evaluation_gate_protocol.md)（阈值/命令链/基线 ledger）
+- **一键复现**：`bash scripts/repro_full_chain.sh`（`--dry-run` / `--skip-training` 快验 / 全链路）
+- **认证状态**：[workspace/registry/certified.json](workspace/registry/certified.json)——当前 status=rejected（门禁未过，alpha_score 为 candidate research signal）
+
 ---
 
 ## 快速开始
