@@ -126,6 +126,10 @@ def _set_seed(seed: int) -> None:
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+    # 深度确定性（复现性审计 2026-09-02）：CUDA 下关闭 cudnn 自适应算法选择与
+    # 确定性模式保证重训 OOS 逐字节可复现（代价是轻微训练速度损失）。
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
 
 
 def _infer_label_cols(df: pd.DataFrame) -> list[str]:

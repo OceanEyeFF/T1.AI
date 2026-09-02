@@ -197,6 +197,14 @@
 2. `pred_3d/pred_5d/pred_10d → alpha_score` 聚合契约固化
 3. 认证模型配对 → `workspace/registry/certified.json`
 
+## P1.5 联调复现性审计（2026-09-02 完成）
+
+- 审计报告：`docs/research/reproducibility_audit.md`——数据→数据集→模型→评估 全链路
+- ✅ 已验证：数据集重建 metadata 完全一致（两次构建）；sanity 同 seed 重跑逐字段一致；评估链（audit/compare/panel）确定性且 repro 产物与基线数字**逐字节一致**
+- ✅ 修复 G1：LSTM cudnn.deterministic=True（CUDA 重训可复现）
+- ✅ 闭环 G2：`scripts/repro_full_chain.sh`（--dry-run / --skip-training / 全链路）一键入口，skip-training 实测跑通
+- 规范：产物比对忽略 generated_at/created_at 时间戳；nohup 用 `python -u`
+
 ## P2（后续）：扩展
 
 1. `1d` 分钟级数据可用性验证
