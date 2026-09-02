@@ -181,3 +181,16 @@ python scripts/run_sanity_checks.py --oos-parquet outputs/reports/<name>_oos.par
 | XGB baseline | 60.2% | 66.7% | +0.233% | -0.27% | 7 | 1 | pass |
 
 解释：panel 是研究判断辅助面（不等同真实回测）。XGB panel 通过 + IC 门禁差 0.0031 → 优先在 4.x 伪信号排查中检查 XGB 信号的 RankIC 短板；LSTM 连续负日 19 天在真实交易中不可接受，暂不作为优化基线。
+
+## 9. 4.1 标签起点对齐审计结论（2026-08-14）
+
+审计脚本：`scripts/audit_label_alignment.py`（需 `source .env`）。结论 **PASS（无错位/无泄漏）**：
+
+1. label_{3,5,10}d 与独立重算 close[t+h]/close[t]-1 最大偏差 ≤1.4e-8（精确一致）。
+2. label_1d_close = close[t+1]/close[t]-1 精确一致。
+3. 特征无未来泄漏：序列窗口 = `features.loc[t-seq_len : t-1]`（不含 t，sequence_builder.py 合同），特征自身再 shift(1)（features/base.py 合同）→ **date 行特征实际代表截至 t-2 的信息**（双重保守）。
+4. maturity date = 该 symbol 内第 horizon 个交易日，与 label 成立日一致。
+
+**决策记录**：
+- 双重保守不影响正确性，但会削弱信号强度（信息时差比标签起点多一天）——解释基线 IC 偏低的因素之一。
+- 评估口径 label_mode=close_to_close（t 收盘基准）≠ 真实交易 next_open；报告 protocol 字段已显式声明，但 close_to_close 系统性高估可交易性。**5.x 同窗比较前升级 next_open_to_open 重估**（或至少做双口径对照）。

@@ -154,9 +154,12 @@
 
 ## 阶段 4 — P0-④ 伪信号系统性排查（~2 天）
 
-### ☐ 4.1 标签起点对齐审计
-- 验证标签起点 t close → t+1 open 全链路无错位（含 1d 标签）
-- 验收：审计报告 + 错位修复项
+### ☑ 4.1 标签起点对齐审计 — 2026-08-14 完成（verdict=PASS）
+- 新脚本 `scripts/audit_label_alignment.py`（可重复）+ workspace/runs/audit_label_alignment.json
+- label 全精确（≤1.4e-8）；1d 标签精确；maturity date 按交易日 shift 正确
+- **无未来泄漏**：窗口 [t-seq_len, t-1]（builder 合同）+ 特征自身 shift(1) → 双重保守（date 行=截至 t-2 信息），解释基线 IC 偏低因素之一
+- **决策记录**：close_to_close 评估口径高估可交易性 → 5.x 前升级 next_open_to_open（或双口径对照）
+- 补充：审计脚本需 source .env（未 source 会假报警）
 
 ### ☐ 4.2 sanity checks 三件套
 - shuffle / time-reverse / lag-1 对照实验，主信号必须显著优于随机
