@@ -171,6 +171,18 @@ python scripts/run_sanity_checks.py --oos-parquet outputs/reports/<name>_oos.par
 
 **结论：continue-research**。RankIC 未达门禁（XGB 距 0.08 仅 0.0031）；time_reverse 部分未过。lag-1 阈值对 daily 滚动预测（相邻日 target 重叠 90%+）判别力弱——后续协议修订应改为 lag≥5 或重叠感知阈值。
 
+**v2（2026-09-02，4.3 停牌标签修复后重建）**：
+
+| 指标 | 门禁 | LSTM v2 | XGB v2 |
+|---|---:|---:|---:|
+| mean(IC_5_10) | ≥ 0.05 | 0.0514 | 0.0492 |
+| mean(RankIC_5_10) | ≥ 0.08 | 0.0649 | 0.0596 |
+| 月胜率 | ≥ 60% | 71.4% | 71.4% |
+| 最差月 | ≥ -0.10 | -0.0647 | -0.0538 |
+| panel pass_gate | — | fail | **fail**（v1: pass）|
+
+The v2 结论：continue-research（较 v1 更弱）。**v1→v2 对照证实跨停牌标签污染贡献了部分伪信号**：XGB RankIC 0.0769→0.0596（-0.0173）、panel 月胜率 66.7%→50%。
+
 ## 8. Trade-like Panel Ledger（3.2，2026-08-14）
 
 `scripts/compare_trade_like_panels.py --reports <a.json> <b.json> --tag <tag>` 产出 `outputs/reports/ic_trade_panel_<tag>.md`（汇总 + 逐月超额矩阵）。
@@ -181,6 +193,8 @@ python scripts/run_sanity_checks.py --oos-parquet outputs/reports/<name>_oos.par
 | XGB baseline | 60.2% | 66.7% | +0.233% | -0.27% | 7 | 1 | pass |
 
 解释：panel 是研究判断辅助面（不等同真实回测）。XGB panel 通过 + IC 门禁差 0.0031 → 优先在 4.x 伪信号排查中检查 XGB 信号的 RankIC 短板；LSTM 连续负日 19 天在真实交易中不可接受，暂不作为优化基线。
+
+**v2（2026-09-02）**：XGB panel pass → **fail**（月胜率 66.7%→50%、连续负月 1→2、最差日 -4.8%→-6.4%）——v1 的 panel 通过部分依赖停牌污染标签。
 
 ## 9. 4.1 标签起点对齐审计结论（2026-08-14）
 

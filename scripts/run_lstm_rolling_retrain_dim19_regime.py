@@ -563,7 +563,7 @@ def _predict(
     device: torch.device,
     pred_cols: list[str],
 ) -> np.ndarray:
-    loader = DataLoader(TensorDataset(torch.from_numpy(x)), batch_size=batch_size, shuffle=False)
+    loader = DataLoader(TensorDataset(torch.from_numpy(np.ascontiguousarray(x))), batch_size=batch_size, shuffle=False)
     model.eval()
     rows: list[np.ndarray] = []
     for (xb,) in loader:
@@ -706,13 +706,19 @@ def _train_one_model(
         )
 
     train_loader = DataLoader(
-        TensorDataset(torch.from_numpy(x_train), torch.from_numpy(y_train)),
+        TensorDataset(
+            torch.from_numpy(np.ascontiguousarray(x_train)),
+            torch.from_numpy(np.ascontiguousarray(y_train)),
+        ),
         batch_size=cfg.batch_size,
         shuffle=True,
         pin_memory=torch.cuda.is_available(),
     )
     valid_loader = DataLoader(
-        TensorDataset(torch.from_numpy(x_valid), torch.from_numpy(y_valid)),
+        TensorDataset(
+            torch.from_numpy(np.ascontiguousarray(x_valid)),
+            torch.from_numpy(np.ascontiguousarray(y_valid)),
+        ),
         batch_size=cfg.batch_size,
         shuffle=False,
         pin_memory=torch.cuda.is_available(),
