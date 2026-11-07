@@ -13,6 +13,7 @@ from scripts.run_multilevel_tuning import (
     _levels_from_arg,
     _run_compare,
     _snapshot_lstm,
+    _snapshot_xgb,
 )
 
 
@@ -96,6 +97,19 @@ def test_snapshot_lstm_extracts_loss_weights() -> None:
     assert base["feature_count"] == 2
     assert base["config_profile"] == "lstm_rolling_baseline"
     assert base["config_status"] == "baseline"
+
+
+def test_snapshots_preserve_explicit_flat_preprocessing_parameters() -> None:
+    lstm = _snapshot_lstm(
+        {**_mock_lstm_config(), "feature_clip_lower": 0.1, "feature_clip_upper": 0.9, "feature_scale_epsilon": 0.01}
+    )
+    xgb = _snapshot_xgb(
+        {**_mock_xgb_base(), "feature_clip_lower": 0.1, "feature_clip_upper": 0.9, "feature_scale_epsilon": 0.01}
+    )
+    for snapshot in (lstm, xgb):
+        assert snapshot["feature_clip_lower"] == 0.1
+        assert snapshot["feature_clip_upper"] == 0.9
+        assert snapshot["feature_scale_epsilon"] == 0.01
 
 
 def test_build_lstm_specs_l1_non_empty_and_unique() -> None:

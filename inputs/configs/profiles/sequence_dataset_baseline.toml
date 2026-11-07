@@ -1,5 +1,8 @@
 [build_sequence_dataset]
-start = "20230101"
+# R4 history contract begins 2023-01-01; the first actual A-share trading day
+# is 2023-01-03.  Starting here keeps cache-first rebuilds offline and avoids
+# requesting empty New Year holiday dates from TuShare.
+start = "20230103"
 end = "20260813"
 
 # 选股来源：注册表股票池（research_liquidity_quality，60 只；601989 停牌剔除）
@@ -7,9 +10,10 @@ stock_pool_id = "custom_research_liquidity_quality_v1"
 
 source = "tushare"
 cache_dir = "inputs/data/cache"
-output_dir = "workspace/datasets/sequence_baseline_20230101_20260813"
+output_dir = "workspace/datasets/sequence_baseline_20230103_20260813"
 
-seq_len = 20
+# The Feature Contract owns sequence length, feature order, and input_dim.
+feature_contract = "inputs/configs/features/mainline_11d_v1.toml"
 stride = 1
 valid_weeks = 26
 test_weeks = 26

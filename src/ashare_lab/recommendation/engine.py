@@ -100,7 +100,9 @@ class RecommendationEngine:
         symbols = [s for s, _ in filtered]
         names = {s: n for s, n in filtered}
 
-        x, meta = self._build_features(symbols, date)
+        x, meta, scored_symbols = self._build_features(symbols, date)
+        if not scored_symbols:
+            raise ValueError("No symbols have contract-valid feature sequences")
         predictions = self._infer(x)
 
         pred_by_horizon = {
@@ -108,8 +110,8 @@ class RecommendationEngine:
             for horizon, pred_col in zip(PRIMARY_TREND_HORIZONS, PRIMARY_TREND_PRED_COLS)
         }
 
-        valid_mask = self._valid_prediction_mask(symbols, meta, pred_by_horizon)
-        valid_symbols = [s for s, ok in zip(symbols, valid_mask) if ok]
+        valid_mask = self._valid_prediction_mask(scored_symbols, meta, pred_by_horizon)
+        valid_symbols = [s for s, ok in zip(scored_symbols, valid_mask) if ok]
         if len(valid_symbols) < top_n:
             raise ValueError(f"Not enough valid symbols for Top-{top_n}: got {len(valid_symbols)}")
 
@@ -117,7 +119,7 @@ class RecommendationEngine:
         for horizon, pred_values in pred_by_horizon.items():
             all_scores = [
                 (s, float(v))
-                for s, v, ok in zip(symbols, _to_1d_float_list(pred_values), valid_mask)
+                for s, v, ok in zip(scored_symbols, _to_1d_float_list(pred_values), valid_mask)
                 if ok
             ]
             all_scores_sorted = sorted(all_scores, key=lambda kv: kv[1], reverse=True)
@@ -160,16 +162,18 @@ class RecommendationEngine:
         symbols = [s for s, _ in filtered]
         names = {s: n for s, n in filtered}
 
-        x, meta = self._build_features(symbols, date)
+        x, meta, scored_symbols = self._build_features(symbols, date)
+        if not scored_symbols:
+            raise ValueError("No symbols have contract-valid feature sequences")
         predictions = self._infer(x)
 
         pred_by_horizon = {
             f"{horizon}d": predictions[pred_col]
             for horizon, pred_col in zip(PRIMARY_TREND_HORIZONS, PRIMARY_TREND_PRED_COLS)
         }
-        valid_mask = self._valid_prediction_mask(symbols, meta, pred_by_horizon)
+        valid_mask = self._valid_prediction_mask(scored_symbols, meta, pred_by_horizon)
 
-        valid_symbols = [s for s, ok in zip(symbols, valid_mask) if ok]
+        valid_symbols = [s for s, ok in zip(scored_symbols, valid_mask) if ok]
         if len(valid_symbols) < top_n:
             raise ValueError(f"Not enough valid symbols for Top-{top_n}: got {len(valid_symbols)}")
 
@@ -239,13 +243,19 @@ class RecommendationEngine:
 
         return True
 
-    def _build_features(self, symbols: list[str], date: str) -> tuple[Any, dict[str, dict[str, Any]]]:
+    def _build_features(
+        self, symbols: list[str], date: str
+    ) -> tuple[Any, dict[str, dict[str, Any]], list[str]]:
         """Build model input and feature meta.
 
         The feature_builder is expected to provide one of:
         - build_sequences(symbols, date) -> x
         - build_sequences(symbols, date) -> (x, meta)
-        - build_sequences(symbols, date) -> {"x": x, "meta": meta}
+        - build_sequences(symbols, date) -> {"x": x, "meta": meta, "symbols": accepted_symbols}
+
+        A contract-aware builder may reject symbols with non-finite or
+        insufficient feature sequences.  It must return the accepted ordered
+        subset in ``symbols`` rather than silently zero-imputing those rows.
         """
         builder = getattr(self.feature_builder, "build_sequences", None)
         if callable(builder):
@@ -258,13 +268,14 @@ class RecommendationEngine:
         if isinstance(built, Mapping):
             x = built.get("x")
             meta = built.get("meta", {})
-            return x, _normalize_meta(meta, symbols)
+            accepted = _normalize_accepted_symbols(built.get("symbols", symbols), requested=symbols)
+            return x, _normalize_meta(meta, accepted), accepted
 
         if isinstance(built, tuple) and len(built) == 2:
             x, meta = built
-            return x, _normalize_meta(meta, symbols)
+            return x, _normalize_meta(meta, symbols), list(symbols)
 
-        return built, {s: {} for s in symbols}
+        return built, {s: {} for s in symbols}, list(symbols)
 
     def _infer(self, x: Any) -> Mapping[str, Any]:
         """Run model forward pass and validate output keys."""
@@ -464,6 +475,24 @@ def _normalize_meta(meta: Any, symbols: Sequence[str]) -> dict[str, dict[str, An
         return out
 
     raise ValueError(f"Unsupported meta type: {type(meta)!r}")
+
+
+def _normalize_accepted_symbols(raw: Any, *, requested: Sequence[str]) -> list[str]:
+    """Validate a builder's accepted subset without losing batch alignment."""
+
+    if isinstance(raw, (str, bytes)) or not isinstance(raw, Sequence):
+        raise ValueError("feature builder symbols must be an ordered sequence")
+    accepted = [str(symbol) for symbol in raw]
+    if len(set(accepted)) != len(accepted):
+        raise ValueError("feature builder symbols contains duplicates")
+    requested_list = [str(symbol) for symbol in requested]
+    requested_set = set(requested_list)
+    if any(symbol not in requested_set for symbol in accepted):
+        raise ValueError("feature builder returned a symbol outside the requested universe")
+    expected_order = [symbol for symbol in requested_list if symbol in set(accepted)]
+    if accepted != expected_order:
+        raise ValueError("feature builder symbols must preserve requested-universe order")
+    return accepted
 
 
 def _to_1d_float_list(values: Any) -> list[float]:

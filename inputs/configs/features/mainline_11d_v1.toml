@@ -1,0 +1,74 @@
+# Main-line feature contract.  This file is the single source of truth for
+# feature semantics, ordering, and model input dimensionality.
+[contract]
+id = "mainline_11d_v1"
+version = 1
+seq_len = 20
+expected_input_dim = 11
+missing_value_policy = "reject_nonfinite"
+
+[[features]]
+id = "return_1d"
+factory = "return_1d"
+params = {}
+output_columns = ["return_1d"]
+
+[[features]]
+id = "return_5d"
+factory = "return_5d"
+params = {}
+output_columns = ["return_5d"]
+
+[[features]]
+id = "return_20d"
+factory = "return_20d"
+params = {}
+output_columns = ["return_20d"]
+
+[[features]]
+id = "volume_ratio_5d"
+factory = "volume_ratio"
+params = { window = 5 }
+output_columns = ["volume_ratio_5d"]
+
+[[features]]
+id = "volume_change"
+factory = "volume_change"
+params = {}
+output_columns = ["volume_change"]
+
+[[features]]
+id = "amount_change"
+factory = "amount_change"
+params = {}
+output_columns = ["amount_change"]
+
+[[features]]
+id = "rsi_14"
+factory = "rsi"
+params = { period = 14 }
+output_columns = ["rsi_14"]
+
+[[features]]
+id = "macd_hist"
+factory = "macd_hist"
+params = { short = 12, long = 26, signal = 9 }
+output_columns = ["macd_hist"]
+
+[[features]]
+id = "bollinger_deviation"
+factory = "bollinger_deviation"
+params = { window = 20, num_std = 2.0 }
+output_columns = ["bollinger_deviation"]
+
+[[features]]
+id = "price_slope_5d"
+factory = "price_slope"
+params = { window = 5 }
+output_columns = ["price_slope_5d"]
+
+[[features]]
+id = "price_slope_20d"
+factory = "price_slope"
+params = { window = 20 }
+output_columns = ["price_slope_20d"]

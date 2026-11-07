@@ -1,6 +1,17 @@
-"""Deprecated module file.
+"""Deprecated import path for retired incremental MTL fine-tuning."""
 
-Implementation lives in the `ashare_lab.training.mtl_finetune` *package*
-(`src/ashare_lab/training/mtl_finetune/`). This file remains to satisfy the
-original file-path contract in Task 3.2.
-"""
+from __future__ import annotations
+
+from ashare_lab.training import (
+    IncrementalTrainConfig,
+    IncrementalTrainer,
+    TrainingGate,
+    count_labeled_samples,
+)
+
+__all__ = [
+    "IncrementalTrainConfig",
+    "IncrementalTrainer",
+    "TrainingGate",
+    "count_labeled_samples",
+]

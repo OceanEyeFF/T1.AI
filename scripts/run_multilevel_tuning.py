@@ -31,8 +31,8 @@ except ModuleNotFoundError:  # pragma: no cover - direct script execution fallba
 
 DEFAULT_LSTM_BASELINE = ""
 DEFAULT_XGB_BASELINE = ""
-DEFAULT_LSTM_CONFIG = "inputs/configs/experiments/lstm_rolling_baseline.toml"
-DEFAULT_XGB_CONFIG = "inputs/configs/experiments/xgb_rolling_baseline.toml"
+DEFAULT_LSTM_CONFIG = ""
+DEFAULT_XGB_CONFIG = ""
 
 MODEL_CHOICES = ("lstm", "xgb", "both")
 LEVEL_CHOICES = ("L1", "L2", "L3")
@@ -91,6 +91,14 @@ def _as_float_triplet(weights: dict[str, Any] | None) -> tuple[float, float, flo
     )
 
 
+def _preprocessing_value(
+    config: dict[str, Any], preprocessing: dict[str, Any], *, flat_key: str, nested_key: str, default: float
+) -> float:
+    """Prefer explicit train-CLI values, then report-shaped nested values."""
+
+    return float(config.get(flat_key, preprocessing.get(nested_key, default)))
+
+
 def _snapshot_lstm(config: dict[str, Any]) -> dict[str, Any]:
     if isinstance(config.get("loss_weights"), dict):
         w3, w5, w10 = _as_float_triplet(config.get("loss_weights"))
@@ -98,11 +106,23 @@ def _snapshot_lstm(config: dict[str, Any]) -> dict[str, Any]:
         w3 = float(config.get("w3", 1.0))
         w5 = float(config.get("w5", 1.0))
         w10 = float(config.get("w10", 1.0))
+    preprocessing = config.get("preprocessing_policy")
+    preprocessing = preprocessing if isinstance(preprocessing, dict) else {}
     return {
         "dataset_dir": str(config.get("dataset_dir", "")),
-        "feature_mode": str(config.get("feature_mode", "")),
-        "feature_count": int(len(config.get("features", []))),
-        "features": list(config.get("features", [])),
+        "feature_mode": str(config.get("feature_mode", "contract")),
+        "feature_contract": str(config.get("feature_contract", "")),
+        "feature_clip_lower": _preprocessing_value(
+            config, preprocessing, flat_key="feature_clip_lower", nested_key="lower_clip_quantile", default=0.005
+        ),
+        "feature_clip_upper": _preprocessing_value(
+            config, preprocessing, flat_key="feature_clip_upper", nested_key="upper_clip_quantile", default=0.995
+        ),
+        "feature_scale_epsilon": _preprocessing_value(
+            config, preprocessing, flat_key="feature_scale_epsilon", nested_key="min_scale", default=1e-6
+        ),
+        "feature_count": int(len(config.get("feature_names", config.get("features", [])))),
+        "features": list(config.get("feature_names", config.get("features", []))),
         "seq_len": int(config.get("seq_len", 20)),
         "train_window_weeks": int(config.get("train_window_weeks", 104)),
         "valid_window_weeks": int(config.get("valid_window_weeks", 8)),
@@ -144,16 +164,28 @@ def _snapshot_lstm(config: dict[str, Any]) -> dict[str, Any]:
         "model_track": str(config.get("model_track", "mainline_3510d")),
         "config_profile": str(config.get("config_profile", "lstm_rolling_baseline")),
         "config_status": str(config.get("config_status", "baseline")),
-        "label_mode": str(config.get("label_mode", "close_to_close")),
+        "label_mode": str(config.get("label_mode", "")),
     }
 
 
 def _snapshot_xgb(config: dict[str, Any]) -> dict[str, Any]:
+    preprocessing = config.get("preprocessing_policy")
+    preprocessing = preprocessing if isinstance(preprocessing, dict) else {}
     return {
         "dataset_dir": str(config.get("dataset_dir", "")),
-        "feature_mode": str(config.get("feature_mode", "")),
-        "feature_count": int(len(config.get("features", []))),
-        "features": list(config.get("features", [])),
+        "feature_mode": str(config.get("feature_mode", "contract")),
+        "feature_contract": str(config.get("feature_contract", "")),
+        "feature_clip_lower": _preprocessing_value(
+            config, preprocessing, flat_key="feature_clip_lower", nested_key="lower_clip_quantile", default=0.005
+        ),
+        "feature_clip_upper": _preprocessing_value(
+            config, preprocessing, flat_key="feature_clip_upper", nested_key="upper_clip_quantile", default=0.995
+        ),
+        "feature_scale_epsilon": _preprocessing_value(
+            config, preprocessing, flat_key="feature_scale_epsilon", nested_key="min_scale", default=1e-6
+        ),
+        "feature_count": int(len(config.get("feature_names", config.get("features", [])))),
+        "features": list(config.get("feature_names", config.get("features", []))),
         "seq_len": int(config.get("seq_len", 20)),
         "train_window_weeks": int(config.get("train_window_weeks", 104)),
         "valid_window_weeks": int(config.get("valid_window_weeks", 8)),
@@ -499,6 +531,10 @@ LSTM_ARG_ORDER = [
     ("dataset_dir", "--dataset-dir"),
     ("backbone", "--backbone"),
     ("feature_mode", "--feature-mode"),
+    ("feature_contract", "--feature-contract"),
+    ("feature_clip_lower", "--feature-clip-lower"),
+    ("feature_clip_upper", "--feature-clip-upper"),
+    ("feature_scale_epsilon", "--feature-scale-epsilon"),
     ("seq_len", "--seq-len"),
     ("train_window_weeks", "--train-window-weeks"),
     ("valid_window_weeks", "--valid-window-weeks"),
@@ -546,6 +582,10 @@ XGB_ARG_ORDER = [
     ("dataset_dir", "--dataset-dir"),
     ("seq_len", "--seq-len"),
     ("feature_mode", "--feature-mode"),
+    ("feature_contract", "--feature-contract"),
+    ("feature_clip_lower", "--feature-clip-lower"),
+    ("feature_clip_upper", "--feature-clip-upper"),
+    ("feature_scale_epsilon", "--feature-scale-epsilon"),
     ("train_window_weeks", "--train-window-weeks"),
     ("valid_window_weeks", "--valid-window-weeks"),
     ("calibration_weeks", "--calibration-weeks"),
@@ -714,6 +754,9 @@ def _print_snapshot(title: str, baseline_path: Path, base: dict[str, Any]) -> No
         print("- feature_preview: (auto infer from dataset columns at runtime)")
     keys = [
         "seq_len",
+        "feature_clip_lower",
+        "feature_clip_upper",
+        "feature_scale_epsilon",
         "train_window_weeks",
         "valid_window_weeks",
         "calibration_weeks",

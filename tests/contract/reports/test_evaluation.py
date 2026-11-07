@@ -1,12 +1,8 @@
-import sys
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
 import pytest
 
-
-from scripts.evaluate_recommendation import evaluate_top_k, generate_report  # noqa: E402
+from scripts.evaluate_recommendation import evaluate_top_k, generate_report
 
 
 def test_hit_rate_and_closeness_score():
@@ -287,107 +283,3 @@ def test_sequence_builder_py_file_is_exercised() -> None:
 
     splits = builder.split_walk_forward(X, y, train_ratio=0.6, valid_ratio=0.2)
     assert set(splits.keys()) == {"train", "valid", "test"}
-
-
-def test_trainer_smoke_epoch_validate_and_checkpoint(tmp_path: Path, monkeypatch) -> None:
-    import torch
-    import torch.nn as nn
-
-    from ashare_lab.training.trainer import Trainer, TrainerConfig, EarlyStopping
-
-    class _Model(nn.Module):
-        def __init__(self, n_features: int) -> None:
-            super().__init__()
-            self.linear = nn.Linear(n_features, 1)
-
-        def forward(self, x: torch.Tensor) -> torch.Tensor:
-            x2 = x.squeeze(1)
-            return self.linear(x2).squeeze(-1)
-
-    train_df = pd.DataFrame(
-        {
-            "f0": [0.0, 1.0, 2.0, 3.0],
-            "f1": [1.0, 2.0, 3.0, 4.0],
-            "label": [0.0, 1.0, 2.0, 3.0],
-        }
-    )
-    valid_df = pd.DataFrame(
-        {
-            "f0": [0.5, 1.5, 2.5, 3.5],
-            "f1": [1.5, 2.5, 3.5, 4.5],
-            "label": [0.5, 1.5, 2.5, 3.5],
-        }
-    )
-
-    config = TrainerConfig(
-        batch_size=2,
-        learning_rate=1e-2,
-        weight_decay=0.0,
-        max_epochs=1,
-        patience=2,
-        lr_scheduler="reduce_on_plateau",
-        device="cpu",
-        save_dir=tmp_path / "ckpt",
-    )
-    trainer = Trainer(_Model(n_features=2), config, train_df, valid_df, feature_cols=["f0", "f1"])
-
-    loss = trainer.train_epoch()
-    assert loss >= 0.0
-
-    metrics = trainer.validate()
-    assert set(metrics.keys()) >= {"mse", "mae", "ic", "rank_ic", "loss"}
-
-    trainer.save_checkpoint("best_model.pt")
-    monkeypatch.setattr(
-        torch,
-        "load",
-        lambda _path, map_location=None, weights_only=True: {
-            "model_state_dict": trainer.model.state_dict(),
-            "optimizer_state_dict": trainer.optimizer.state_dict(),
-            "history": trainer.history,
-            "best_valid_loss": trainer.best_valid_loss,
-            "best_epoch": trainer.best_epoch,
-        },
-    )
-    trainer.load_checkpoint("best_model.pt")
-
-    es = EarlyStopping(patience=1, min_delta=0.0)
-    assert es(1.0) is False
-    assert es(1.1) is True
-
-
-def test_trainer_train_cosine_scheduler_triggers_early_stop(tmp_path: Path, monkeypatch) -> None:
-    import torch
-    import torch.nn as nn
-
-    from ashare_lab.training.trainer import Trainer, TrainerConfig
-
-    class _Model(nn.Module):
-        def __init__(self, n_features: int) -> None:
-            super().__init__()
-            self.linear = nn.Linear(n_features, 1)
-
-        def forward(self, x: torch.Tensor) -> torch.Tensor:
-            x2 = x.squeeze(1)
-            return self.linear(x2).squeeze(-1)
-
-    df = pd.DataFrame({"f0": [0.0, 1.0, 2.0, 3.0], "label": [0.0, 1.0, 2.0, 3.0]})
-    config = TrainerConfig(
-        batch_size=2,
-        learning_rate=1e-2,
-        weight_decay=0.0,
-        max_epochs=3,
-        patience=1,
-        lr_scheduler="cosine",
-        device="cpu",
-        save_dir=tmp_path / "ckpt",
-    )
-    trainer = Trainer(_Model(n_features=1), config, df, df, feature_cols=["f0"])
-
-    monkeypatch.setattr(
-        trainer,
-        "validate",
-        lambda: {"mse": 0.0, "mae": 0.0, "ic": 0.0, "rank_ic": 0.0, "loss": 1.0},
-    )
-    history = trainer.train()
-    assert len(history["valid_loss"]) >= 1

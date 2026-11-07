@@ -377,6 +377,32 @@ def test_feature_builder_variants_and_errors():
         engine.generate_recommendations("20250115", top_n=10)
 
 
+def test_feature_builder_can_reject_nonfinite_symbols_without_zero_filled_rows():
+    symbols = _make_symbols(12)
+    items = [{"symbol": symbol, "name": f"测试{symbol}"} for symbol in symbols]
+
+    class ContractBuilder:
+        def build_sequences(self, symbols_in: list[str], date: str):  # noqa: ARG002
+            accepted = symbols_in[:-1]
+            return {
+                "x": torch.zeros(len(accepted), 20, 11),
+                "symbols": accepted,
+                "meta": {symbol: {"volume": 1000} for symbol in accepted},
+            }
+
+    accepted_scores = torch.linspace(0.0, 0.11, steps=len(symbols) - 1)
+    model = DummyMTLModel(
+        {
+            "pred_3d": accepted_scores,
+            "pred_5d": accepted_scores,
+            "pred_10d": accepted_scores,
+        }
+    )
+    engine = RecommendationEngine(model, ContractBuilder(), DummyUniverseFilter(items))
+    recs = engine.generate_recommendations("20250115", top_n=10)
+
+    assert all(symbols[-1] not in {item.symbol for item in rows} for rows in recs.values())
+
 def test_universe_normalization_and_helpers():
     assert _normalize_symbols_with_names({"600000": "测试"}) == [("600000", "测试")]
     assert _normalize_symbols_with_names([("600000", "测试")]) == [("600000", "测试")]

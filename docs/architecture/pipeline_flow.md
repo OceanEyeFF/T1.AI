@@ -65,7 +65,7 @@ TuShare API ──→ tushare_source.py ──→ inputs/data/cache/ (parquet, �
                      │                      │                      │
                      └──────────────────────┼──────────────────────┘
                                             ↓
-                              training/trainer.py (TrainerConfig + StockDataset)
+              Feature Contract → sequence dataset → rolling retrain scripts
                                             │
                               ┌─────────────┼─────────────┐
                               ↓             ↓             ↓

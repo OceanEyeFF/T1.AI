@@ -3,6 +3,13 @@
 from __future__ import annotations
 
 from ashare_lab.features.base import BaseFeature
+from ashare_lab.features.contract import (
+    FeatureContract,
+    FeatureContractError,
+    FeatureContractLoader,
+    FeatureFactory,
+    FeatureSpec,
+)
 from ashare_lab.features.momentum import (
     Return1D,
     Return5D,
@@ -22,6 +29,11 @@ from ashare_lab.features.technical import (
 
 __all__ = [
     "BaseFeature",
+    "FeatureContract",
+    "FeatureContractError",
+    "FeatureContractLoader",
+    "FeatureFactory",
+    "FeatureSpec",
     "Return1D",
     "Return5D",
     "Return10D",

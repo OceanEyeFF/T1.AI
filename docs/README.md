@@ -8,7 +8,8 @@
 2. [WORK_RULES.md](WORK_RULES.md) — **全局工作规则（必读）**
 3. [architecture/repo_structure_guide.md](architecture/repo_structure_guide.md) — 三区模型与目录结构
 4. [architecture/pipeline_flow.md](architecture/pipeline_flow.md) — 流水线全链路
-5. [architecture/xyz_test_matrix.md](architecture/xyz_test_matrix.md) — X×Y×Z 组合测试
+5. [architecture/feature_contract.md](architecture/feature_contract.md) — 特征、维度与 checkpoint 兼容性
+6. [architecture/xyz_test_matrix.md](architecture/xyz_test_matrix.md) — X×Y×Z 组合测试
 
 ## 目录导航
 

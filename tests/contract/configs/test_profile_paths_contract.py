@@ -1,17 +1,11 @@
-"""出厂 profile 引用路径与三区对齐合同（双路 CodeReview P0/P1 修复的回归锁）。
-
-此前：market_state profile 引用已删除的 ``data/`` 文件（开箱即崩）、
-model_mtl 仍写 ``models/``/``logs/``（覆盖代码已对齐的 fallback）、
-sequence profile 无法独立提供 required 参数。
-"""
+"""出厂 profile 引用路径与主线数据合同。"""
 
 from __future__ import annotations
 
-import tomllib
-from pathlib import Path
-
 import pytest
+import tomllib
 
+from ashare_lab.features.contract import FeatureContractLoader
 from ashare_lab.stock_pool.registry import get_stock_pool_record
 from tests.support.paths import REPO_ROOT
 
@@ -41,6 +35,11 @@ def test_sequence_profile_is_self_contained_and_three_zone() -> None:
     assert cfg["source"] == "tushare"
     assert cfg["cache_dir"] == "inputs/data/cache"
     assert str(cfg["output_dir"]).startswith("workspace/datasets")
+    contract_path = REPO_ROOT / cfg["feature_contract"]
+    contract = FeatureContractLoader.load(contract_path)
+    assert contract.contract_id == "mainline_11d_v1"
+    assert contract.seq_len == 20
+    assert contract.input_dim == 11
     # 选股来源必须可解析：stock_pool_id 指向 registry 或 symbols 列表
     if cfg.get("stock_pool_id"):
         assert _pool_resolvable(cfg["stock_pool_id"]), f"stock_pool_id 不可解析: {cfg['stock_pool_id']}"
@@ -70,14 +69,15 @@ def test_market_state_profile_referenced_paths_exist() -> None:
 
 
 @pytest.mark.contract
-def test_model_mtl_profile_outputs_in_three_zone() -> None:
+def test_model_mtl_profile_is_inference_only() -> None:
     cfg = _load_toml("inputs/configs/profiles/model_mtl.toml")
-    out = cfg["output"]
-    assert out["model_dir"] == "workspace/checkpoints"
-    assert out["log_dir"] == "workspace/runs"
-    inc = cfg["incremental_training"]
-    assert inc["warm_start_checkpoint"].startswith("workspace/checkpoints/")
-    assert inc["save_checkpoint"].startswith("workspace/checkpoints/")
+    assert set(cfg) == {"model"}
+    model = cfg["model"]
+    assert model["family"] == "transformer"
+    assert "input_dim" not in model
+    contract = FeatureContractLoader.load(REPO_ROOT / model["feature_contract"])
+    assert contract.input_dim == 11
+    assert model["label_mode"] == "close_to_close"
 
 
 @pytest.mark.contract

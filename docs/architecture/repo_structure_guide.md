@@ -28,7 +28,8 @@ T1.AI/
 │   │   ├── momentum/               #   动量策略（待实现）
 │   │   └── value/                  #   价值策略（待实现）
 │   └── configs/                    # Z 轴：配置档案
-│       ├── profiles/               #   输入维度 × 输出 horizon 组合
+│       ├── features/               #   Feature Contract（特征顺序 / 参数 / input_dim）
+│       ├── profiles/               #   模型与数据集 profile（引用 Feature Contract）
 │       ├── experiments/            #   X×Y×Z 实验矩阵定义
 │       ├── pipeline.toml           #   日频流水线配置
 │       ├── data_source.toml        #   数据源配置
@@ -50,10 +51,10 @@ T1.AI/
 │   ├── data/                       # 兼容 shim → ashare_infra.data（勿新写直调 load_or_fetch_*）
 │   ├── stock_pool/                 # 选股策略（StockPoolStrategy ABC）
 │   ├── dataset/                    # 数据集构建（序列/市场状态 builder）
-│   ├── features/                   # 技术特征（Return/RSI/MACD/Bollinger...）
+│   ├── features/                   # 技术特征 + FeatureContract/Factory
 │   ├── labels/                     # 标签生成（3d/5d/10d forward return）
 │   ├── models/                     # 模型架构（Transformer/LSTM/XGBoost + ModelABC）
-│   ├── training/                   # 训练器（early stopping/checkpoint）
+│   ├── models/artifact_manifest.py # checkpoint Contract / 架构兼容性校验
 │   ├── evaluation/                 # 评估指标（shim → guard.metrics 为主）
 │   ├── pipeline/                   # 日频流水线编排器（5阶段）
 │   ├── recommendation/             # 推荐引擎 + 持久化 + 验证
@@ -106,6 +107,12 @@ T1.AI/
 1. 在 `inputs/configs/experiments/` 下创建 `.toml` 文件
 2. 定义 X（pool）× Y（model）× Z（profile）组合
 3. 实验产物（IC 报告）输出到 `outputs/reports/`
+
+### 修改特征维度
+
+1. 在 `inputs/configs/features/` 新建版本化 Feature Contract，不能原地修改已使用版本
+2. 由 `output_columns` 自动派生 `input_dim`；profile 不得再手填该值
+3. 重建数据集、重训并重新评估；旧 checkpoint/OOS 因 hash 不匹配会被拒绝
 
 ### .gitignore 覆盖规则
 

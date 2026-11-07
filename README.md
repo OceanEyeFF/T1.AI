@@ -36,7 +36,8 @@ scripts/ tests/ docs/ deployment/
 
 - **执行入口（唯一）**：[NEXT_STEPS.md](NEXT_STEPS.md)（各阶段完成记录与债务台账）
 - **评估门禁协议**：[docs/research/mainline_3510d_evaluation_gate_protocol.md](docs/research/mainline_3510d_evaluation_gate_protocol.md)（阈值/命令链/基线 ledger）
-- **一键复现**：`bash scripts/repro_full_chain.sh`（`--dry-run` / `--skip-training` 快验 / 全链路）
+- **Feature Contract**：[docs/architecture/feature_contract.md](docs/architecture/feature_contract.md)（训练、推理与 checkpoint 的统一输入契约）
+- **一键复现**：`bash scripts/repro_full_chain.sh`（`--skip-training` 仅接受与重建数据集的 Contract / ID / OOS hash 完全一致的产物）
 - **认证状态**：[workspace/registry/certified.json](workspace/registry/certified.json)——当前 status=rejected（门禁未过，alpha_score 为 candidate research signal）
 
 ---
@@ -77,6 +78,6 @@ pytest tests/
 
 - **Milestone**: MS-R4-001（TuShare 数据湖）已合入 develop；当前无 active milestone
 - **Pipeline**: ENV-000 → R0-001 → R1-001 → R2-001 → R3-001 → S0-001 → S1-001 → S2-001 → T1-001 → R4-001（10/10 completed）
-- **pytest**: 866 passed / 10 skipped（coverage 76.88% ≥ 76 门禁）
+- **pytest**: 1087 passed（Feature Contract 改造后，2026-09-04 实测）
 - **数据源**: TuShare（单一信源，AkShare 已移除）
 - **环境**: py311-private（Python 3.11 / PyTorch cu130，GPU 可用）

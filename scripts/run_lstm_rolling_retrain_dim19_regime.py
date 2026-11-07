@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import random
 import re
@@ -19,6 +20,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
 
+from ashare_lab.dataset.preprocessing import (
+    FeatureQualityReport,
+    RobustScaleConfig,
+    RollingRobustScaler,
+    screen_feature_rows,
+)
+from ashare_lab.features.contract import FeatureContract, FeatureContractLoader
 from ashare_lab.evaluation.metrics import (
     aggregate_daily_to_monthly,
     calculate_daily_cs_ic,
@@ -28,6 +36,7 @@ from ashare_lab.evaluation.metrics import (
     summarize_daily_cs,
 )
 from ashare_lab.evaluation.trade_like_panel import build_primary_trade_like_comparison_panel
+from ashare_lab.models.artifact_manifest import build_model_artifact_manifest
 from ashare_lab.trend_schema import (
     PRIMARY_TREND_LABEL_COLS,
     PRIMARY_TREND_PRED_COLS,
@@ -62,32 +71,10 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - direct script execution fallback
     from env_guard import ensure_required_conda_env
 
-FEATURES_DIM19 = [
-    "return_1d",
-    "return_5d",
-    "return_10d",
-    "return_20d",
-    "return_60d",
-    "volume_ratio_5d",
-    "relative_volume",
-    "volume_change",
-    "amount_change",
-    "rsi_14",
-    "macd_line",
-    "macd_signal",
-    "macd_hist",
-    "bollinger_deviation",
-    "price_slope_5d",
-    "price_slope_20d",
-    "market_mom_5d",
-    "market_vol_20d",
-    "market_amount_z20",
-]
-
 DEFAULT_LABEL_COLS = list(PRIMARY_TREND_LABEL_COLS)
 DEFAULT_PRED_COLS = list(PRIMARY_TREND_PRED_COLS)
 LOSS_TYPES = ("l1", "ic_aware", "rank_aware", "ic_rank_aware")
-FEATURE_MODES = ("dim19", "auto")
+FEATURE_MODES = ("contract", "auto")  # auto is a deprecated alias for contract.
 BACKBONES = ("lstm", "transformer")
 LR_SCHEDULERS = ("none", "cosine", "cosine_warm_restart", "plateau")
 OPTIMIZERS = ("adamw", "adam")
@@ -95,6 +82,14 @@ NORM_TYPES = ("layernorm", "rmsnorm")
 GRAD_CLIP_MODES = ("none", "norm", "value")
 CONFIG_SECTION_NAME = "run_lstm_rolling_retrain_dim19_regime"
 CONFIG_STATUS_CHOICES = PARSER_CONFIG_STATUS_CHOICES
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _months_to_weeks(months: int) -> int:
@@ -256,9 +251,23 @@ def _extract_xy(
 ) -> tuple[np.ndarray, np.ndarray]:
     x_cols = [f"{b}_t{t}" for t in range(seq_len) for b in feature_bases]
     x = df[x_cols].to_numpy(dtype=np.float32, copy=False).reshape(len(df), seq_len, len(feature_bases))
-    x = np.nan_to_num(x, nan=0.0)
     y = df[label_cols].to_numpy(dtype=np.float32, copy=False)
     return x, y
+
+
+def _screen_feature_partition(
+    df: pd.DataFrame,
+    *,
+    feature_bases: list[str],
+    seq_len: int,
+    label_cols: list[str],
+) -> tuple[pd.DataFrame, np.ndarray, np.ndarray, FeatureQualityReport]:
+    """Drop non-finite feature sequences without silently imputing them."""
+
+    x, y = _extract_xy(df, feature_bases, seq_len, label_cols=label_cols)
+    keep_mask, quality = screen_feature_rows(x, feature_bases)
+    clean_df = df.loc[keep_mask].reset_index(drop=True)
+    return clean_df, x[keep_mask], y[keep_mask], quality
 
 
 def _infer_feature_bases(df: pd.DataFrame, seq_len: int) -> list[str]:
@@ -294,6 +303,64 @@ def _label_mode_shift_days(label_mode: str) -> int:
     if label_mode == "next_open_to_open":
         return 1
     return 0
+
+
+def _load_dataset_metadata(dataset_dir: Path) -> dict[str, object]:
+    """Read one dataset metadata file without inventing compatibility defaults."""
+
+    metadata_path = dataset_dir / "metadata.json"
+    if not metadata_path.exists():
+        raise ValueError(f"dataset metadata is required: {metadata_path}")
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"invalid dataset metadata JSON: {metadata_path}") from exc
+    if not isinstance(metadata, dict):
+        raise ValueError(f"dataset metadata must be a JSON object: {metadata_path}")
+    return metadata
+
+
+def _load_dataset_label_mode(dataset_dir: Path) -> str:
+    """Read the target convention from the built dataset, never from a default."""
+
+    metadata = _load_dataset_metadata(dataset_dir)
+    label_mode = str(metadata.get("label_config", {}).get("label_mode", "")).strip()
+    if label_mode not in {"close_to_close", "next_open_to_open"}:
+        raise ValueError(f"dataset metadata has unsupported label_mode: {label_mode!r}")
+    return label_mode
+
+
+def _load_dataset_feature_contract(
+    dataset_dir: Path, *, feature_contract_path: str = ""
+) -> FeatureContract:
+    """Derive feature order and dimensionality from signed dataset metadata."""
+
+    metadata = _load_dataset_metadata(dataset_dir)
+    expected = FeatureContractLoader.load(feature_contract_path) if feature_contract_path.strip() else None
+    contract = FeatureContractLoader.from_dataset_metadata(metadata, expected_contract=expected)
+    FeatureContractLoader.validate_dataset_feature_layout(metadata, contract)
+    return contract
+
+
+def _rolling_architecture(cfg: "TrainConfig", *, input_dim: int) -> dict[str, object]:
+    return {
+        "backbone": cfg.backbone,
+        "input_dim": int(input_dim),
+        "hidden_size": int(cfg.hidden_size),
+        "num_layers": int(cfg.num_layers),
+        "d_model": int(cfg.d_model),
+        "n_heads": int(cfg.n_heads),
+        "d_ff": int(cfg.d_ff),
+        "seq_len": int(cfg.seq_len),
+        "dropout": float(cfg.dropout),
+        "prediction_columns": list(cfg.pred_cols),
+        "loss_weights": [float(value) for value in cfg.loss_weights],
+        "loss_type": cfg.loss_type,
+        "loss_alpha": float(cfg.loss_alpha),
+        "ic_rank_beta": float(cfg.ic_rank_beta),
+        "norm_type": cfg.norm_type,
+        "norm_eps": float(cfg.norm_eps),
+    }
 
 
 def _attach_label_maturity_date(
@@ -1006,7 +1073,12 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--dataset-dir", default="workspace/datasets/lstm_sector70_19d_mkt_20210101_20260120")
     parser.add_argument("--backbone", choices=list(BACKBONES), default="lstm")
-    parser.add_argument("--seq-len", type=int, default=20)
+    parser.add_argument(
+        "--seq-len",
+        type=int,
+        default=None,
+        help="deprecated consistency assertion; dataset Feature Contract owns seq_len",
+    )
     parser.add_argument("--train-window-weeks", type=int, default=None, help="训练窗口（周），默认 78")
     parser.add_argument("--valid-window-weeks", type=int, default=None, help="验证窗口（周），默认 8")
     parser.add_argument("--calibration-weeks", type=int, default=None, help="校准历史窗口（周），默认 12")
@@ -1071,8 +1143,31 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--feature-mode",
         choices=list(FEATURE_MODES),
-        default="dim19",
-        help="dim19: 使用固定19维；auto: 从数据集自动推断全部特征",
+        default="contract",
+        help="contract: use ordered dataset Feature Contract; auto is a deprecated alias",
+    )
+    parser.add_argument(
+        "--feature-contract",
+        default="",
+        help="optional Feature Contract TOML pin; must exactly match dataset metadata",
+    )
+    parser.add_argument(
+        "--feature-clip-lower",
+        type=float,
+        default=0.005,
+        help="训练窗口特征 winsorize 下分位数（仅 fit 于训练集）",
+    )
+    parser.add_argument(
+        "--feature-clip-upper",
+        type=float,
+        default=0.995,
+        help="训练窗口特征 winsorize 上分位数（仅 fit 于训练集）",
+    )
+    parser.add_argument(
+        "--feature-scale-epsilon",
+        type=float,
+        default=1e-6,
+        help="鲁棒尺度下限；更小的常量特征按零中心、单位尺度处理",
     )
     parser.add_argument(
         "--ic-rank-beta",
@@ -1107,9 +1202,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dataset-id", default="", help="数据集 ID，默认由数据集 metadata 推断")
     parser.add_argument(
         "--label-mode",
-        default="close_to_close",
-        choices=["close_to_close", "next_open_to_open"],
-        help="标签口径，写入 evaluation_protocol（默认 close_to_close）",
+        default="",
+        help="可选一致性断言；省略时强制使用数据集 metadata 的 label_mode",
     )
     parser.add_argument("--save-weekly-checkpoints", action="store_true")
     parser.add_argument(
@@ -1206,6 +1300,23 @@ def main() -> None:
         raise ValueError("norm_eps must be > 0")
     if args.comparison_top_n <= 0:
         raise ValueError("comparison_top_n must be > 0")
+    if args.label_mode and args.label_mode not in {"close_to_close", "next_open_to_open"}:
+        raise ValueError(f"unsupported --label-mode: {args.label_mode!r}")
+    feature_scale_config = RobustScaleConfig(
+        lower_clip_quantile=float(args.feature_clip_lower),
+        upper_clip_quantile=float(args.feature_clip_upper),
+        min_scale=float(args.feature_scale_epsilon),
+    )
+    ddir = Path(args.dataset_dir)
+    feature_contract = _load_dataset_feature_contract(
+        ddir, feature_contract_path=str(args.feature_contract)
+    )
+    if args.seq_len is not None and int(args.seq_len) != feature_contract.seq_len:
+        raise ValueError(
+            f"--seq-len={args.seq_len} conflicts with dataset Feature Contract seq_len="
+            f"{feature_contract.seq_len}"
+        )
+    seq_len = feature_contract.seq_len
 
     resolved_context = resolve_experiment_context(
         dataset_dir=args.dataset_dir,
@@ -1257,7 +1368,13 @@ def main() -> None:
     _set_seed(args.seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    ddir = Path(args.dataset_dir)
+    dataset_label_mode = _load_dataset_label_mode(ddir)
+    if args.label_mode and args.label_mode != dataset_label_mode:
+        raise ValueError(
+            "--label-mode must match dataset metadata: "
+            f"cli={args.label_mode!r}, dataset={dataset_label_mode!r}"
+        )
+    label_mode = dataset_label_mode
     train_df = pd.read_parquet(ddir / "train.parquet")
     valid_df = pd.read_parquet(ddir / "valid.parquet")
     test_df = pd.read_parquet(ddir / "test.parquet")
@@ -1285,7 +1402,7 @@ def main() -> None:
         d_model=args.d_model,
         n_heads=args.n_heads,
         d_ff=args.d_ff,
-        seq_len=args.seq_len,
+        seq_len=seq_len,
         dropout=args.dropout,
         lr=args.lr,
         optimizer=str(args.optimizer),
@@ -1322,19 +1439,16 @@ def main() -> None:
         raise ValueError(f"dataset missing required label columns (showing up to 5): {preview}")
 
     maturity_horizon_days = _infer_max_horizon_days(label_cols)
-    maturity_shift_days = _label_mode_shift_days(str(args.label_mode))
+    maturity_shift_days = _label_mode_shift_days(label_mode)
     full_df = _attach_label_maturity_date(
         full_df,
         horizon_days=maturity_horizon_days,
         shift_days=maturity_shift_days,
     )
 
-    if args.feature_mode == "dim19":
-        feature_bases = list(FEATURES_DIM19)
-    else:
-        feature_bases = _infer_feature_bases(train_df, args.seq_len)
+    feature_bases = list(feature_contract.feature_names)
 
-    required_x = [f"{b}_t{t}" for b in feature_bases for t in range(args.seq_len)]
+    required_x = [f"{b}_t{t}" for b in feature_bases for t in range(seq_len)]
     missing_x = [c for c in required_x if c not in full_df.columns]
     if missing_x:
         preview = ", ".join(missing_x[:5])
@@ -1357,7 +1471,7 @@ def main() -> None:
         if _is_sign_calibratable_label(label_col):
             signable_specs.append((idx, label_col, pred_col, target_name_from_label(label_col)))
 
-    ckpt_dir = Path("models/rolling_dim19")
+    ckpt_dir = Path("workspace/checkpoints") / "rolling" / feature_contract.contract_id / str(args.backbone)
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
     for i, w in enumerate(retrain_weeks):
@@ -1386,9 +1500,49 @@ def main() -> None:
         # month-specific seed for reproducibility and mild de-correlation
         _set_seed(args.seed + i)
 
-        x_tr, y_tr = _extract_xy(tr_df, feature_bases, args.seq_len, label_cols=label_cols)
-        x_va, y_va = _extract_xy(va_df, feature_bases, args.seq_len, label_cols=label_cols)
-        x_wk, y_wk = _extract_xy(week_df, feature_bases, args.seq_len, label_cols=label_cols)
+        tr_df, x_tr, y_tr, train_feature_quality = _screen_feature_partition(
+            tr_df,
+            feature_bases=feature_bases,
+            seq_len=seq_len,
+            label_cols=label_cols,
+        )
+        va_df, x_va, y_va, valid_feature_quality = _screen_feature_partition(
+            va_df,
+            feature_bases=feature_bases,
+            seq_len=seq_len,
+            label_cols=label_cols,
+        )
+        week_df, x_wk, y_wk, oos_feature_quality = _screen_feature_partition(
+            week_df,
+            feature_bases=feature_bases,
+            seq_len=seq_len,
+            label_cols=label_cols,
+        )
+        if tr_df.empty or va_df.empty or week_df.empty:
+            raise RuntimeError(
+                "feature quality screening emptied train, validation, or OOS partition "
+                f"for week {week}"
+            )
+
+        scaler = RollingRobustScaler(feature_bases, config=feature_scale_config)
+        x_tr = scaler.fit_transform(x_tr)
+        x_va = scaler.transform(x_va)
+        x_wk = scaler.transform(x_wk)
+        feature_contract.assert_sequence_shape(x_tr.shape, context=f"train features for week {week}")
+        feature_contract.assert_sequence_shape(x_va.shape, context=f"validation features for week {week}")
+        feature_contract.assert_sequence_shape(x_wk.shape, context=f"OOS features for week {week}")
+        preprocessing_state = scaler.to_dict()
+        artifact_manifest = build_model_artifact_manifest(
+            model_family=f"rolling_{cfg.backbone}",
+            architecture=_rolling_architecture(cfg, input_dim=feature_contract.input_dim),
+            contract=feature_contract,
+            label_mode=label_mode,
+            preprocessing={
+                "missing_value_policy": feature_contract.missing_value_policy,
+                "scaler": preprocessing_state,
+            },
+            dataset_id=resolved_context["dataset_id"],
+        )
 
         model, val_metrics, epochs_ran, train_seconds = _train_one_model(x_tr, y_tr, x_va, y_va, cfg, device)
         pred_val = _predict(model, x_va, cfg.batch_size, device, pred_cols=pred_cols)
@@ -1461,8 +1615,10 @@ def main() -> None:
         hist_rows.append(week_out[["date", "symbol"] + label_cols + pred_cols].copy())
 
         if save_weekly_checkpoints:
-            ckpt_path = ckpt_dir / f"best_dim19_week_end_{week_end.strftime('%Y%m%d')}.pt"
-            torch.save({"model_state_dict": model.state_dict()}, ckpt_path)
+            ckpt_path = ckpt_dir / f"best_week_end_{week_end.strftime('%Y%m%d')}.pt"
+            torch.save({"model_state_dict": model.state_dict(), "manifest": artifact_manifest}, ckpt_path)
+        else:
+            ckpt_path = None
         week_logs.append(
             {
                 "week": week,
@@ -1475,6 +1631,14 @@ def main() -> None:
                 "pool_rows_after_maturity": int(split_stats["pool_rows_after_maturity"]),
                 "hist_rows_before_maturity": int(hist_rows_before_maturity),
                 "hist_rows_after_maturity": int(hist_rows_after_maturity),
+                "feature_quality": {
+                    "train": train_feature_quality.to_dict(),
+                    "valid": valid_feature_quality.to_dict(),
+                    "oos": oos_feature_quality.to_dict(),
+                },
+                "preprocessing": preprocessing_state,
+                "model_artifact_manifest": artifact_manifest,
+                "checkpoint_path": None if ckpt_path is None else str(ckpt_path),
                 "epochs_ran": int(epochs_ran),
                 "train_seconds": float(train_seconds),
                 "valid_avg_ic": float(val_metrics["avg_ic"]),
@@ -1502,8 +1666,8 @@ def main() -> None:
     evaluation_protocol = {
         "signal_time_mode": "close",
         "execution_time_mode": "next_open",
-        "label_mode": str(args.label_mode),
-        "return_mode": str(args.label_mode),
+        "label_mode": label_mode,
+        "return_mode": label_mode,
         "cost_model": "none",
         "daily_cs_mode": "required",
     }
@@ -1546,7 +1710,19 @@ def main() -> None:
             "backbone": str(args.backbone),
             "feature_mode": str(args.feature_mode),
             "features": feature_bases,
-            "seq_len": int(args.seq_len),
+            "feature_contract_id": feature_contract.contract_id,
+            "feature_contract_hash": feature_contract.contract_hash,
+            "feature_names": list(feature_contract.feature_names),
+            "input_dim": feature_contract.input_dim,
+            "seq_len": int(seq_len),
+            "preprocessing_policy": {
+                "method": "train_window_robust_clip_median_iqr",
+                "lower_clip_quantile": feature_scale_config.lower_clip_quantile,
+                "upper_clip_quantile": feature_scale_config.upper_clip_quantile,
+                "min_scale": feature_scale_config.min_scale,
+                "missing_value_policy": feature_contract.missing_value_policy,
+                "nonfinite_feature_policy": "reject_nonfinite",
+            },
             "train_window_weeks": int(train_window_weeks),
             "valid_window_weeks": int(valid_window_weeks),
             "calibration_weeks": int(calibration_weeks),
@@ -1604,7 +1780,7 @@ def main() -> None:
             "evaluation_window_id": resolved_context["evaluation_window_id"],
             "dataset_id": resolved_context["dataset_id"],
             "comparison_top_n": int(args.comparison_top_n),
-            "label_mode": str(args.label_mode),
+            "label_mode": label_mode,
             "maturity_gate_enabled": True,
             "maturity_gate_horizon_days": int(maturity_horizon_days),
             "maturity_gate_shift_days": int(maturity_shift_days),
@@ -1633,12 +1809,21 @@ def main() -> None:
         "mainline_model_profile": mainline_model_profile,
         "comparison_panel": comparison_panel,
         "config_status_policy": config_status_policy,
+        "feature_contract": feature_contract.to_metadata(),
     }
 
     if args.save_oos_parquet:
         oos_path = Path(args.save_oos_parquet)
         oos_path.parent.mkdir(parents=True, exist_ok=True)
         oos.to_parquet(oos_path, index=False)
+        out["oos_artifact"] = {
+            "path": str(oos_path),
+            "sha256": _sha256_file(oos_path),
+            "rows": int(len(oos)),
+            "columns": list(oos.columns),
+            "dataset_id": resolved_context["dataset_id"],
+            "feature_contract_hash": feature_contract.contract_hash,
+        }
         out["oos_predictions_path"] = str(oos_path)
         print(f"Saved OOS parquet: {oos_path}")
 

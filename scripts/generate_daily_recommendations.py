@@ -26,10 +26,12 @@ import csv
 import json
 import sys
 import traceback
+import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
+import numpy as np
 import pandas as pd
 
 try:
@@ -42,21 +44,11 @@ PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from ashare_infra.lake.r4_contract import R4_ADJUST_DEFAULT, R4_CACHE_ROOT, make_r4_datalake
-from ashare_lab.features import (  # noqa: E402
-    AmountChange,
-    Return1D,
-    Return20D,
-    Return5D,
-    VolumeChange,
-    VolumeRatio,
+from ashare_lab.dataset.preprocessing import RollingRobustScaler  # noqa: E402
+from ashare_lab.features.contract import (  # noqa: E402
+    FeatureContract,
+    FeatureFactory,
 )
-from ashare_lab.features.technical import (  # noqa: E402
-    RSI,
-    MACDHist,
-    BollingerDeviation,
-)
-from ashare_lab.features.price_slope import PriceSlope  # noqa: E402
-from ashare_lab.models.transformer import create_mtl_model  # noqa: E402
 from ashare_lab.recommendation.engine import Recommendation, RecommendationEngine  # noqa: E402
 from ashare_lab.symbols import symbol_to_ts_code  # noqa: E402
 from ashare_lab.universe import is_allowed_a_share_symbol  # noqa: E402
@@ -66,6 +58,11 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="生成指定日期的 3×Top-N 股票推荐榜单")
     parser.add_argument("--date", required=True, help="推荐日期（YYYYMMDD）")
     parser.add_argument("--model", default=None, help="模型 checkpoint 路径")
+    parser.add_argument(
+        "--model-config",
+        default="inputs/configs/profiles/model_mtl.toml",
+        help="模型 profile；其中引用 Feature Contract",
+    )
     parser.add_argument("--output", default="outputs/predictions", help="输出目录")
     parser.add_argument("--top-n", type=int, default=10, help="每个时间跨度推荐数量")
     parser.add_argument(
@@ -154,12 +151,21 @@ class LocalUniverseFilter:
 
 
 class LocalFeatureBuilder:
-    """Build per-symbol feature sequences for a given date."""
+    """Build contract-valid cached-data sequences without zero-imputation."""
 
-    def __init__(self, cache_dir: Path, feature_fns: Iterable[Any], seq_len: int):
+    def __init__(
+        self,
+        cache_dir: Path,
+        *,
+        feature_contract: FeatureContract,
+        scaler: RollingRobustScaler,
+    ):
         self.cache_dir = cache_dir
-        self.feature_fns = list(feature_fns)
-        self.seq_len = int(seq_len)
+        self.feature_contract = feature_contract
+        self.scaler = scaler
+        self.seq_len = feature_contract.seq_len
+        if tuple(scaler.feature_names) != feature_contract.feature_names:
+            raise ValueError("checkpoint scaler feature order does not match Feature Contract")
         self.last_meta: dict[str, dict[str, Any]] | None = None
 
     def build_sequences(self, symbols: list[str], date: str) -> dict[str, Any]:
@@ -167,23 +173,41 @@ class LocalFeatureBuilder:
         target = pd.to_datetime(_parse_yyyymmdd(date))
         xs: list[torch.Tensor] = []
         meta: dict[str, dict[str, Any]] = {}
+        accepted_symbols: list[str] = []
 
         for symbol in symbols:
-            bars = _load_cached_daily_bars(symbol, self.cache_dir)
+            try:
+                bars = _load_cached_daily_bars(symbol, self.cache_dir)
+            except FileNotFoundError:
+                meta[symbol] = {
+                    "volume": 0.0,
+                    "is_suspended": True,
+                    "feature_rejection_reason": "missing_daily_bars",
+                }
+                continue
             history = bars.loc[bars.index < target].copy()
             if history.empty or len(history) < self.seq_len:
-                # Not enough history, mark as suspended so it will be filtered out.
-                x = torch.zeros(self.seq_len, len(self.feature_fns), dtype=torch.float32)
-                xs.append(x)
-                meta[symbol] = {"volume": 0.0, "is_suspended": True}
+                meta[symbol] = {
+                    "volume": 0.0 if history.empty else float(history["volume"].iloc[-1]),
+                    "is_suspended": True,
+                    "feature_rejection_reason": "insufficient_history",
+                }
                 continue
 
-            feats = self._compute_features(history)
-            feats = feats.tail(self.seq_len)
-            feats = feats.fillna(0.0)
+            feats = FeatureFactory.compute(history, self.feature_contract).tail(self.seq_len)
+            if len(feats) != self.seq_len or not np.isfinite(feats.to_numpy(dtype=float, copy=False)).all():
+                meta[symbol] = {
+                    "volume": float(history["volume"].iloc[-1]),
+                    "is_suspended": True,
+                    "feature_rejection_reason": "nonfinite_contract_features",
+                }
+                continue
 
-            x = torch.from_numpy(feats.to_numpy(dtype="float32", copy=False))
+            raw = feats.to_numpy(dtype=np.float64, copy=False)[None, :, :]
+            self.feature_contract.assert_sequence_shape(raw.shape, context=f"cached inference features for {symbol}")
+            x = torch.from_numpy(self.scaler.transform(raw)[0])
             xs.append(x)
+            accepted_symbols.append(symbol)
 
             last_dt = feats.index[-1]
             last_row = feats.iloc[-1].to_dict()
@@ -196,15 +220,12 @@ class LocalFeatureBuilder:
             }
             meta[symbol] = symbol_meta
 
+        if not xs:
+            raise ValueError("no symbols have finite feature sequences under the active Feature Contract")
         X = torch.stack(xs, dim=0)
+        self.feature_contract.assert_sequence_shape(tuple(X.shape), context="cached inference feature batch")
         self.last_meta = meta
-        return {"x": X, "meta": meta}
-
-    def _compute_features(self, bars: pd.DataFrame) -> pd.DataFrame:
-        out: dict[str, pd.Series] = {}
-        for f in self.feature_fns:
-            out[f.name] = f.compute(bars)
-        return pd.DataFrame(out, index=bars.index)
+        return {"x": X, "meta": meta, "symbols": accepted_symbols}
 
 
 def _is_number(value: Any) -> bool:
@@ -215,69 +236,32 @@ def _is_number(value: Any) -> bool:
     return True
 
 
-def _infer_model_params(state: dict[str, Any]) -> dict[str, int]:
-    w = state.get("input_projection.weight")
-    if w is None:
-        raise ValueError("checkpoint missing input_projection.weight")
+def _load_mtl_checkpoint_bundle(
+    model_path: Path, device: torch.device, model_config_path: str | Path
+) -> tuple[torch.nn.Module, FeatureContract, RollingRobustScaler]:
+    """Use the production strict loader rather than inferring model shape from weights."""
 
-    d_model, input_dim = int(w.shape[0]), int(w.shape[1])
+    from scripts.daily_pipeline import _load_model
 
-    # infer n_layers from transformer_encoder.layers.{i}.*
-    layer_ids: set[int] = set()
-    for key in state.keys():
-        if not key.startswith("transformer_encoder.layers."):
-            continue
-        parts = key.split(".")
-        if len(parts) < 3 or not parts[2].isdigit():
-            continue
-        layer_ids.add(int(parts[2]))
-    n_layers = len(layer_ids) if layer_ids else 4
-
-    lin1 = state.get("transformer_encoder.layers.0.linear1.weight")
-    d_ff = int(lin1.shape[0]) if lin1 is not None else 512
-
-    pe = state.get("pos_encoder.pe")
-    max_seq_len = int(pe.shape[1]) if pe is not None else 512
-
-    return {
-        "input_dim": input_dim,
-        "d_model": d_model,
-        "n_layers": n_layers,
-        "d_ff": d_ff,
-        "max_seq_len": max_seq_len,
-    }
-
-
-def load_mtl_checkpoint_model(model_path: Path, device: torch.device) -> torch.nn.Module:
-    """Load MTLTransformer model from checkpoint with inferred architecture."""
-    if not model_path.exists():
-        raise FileNotFoundError(f"model checkpoint not found: {model_path}")
-
-    ckpt = torch.load(model_path, map_location=device, weights_only=False)
-    state = ckpt.get("model_state_dict")
-    if not isinstance(state, dict):
-        raise ValueError(f"invalid checkpoint: missing model_state_dict in {model_path}")
-
-    params = _infer_model_params(state)
-    # n_heads is not encoded in state shapes; use a safe default that divides d_model.
-    n_heads = 4 if params["d_model"] % 4 == 0 else 1
-    min_seq_len = 20
-    max_seq_len = max(params["max_seq_len"], min_seq_len)
-
-    model = create_mtl_model(
-        input_dim=params["input_dim"],
-        d_model=params["d_model"],
-        n_layers=params["n_layers"],
-        n_heads=n_heads,
-        d_ff=params["d_ff"],
-        dropout=0.1,
-        max_seq_len=max_seq_len,
-        min_seq_len=min_seq_len,
-        loss_weights=tuple(ckpt.get("config", {}).get("loss_weights", (1.0, 1.0, 1.0))),
-    )
-    model.load_state_dict(state, strict=True)
+    model, contract, scaler = _load_model(model_config_path, model_path)
     model.to(device)
     model.eval()
+    return model, contract, scaler
+
+
+def load_mtl_checkpoint_model(
+    model_path: Path,
+    device: torch.device,
+    model_config_path: str | Path = "inputs/configs/profiles/model_mtl.toml",
+) -> torch.nn.Module:
+    """Deprecated compatibility wrapper around the strict manifest loader."""
+
+    warnings.warn(
+        "load_mtl_checkpoint_model is deprecated; use the Feature Contract-aware production loader",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    model, _contract, _scaler = _load_mtl_checkpoint_bundle(model_path, device, model_config_path)
     return model
 
 
@@ -414,6 +398,8 @@ def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     _ = _parse_yyyymmdd(args.date)
 
+    if not args.model:
+        raise ValueError("--model is required; legacy checkpoints without a Feature Contract manifest are rejected")
     model_path = Path(args.model)
     output_dir = Path(args.output)
     cache_dir = Path(args.cache_dir)
@@ -423,31 +409,19 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model = load_mtl_checkpoint_model(model_path, device=device)
+        model, feature_contract, scaler = _load_mtl_checkpoint_bundle(
+            model_path, device=device, model_config_path=args.model_config
+        )
         model_runner = InferenceWrapper(model, device=device)
-
-        features = [
-            # Momentum features (3)
-            Return1D(),
-            Return5D(),
-            Return20D(),
-            # Volume features (3)
-            VolumeRatio(window=5),
-            VolumeChange(),
-            AmountChange(),
-            # Technical indicators (3)
-            RSI(period=14),
-            MACDHist(),
-            BollingerDeviation(window=20),
-            # Trend features (2)
-            PriceSlope(window=5),
-            PriceSlope(window=20),
-        ]
 
         universe_items = _load_selected_universe(cache_dir)
 
         # Attach names to meta so RecommendationEngine can display them.
-        feature_builder = LocalFeatureBuilder(cache_dir=cache_dir, feature_fns=features, seq_len=20)
+        feature_builder = LocalFeatureBuilder(
+            cache_dir=cache_dir,
+            feature_contract=feature_contract,
+            scaler=scaler,
+        )
         universe_filter = LocalUniverseFilter(universe_items)
 
         engine = RecommendationEngine(model_runner, feature_builder, universe_filter)

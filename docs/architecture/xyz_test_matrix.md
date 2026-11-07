@@ -75,9 +75,10 @@ profile = "10feat_3d5d10d"
 `inputs/configs/profiles/<name>.toml`:
 
 ```toml
-profile_id = "10feat_3d5d10d"
-input_dims = 10           # 输入特征维度
-lookback_days = 20        # 回溯窗口（天）
-output_horizons = [3, 5, 10]  # 输出头（交易日）
-label_type = "forward_return"  # 标签类型
+[model]
+family = "transformer"
+feature_contract = "inputs/configs/features/mainline_11d_v1.toml"
+label_mode = "close_to_close"
 ```
+
+输入维度、特征顺序和回溯窗口由 Feature Contract 派生，profile 不得独立维护它们。

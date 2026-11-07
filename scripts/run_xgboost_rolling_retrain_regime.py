@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import random
 import re
@@ -16,12 +17,20 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 
+from ashare_lab.dataset.preprocessing import (
+    FeatureQualityReport,
+    RobustScaleConfig,
+    RollingRobustScaler,
+    screen_feature_rows,
+)
+from ashare_lab.features.contract import FeatureContract, FeatureContractLoader
 from ashare_lab.evaluation.metrics import (
     information_coefficient,
     mean_absolute_error,
     rank_information_coefficient,
 )
 from ashare_lab.evaluation.trade_like_panel import build_primary_trade_like_comparison_panel
+from ashare_lab.models.artifact_manifest import build_model_artifact_manifest
 from ashare_lab.trend_schema import PRIMARY_TREND_LABEL_COLS, PRIMARY_TREND_PRED_COLS
 
 try:
@@ -47,33 +56,19 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - direct script execution fallback
     from env_guard import ensure_required_conda_env
 
-FEATURES_DIM19 = [
-    "return_1d",
-    "return_5d",
-    "return_10d",
-    "return_20d",
-    "return_60d",
-    "volume_ratio_5d",
-    "relative_volume",
-    "volume_change",
-    "amount_change",
-    "rsi_14",
-    "macd_line",
-    "macd_signal",
-    "macd_hist",
-    "bollinger_deviation",
-    "price_slope_5d",
-    "price_slope_20d",
-    "market_mom_5d",
-    "market_vol_20d",
-    "market_amount_z20",
-]
-
 LABEL_COLS = list(PRIMARY_TREND_LABEL_COLS)
 PRED_COLS = list(PRIMARY_TREND_PRED_COLS)
-FEATURE_MODES = ("dim19", "auto")
+FEATURE_MODES = ("contract", "auto")  # auto is a deprecated alias for contract.
 XGB_DEVICES = ("cpu", "cuda")
 CONFIG_SECTION_NAME = "run_xgboost_rolling_retrain_regime"
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _months_to_weeks(months: int) -> int:
@@ -167,18 +162,55 @@ def _infer_max_horizon_days(label_cols: list[str]) -> int:
     return int(max(horizons))
 
 
-def _load_label_mode(dataset_dir: Path) -> str:
+def _load_dataset_metadata(dataset_dir: Path) -> dict[str, object]:
     meta_path = dataset_dir / "metadata.json"
     if not meta_path.exists():
-        return "close_to_close"
+        raise ValueError(f"dataset metadata is required: {meta_path}")
     try:
         data = json.loads(meta_path.read_text(encoding="utf-8"))
-    except Exception:
-        return "close_to_close"
-    mode = str(data.get("label_config", {}).get("label_mode", "close_to_close"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"invalid dataset metadata JSON: {meta_path}") from exc
+    if not isinstance(data, dict):
+        raise ValueError(f"dataset metadata must be a JSON object: {meta_path}")
+    return data
+
+
+def _load_label_mode(dataset_dir: Path) -> str:
+    data = _load_dataset_metadata(dataset_dir)
+    mode = str(data.get("label_config", {}).get("label_mode", "")).strip()
     if mode not in {"close_to_close", "next_open_to_open"}:
-        return "close_to_close"
+        raise ValueError(f"dataset metadata has unsupported label_mode: {mode!r}")
     return mode
+
+
+def _load_dataset_feature_contract(
+    dataset_dir: Path, *, feature_contract_path: str = ""
+) -> FeatureContract:
+    metadata = _load_dataset_metadata(dataset_dir)
+    expected = FeatureContractLoader.load(feature_contract_path) if feature_contract_path.strip() else None
+    contract = FeatureContractLoader.from_dataset_metadata(metadata, expected_contract=expected)
+    FeatureContractLoader.validate_dataset_feature_layout(metadata, contract)
+    return contract
+
+
+def _xgb_architecture(cfg: "XgbConfig", *, input_dim: int, seq_len: int) -> dict[str, object]:
+    return {
+        "input_dim": int(input_dim),
+        "flat_input_dim": int(input_dim * seq_len),
+        "seq_len": int(seq_len),
+        "n_estimators": int(cfg.n_estimators),
+        "max_depth": int(cfg.max_depth),
+        "learning_rate": float(cfg.learning_rate),
+        "subsample": float(cfg.subsample),
+        "colsample_bytree": float(cfg.colsample_bytree),
+        "min_child_weight": float(cfg.min_child_weight),
+        "gamma": float(cfg.gamma),
+        "reg_alpha": float(cfg.reg_alpha),
+        "reg_lambda": float(cfg.reg_lambda),
+        "n_jobs": int(cfg.n_jobs),
+        "early_stopping_rounds": int(cfg.early_stopping_rounds),
+        "device": cfg.device,
+    }
 
 
 def _label_mode_shift_days(label_mode: str) -> int:
@@ -208,9 +240,23 @@ def _attach_label_maturity_date(
 def _extract_xy_flat(df: pd.DataFrame, feature_bases: list[str], seq_len: int) -> tuple[np.ndarray, np.ndarray]:
     x_cols = [f"{b}_t{t}" for t in range(seq_len) for b in feature_bases]
     x = df[x_cols].to_numpy(dtype=np.float32, copy=False)
-    x = np.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
     y = df[LABEL_COLS].to_numpy(dtype=np.float32, copy=False)
     return x, y
+
+
+def _screen_feature_partition(
+    df: pd.DataFrame,
+    *,
+    feature_bases: list[str],
+    seq_len: int,
+) -> tuple[pd.DataFrame, np.ndarray, np.ndarray, FeatureQualityReport]:
+    """Drop non-finite feature sequences before fitting or scoring XGBoost."""
+
+    x_flat, y = _extract_xy_flat(df, feature_bases, seq_len)
+    x_sequence = x_flat.reshape(len(df), seq_len, len(feature_bases))
+    keep_mask, quality = screen_feature_rows(x_sequence, feature_bases)
+    clean_df = df.loc[keep_mask].reset_index(drop=True)
+    return clean_df, x_sequence[keep_mask], y[keep_mask], quality
 
 
 def _horizon_sign_with_threshold(score: float, threshold: float) -> int:
@@ -383,8 +429,41 @@ def _build_parser() -> argparse.ArgumentParser:
         help="optional: save effective merged config (after CLI overrides) to JSON",
     )
     parser.add_argument("--dataset-dir", default="workspace/datasets/lstm_quick8_52d_no_hist_hl_20230101_20260120_ts")
-    parser.add_argument("--seq-len", type=int, default=20)
-    parser.add_argument("--feature-mode", choices=list(FEATURE_MODES), default="auto")
+    parser.add_argument(
+        "--seq-len",
+        type=int,
+        default=None,
+        help="deprecated consistency assertion; dataset Feature Contract owns seq_len",
+    )
+    parser.add_argument(
+        "--feature-mode",
+        choices=list(FEATURE_MODES),
+        default="contract",
+        help="contract: use ordered dataset Feature Contract; auto is a deprecated alias",
+    )
+    parser.add_argument(
+        "--feature-contract",
+        default="",
+        help="optional Feature Contract TOML pin; must exactly match dataset metadata",
+    )
+    parser.add_argument(
+        "--feature-clip-lower",
+        type=float,
+        default=0.005,
+        help="训练窗口特征 winsorize 下分位数（仅 fit 于训练集）",
+    )
+    parser.add_argument(
+        "--feature-clip-upper",
+        type=float,
+        default=0.995,
+        help="训练窗口特征 winsorize 上分位数（仅 fit 于训练集）",
+    )
+    parser.add_argument(
+        "--feature-scale-epsilon",
+        type=float,
+        default=1e-6,
+        help="鲁棒尺度下限；更小的常量特征按零中心、单位尺度处理",
+    )
     parser.add_argument("--train-window-weeks", type=int, default=None, help="训练窗口（周），默认 104")
     parser.add_argument("--valid-window-weeks", type=int, default=None, help="验证窗口（周），默认 8")
     parser.add_argument("--calibration-weeks", type=int, default=None, help="校准窗口（周），默认 12")
@@ -519,6 +598,21 @@ def main() -> None:
         raise ValueError("reg_alpha/reg_lambda must be >= 0")
     if args.n_jobs == 0:
         raise ValueError("n_jobs cannot be 0")
+    feature_scale_config = RobustScaleConfig(
+        lower_clip_quantile=float(args.feature_clip_lower),
+        upper_clip_quantile=float(args.feature_clip_upper),
+        min_scale=float(args.feature_scale_epsilon),
+    )
+    ddir = Path(args.dataset_dir)
+    feature_contract = _load_dataset_feature_contract(
+        ddir, feature_contract_path=str(args.feature_contract)
+    )
+    if args.seq_len is not None and int(args.seq_len) != feature_contract.seq_len:
+        raise ValueError(
+            f"--seq-len={args.seq_len} conflicts with dataset Feature Contract seq_len="
+            f"{feature_contract.seq_len}"
+        )
+    seq_len = feature_contract.seq_len
 
     resolved_context = resolve_experiment_context(
         dataset_dir=args.dataset_dir,
@@ -584,7 +678,6 @@ def main() -> None:
         random_seed=int(args.seed),
     )
 
-    ddir = Path(args.dataset_dir)
     train_df = pd.read_parquet(ddir / "train.parquet")
     valid_df = pd.read_parquet(ddir / "valid.parquet")
     test_df = pd.read_parquet(ddir / "test.parquet")
@@ -601,12 +694,9 @@ def main() -> None:
         shift_days=maturity_shift_days,
     )
 
-    if args.feature_mode == "dim19":
-        feature_bases = list(FEATURES_DIM19)
-    else:
-        feature_bases = _infer_feature_bases(train_df, args.seq_len)
+    feature_bases = list(feature_contract.feature_names)
 
-    required_x = [f"{b}_t{t}" for t in range(args.seq_len) for b in feature_bases]
+    required_x = [f"{b}_t{t}" for t in range(seq_len) for b in feature_bases]
     missing_x = [c for c in required_x if c not in full_df.columns]
     if missing_x:
         preview = ", ".join(missing_x[:5])
@@ -649,9 +739,56 @@ def main() -> None:
         month_seed = int(args.seed + i)
         _set_seed(month_seed)
 
-        x_tr, y_tr = _extract_xy_flat(tr_df, feature_bases, args.seq_len)
-        x_va, y_va = _extract_xy_flat(va_df, feature_bases, args.seq_len)
-        x_wk, y_wk = _extract_xy_flat(week_df, feature_bases, args.seq_len)
+        tr_df, x_tr_seq, y_tr, train_feature_quality = _screen_feature_partition(
+            tr_df,
+            feature_bases=feature_bases,
+            seq_len=seq_len,
+        )
+        va_df, x_va_seq, y_va, valid_feature_quality = _screen_feature_partition(
+            va_df,
+            feature_bases=feature_bases,
+            seq_len=seq_len,
+        )
+        week_df, x_wk_seq, y_wk, oos_feature_quality = _screen_feature_partition(
+            week_df,
+            feature_bases=feature_bases,
+            seq_len=seq_len,
+        )
+        if tr_df.empty or va_df.empty or week_df.empty:
+            raise RuntimeError(
+                "feature quality screening emptied train, validation, or OOS partition "
+                f"for week {week}"
+            )
+
+        scaler = RollingRobustScaler(feature_bases, config=feature_scale_config)
+        x_tr_seq = scaler.fit_transform(x_tr_seq)
+        x_va_seq = scaler.transform(x_va_seq)
+        x_wk_seq = scaler.transform(x_wk_seq)
+        feature_contract.assert_sequence_shape(x_tr_seq.shape, context=f"train features for week {week}")
+        feature_contract.assert_sequence_shape(x_va_seq.shape, context=f"validation features for week {week}")
+        feature_contract.assert_sequence_shape(x_wk_seq.shape, context=f"OOS features for week {week}")
+        x_tr = x_tr_seq.reshape(len(tr_df), -1)
+        x_va = x_va_seq.reshape(len(va_df), -1)
+        x_wk = x_wk_seq.reshape(len(week_df), -1)
+        flat_input_dim = feature_contract.seq_len * feature_contract.input_dim
+        if any(array.shape[1] != flat_input_dim for array in (x_tr, x_va, x_wk)):
+            raise RuntimeError(
+                f"XGBoost flattened input dimension must be {flat_input_dim} from Feature Contract"
+            )
+        preprocessing_state = scaler.to_dict()
+        artifact_manifest = build_model_artifact_manifest(
+            model_family="xgboost",
+            architecture=_xgb_architecture(
+                cfg, input_dim=feature_contract.input_dim, seq_len=feature_contract.seq_len
+            ),
+            contract=feature_contract,
+            label_mode=label_mode,
+            preprocessing={
+                "missing_value_policy": feature_contract.missing_value_policy,
+                "scaler": preprocessing_state,
+            },
+            dataset_id=resolved_context["dataset_id"],
+        )
 
         pred_val, pred_month, head_logs, train_seconds = _fit_predict_multihorizon(
             x_tr, y_tr, x_va, y_va, x_wk, cfg, month_seed
@@ -735,6 +872,13 @@ def main() -> None:
                 "pool_rows_after_maturity": int(split_stats["pool_rows_after_maturity"]),
                 "hist_rows_before_maturity": int(hist_rows_before_maturity),
                 "hist_rows_after_maturity": int(hist_rows_after_maturity),
+                "feature_quality": {
+                    "train": train_feature_quality.to_dict(),
+                    "valid": valid_feature_quality.to_dict(),
+                    "oos": oos_feature_quality.to_dict(),
+                },
+                "preprocessing": preprocessing_state,
+                "model_artifact_manifest": artifact_manifest,
                 "epochs_ran": int(max((log["best_iteration"] or 0) + 1 for log in head_logs)),
                 "train_seconds": float(train_seconds),
                 "valid_avg_ic": float(val_metrics["avg_ic"]),
@@ -773,7 +917,20 @@ def main() -> None:
             "backbone": "xgboost",
             "feature_mode": str(args.feature_mode),
             "features": feature_bases,
-            "seq_len": int(args.seq_len),
+            "feature_contract_id": feature_contract.contract_id,
+            "feature_contract_hash": feature_contract.contract_hash,
+            "feature_names": list(feature_contract.feature_names),
+            "input_dim": feature_contract.input_dim,
+            "flat_input_dim": feature_contract.seq_len * feature_contract.input_dim,
+            "seq_len": int(seq_len),
+            "preprocessing_policy": {
+                "method": "train_window_robust_clip_median_iqr",
+                "lower_clip_quantile": feature_scale_config.lower_clip_quantile,
+                "upper_clip_quantile": feature_scale_config.upper_clip_quantile,
+                "min_scale": feature_scale_config.min_scale,
+                "missing_value_policy": feature_contract.missing_value_policy,
+                "nonfinite_feature_policy": "reject_nonfinite",
+            },
             "train_window_weeks": int(train_window_weeks),
             "valid_window_weeks": int(valid_window_weeks),
             "calibration_weeks": int(calibration_weeks),
@@ -833,12 +990,21 @@ def main() -> None:
         "monthly_logs": week_logs,
         "evaluation_protocol": evaluation_protocol,
         "comparison_panel": comparison_panel,
+        "feature_contract": feature_contract.to_metadata(),
     }
 
     if args.save_oos_parquet:
         oos_path = Path(args.save_oos_parquet)
         oos_path.parent.mkdir(parents=True, exist_ok=True)
         oos.to_parquet(oos_path, index=False)
+        out["oos_artifact"] = {
+            "path": str(oos_path),
+            "sha256": _sha256_file(oos_path),
+            "rows": int(len(oos)),
+            "columns": list(oos.columns),
+            "dataset_id": resolved_context["dataset_id"],
+            "feature_contract_hash": feature_contract.contract_hash,
+        }
         out["oos_predictions_path"] = str(oos_path.resolve())
         print(f"Saved OOS parquet: {oos_path}")
 

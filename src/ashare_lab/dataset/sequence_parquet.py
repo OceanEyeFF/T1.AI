@@ -1,15 +1,14 @@
-"""Parquet sequence dataset loader.
+"""Deprecated compatibility loader for legacy flattened sequence parquet files.
 
-This module loads flattened sequence datasets produced by `scripts/build_sequence_dataset.py`.
-
-Expected parquet schema:
-- label columns: label_3d, label_5d, label_10d (float; NaNs allowed)
-- feature columns: {feature_base}_t{0..seq_len-1} (flattened sequence)
-- optional meta columns: date, symbol, mask (ignored)
+New training must consume a dataset's embedded Feature Contract instead.  This
+shim remains so external callers receive an explicit deprecation path rather
+than an unexpected import failure.  Unlike the retired implementation it never
+silently replaces non-finite features with zero.
 """
 
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -21,87 +20,79 @@ from ashare_lab.trend_schema import PRIMARY_TREND_LABEL_COLS, infer_label_cols
 __all__ = ["load_sequence_parquet"]
 
 
-def _infer_label_columns(df: pd.DataFrame) -> list[str]:
-    return infer_label_cols(df.columns)
-
-
 def _infer_feature_bases(df: pd.DataFrame, seq_len: int) -> list[str]:
-    # Expect flattened columns: {base}_t{t}. Find bases that have t0..t{seq_len-1}.
-    bases: set[str] = set()
-    for c in df.columns:
-        if not isinstance(c, str):
-            continue  # pragma: no cover
-        if c.endswith("_t0"):
-            bases.add(c[: -len("_t0")])
-
-    out: list[str] = []
-    for base in sorted(bases):
-        ok = True
-        for t in range(seq_len):
-            if f"{base}_t{t}" not in df.columns:
-                ok = False
-                break
-        if ok:
-            out.append(base)
-    return out
+    bases = sorted(
+        column[: -len("_t0")]
+        for column in df.columns
+        if isinstance(column, str) and column.endswith("_t0")
+    )
+    return [
+        base for base in bases if all(f"{base}_t{step}" in df.columns for step in range(seq_len))
+    ]
 
 
 def _infer_seq_len(df: pd.DataFrame) -> int | None:
-    # Look for suffix _t{n}; return max+1.
-    max_t: int | None = None
-    for c in df.columns:
-        if not isinstance(c, str):
-            continue  # pragma: no cover
-        if "_t" not in c:
+    steps: list[int] = []
+    for column in df.columns:
+        if not isinstance(column, str) or "_t" not in column:
             continue
-        t_str = c.rsplit("_t", 1)[1]
-        if not t_str.isdigit():
-            continue
-        t = int(t_str)
-        if max_t is None or t > max_t:
-            max_t = t
-    return None if max_t is None else (max_t + 1)
+        suffix = column.rsplit("_t", 1)[1]
+        if suffix.isdigit():
+            steps.append(int(suffix))
+    return None if not steps else max(steps) + 1
 
 
-def load_sequence_parquet(path: Path, seq_len: int | None = None) -> tuple[torch.Tensor, torch.Tensor, dict]:
-    """Load a flattened sequence dataset split from parquet.
+def load_sequence_parquet(
+    path: str | Path, seq_len: int | None = None
+) -> tuple[torch.Tensor, torch.Tensor, dict[str, object]]:
+    """Load a legacy split while preserving missing labels and rejecting bad X.
 
-    Returns:
-        X: [N, seq_len, n_feat] float32
-        y: [N, 3] float32 (NaNs preserved)
-        info: dict with inferred columns and shapes
+    Deprecated callers should migrate to ``FeatureContractLoader`` plus the
+    dataset metadata produced by ``build_sequence_dataset.py``.
     """
-    df = pd.read_parquet(path)
+
+    warnings.warn(
+        "load_sequence_parquet is deprecated; use a versioned Feature Contract and dataset metadata instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    parquet_path = Path(path)
+    df = pd.read_parquet(parquet_path)
     inferred_len = _infer_seq_len(df)
     if seq_len is None:
         if inferred_len is None:
-            raise ValueError(f"cannot infer seq_len from columns in {path}")
+            raise ValueError(f"cannot infer seq_len from columns in {parquet_path}")
         seq_len = inferred_len
-    else:
-        if inferred_len is not None and inferred_len != seq_len:
-            raise ValueError(f"seq_len mismatch: config={seq_len}, data={inferred_len} ({path})")
+    elif inferred_len is not None and inferred_len != seq_len:
+        raise ValueError(f"seq_len mismatch: config={seq_len}, data={inferred_len} ({parquet_path})")
+    if seq_len <= 0:
+        raise ValueError("seq_len must be > 0")
 
-    label_cols = _infer_label_columns(df)
-    required = set(PRIMARY_TREND_LABEL_COLS)
-    if not required.issubset(set(label_cols)):
-        raise ValueError(f"parquet must contain labels {sorted(required)}; got {label_cols}")
-    label_cols = list(PRIMARY_TREND_LABEL_COLS)
-
-    bases = _infer_feature_bases(df, seq_len)
-    if not bases:
-        raise ValueError(f"no flattened feature columns like '*_t0' found in {path}")
-
-    feature_cols = [f"{base}_t{t}" for t in range(seq_len) for base in bases]
-    X_flat = df[feature_cols].to_numpy(dtype=np.float32, copy=False)
-    X = X_flat.reshape(X_flat.shape[0], seq_len, len(bases))
-    y = df[label_cols].to_numpy(dtype=np.float32, copy=False)
-
-    # Fill NaN values in features with 0 to avoid gradient explosion
-    X_tensor = torch.from_numpy(X)
-    X_tensor = torch.nan_to_num(X_tensor, nan=0.0)
-
+    available_labels = infer_label_cols(df.columns)
+    if not set(PRIMARY_TREND_LABEL_COLS).issubset(available_labels):
+        raise ValueError(
+            f"parquet must contain labels {list(PRIMARY_TREND_LABEL_COLS)!r}; got {available_labels!r}"
+        )
+    feature_bases = _infer_feature_bases(df, seq_len)
+    if not feature_bases:
+        raise ValueError(f"no complete flattened feature columns found in {parquet_path}")
+    feature_columns = [f"{base}_t{step}" for step in range(seq_len) for base in feature_bases]
+    values = df[feature_columns].to_numpy(dtype=np.float32, copy=True)
+    X = values.reshape(values.shape[0], seq_len, len(feature_bases))
+    if not np.isfinite(X).all():
+        raise ValueError(
+            "legacy parquet contains non-finite features; migrate to a Feature Contract "
+            "instead of silently zero-imputing them"
+        )
+    labels = df[list(PRIMARY_TREND_LABEL_COLS)].to_numpy(dtype=np.float32, copy=True)
     return (
-        X_tensor,
-        torch.from_numpy(y),
-        {"seq_len": seq_len, "input_dim": len(bases), "feature_bases": bases, "label_cols": label_cols},
+        torch.from_numpy(X),
+        torch.from_numpy(labels),
+        {
+            "seq_len": seq_len,
+            "input_dim": len(feature_bases),
+            "feature_bases": feature_bases,
+            "label_cols": list(PRIMARY_TREND_LABEL_COLS),
+            "deprecated": True,
+        },
     )

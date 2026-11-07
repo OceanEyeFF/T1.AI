@@ -145,8 +145,6 @@ def test_build_sequence_dataset_cli_smoke_supports_stock_pool_registry(
             "20240102",
             "--end",
             "20240628",
-            "--seq-len",
-            "5",
             "--valid-weeks",
             "4",
             "--test-weeks",
@@ -176,6 +174,12 @@ def test_build_sequence_dataset_cli_smoke_supports_stock_pool_registry(
         "custom_low_manipulation/v1/symbols.csv"
     )
     assert metadata["dataset_id"].startswith("seq_low_manipulation_")
+    contract = metadata["feature_contract"]
+    assert contract["feature_contract_id"] == "mainline_11d_v1"
+    assert len(contract["feature_contract_hash"]) == 64
+    assert contract["seq_len"] == metadata["feature_config"]["seq_len"] == 20
+    assert contract["input_dim"] == metadata["feature_config"]["num_features"] == 11
+    assert contract["feature_names"] == metadata["feature_config"]["feature_names"]
 
 
 def test_build_sequence_dataset_market_state_cli_smoke_supports_stock_pool_registry(

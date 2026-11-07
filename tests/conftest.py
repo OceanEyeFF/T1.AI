@@ -29,13 +29,3 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         nodeid = item.nodeid
         if "cuda" in name.lower() or "cuda" in nodeid.lower():
             item.add_marker(pytest.mark.gpu)
-        # Heavier training loops — optional slow lane for future CI splitting
-        if nodeid.endswith(
-            (
-                "test_train_loop_updates_params_and_saves_checkpoints",
-                "test_early_stopping_triggers_when_val_ic_stalls",
-                "test_train_mtl_loads_parquet_sequence_dataset",
-                "test_train_mtl_runs_on_cuda_if_available",
-            )
-        ):
-            item.add_marker(pytest.mark.slow)

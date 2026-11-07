@@ -5,11 +5,15 @@
 ## 当前状态
 
 项目已完成 R2（三区布局）→ R3（旧文件清理）→ T1（测试体系）→ R4（TuShare 数据湖合同）。
+2026-09-04 起，主线输入改由版本化 Feature Contract 冻结；旧数据集、OOS 报告与 checkpoint
+没有 contract hash，必须在后续获准的数据集重建/rolling 重训后替换，不能进入 strict 比较或认证。
+2026-09-03 起，旧的静态 `train_mtl.py` / incremental fine-tune 训练路径已退休；
+下文对它们的引用仅为历史完成记录，主线训练只允许使用 rolling OOS 路径。
 2026-08 完成换机后的环境重建、akshare 移除、双路 CodeReview 与 P0 缺陷修复：
 
 - **环境**：`py311-private`（Python 3.11 + PyTorch cu130，RTX 3080 Ti GPU 可用）
 - **数据源**：TuShare 单一信源（akshare 已完全移除，含负向合同测试）
-- **测试**：1020 passed / 10 skipped，覆盖率 77.13%（门禁 76）
+- **测试**：1087 passed（2026-09-04 Feature Contract 改造后实测；覆盖率门禁仍为 76）
 - **数据湖**：R4 合同冻结，但 `inputs/data/cache` **尚未落盘**（P0-①）
 - **选股池**：`custom_research_liquidity_quality_v1`（60 只，research_only；2026-08-13 剔除停牌股 601989.SH）已注册
 

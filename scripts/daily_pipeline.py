@@ -15,24 +15,23 @@ import os
 import sys
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Mapping
 
 
 # Keep consistent with other scripts: allow running from repo root.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from ashare_lab.features import (  # noqa: E402
-    AmountChange,
-    BollingerDeviation,
-    MACDHist,
-    PriceSlope,
-    Return1D,
-    Return10D,
-    Return20D,
-    Return5D,
-    RSI,
-    VolumeRatio,
+from ashare_lab.dataset.preprocessing import RollingRobustScaler  # noqa: E402
+from ashare_lab.features.contract import (  # noqa: E402
+    FeatureContract,
+    FeatureContractError,
+    FeatureContractLoader,
+    FeatureFactory,
+)
+from ashare_lab.models.artifact_manifest import (  # noqa: E402
+    ModelArtifactError,
+    validate_model_artifact_manifest,
 )
 from ashare_lab.models.transformer import create_mtl_model  # noqa: E402
 from ashare_lab.pipeline import DailyPipelineOrchestrator  # noqa: E402
@@ -96,12 +95,23 @@ class StaticUniverseFilter:
 
 
 class DataSourceFeatureBuilder:
-    """Build per-symbol feature sequences via injected data_source."""
+    """Build contract-valid, scaled sequences without zero-imputation."""
 
-    def __init__(self, data_source: Any, feature_fns: Iterable[Any], seq_len: int = 30) -> None:
+    def __init__(
+        self,
+        data_source: Any,
+        *,
+        feature_contract: FeatureContract,
+        scaler: RollingRobustScaler,
+    ) -> None:
         self.data_source = data_source
-        self.feature_fns = list(feature_fns)
-        self.seq_len = int(seq_len)
+        self.feature_contract = feature_contract
+        self.scaler = scaler
+        self.seq_len = feature_contract.seq_len
+        if tuple(scaler.feature_names) != feature_contract.feature_names:
+            raise FeatureContractError(
+                "inference scaler feature order does not match the active feature contract"
+            )
 
     def build_sequences(self, symbols: list[str], date: str) -> dict[str, Any]:
         import numpy as np
@@ -121,25 +131,42 @@ class DataSourceFeatureBuilder:
 
         xs: list[np.ndarray] = []
         meta: dict[str, dict[str, Any]] = {}
+        accepted_symbols: list[str] = []
         for symbol in symbols:
             df = bars_by_symbol.get(symbol)
             if df is None or df.empty:
-                xs.append(np.zeros((self.seq_len, len(self.feature_fns)), dtype="float32"))
-                meta[symbol] = {"volume": 0.0, "is_suspended": True}
+                meta[symbol] = {
+                    "volume": 0.0,
+                    "is_suspended": True,
+                    "feature_rejection_reason": "missing_daily_bars",
+                }
                 continue
 
             hist = df.loc[df.index < target].copy()
             if hist.empty or len(hist) < self.seq_len:
-                xs.append(np.zeros((self.seq_len, len(self.feature_fns)), dtype="float32"))
-                meta[symbol] = {"volume": float(hist["volume"].iloc[-1]) if not hist.empty else 0.0, "is_suspended": True}
+                meta[symbol] = {
+                    "volume": float(hist["volume"].iloc[-1]) if not hist.empty else 0.0,
+                    "is_suspended": True,
+                    "feature_rejection_reason": "insufficient_history",
+                }
                 continue
 
-            feats: dict[str, Any] = {}
-            for f in self.feature_fns:
-                feats[f.name] = f.compute(hist)
-            feat_df = pd.DataFrame(feats, index=hist.index).tail(self.seq_len).fillna(0.0)
+            feat_df = FeatureFactory.compute(hist, self.feature_contract).tail(self.seq_len)
+            if len(feat_df) != self.seq_len or not np.isfinite(feat_df.to_numpy(dtype=float, copy=False)).all():
+                meta[symbol] = {
+                    "volume": float(hist["volume"].iloc[-1]),
+                    "is_suspended": True,
+                    "feature_rejection_reason": "nonfinite_contract_features",
+                }
+                continue
 
-            xs.append(feat_df.to_numpy(dtype="float32", copy=False))
+            raw_sequence = feat_df.to_numpy(dtype=np.float64, copy=False)[None, :, :]
+            self.feature_contract.assert_sequence_shape(
+                raw_sequence.shape, context=f"inference features for {symbol}"
+            )
+            scaled_sequence = self.scaler.transform(raw_sequence)[0]
+            xs.append(scaled_sequence)
+            accepted_symbols.append(symbol)
 
             last_bar = hist.iloc[-1]
             symbol_meta: dict[str, Any] = {k: float(v) for k, v in feat_df.iloc[-1].to_dict().items()}
@@ -147,8 +174,11 @@ class DataSourceFeatureBuilder:
             symbol_meta["amount"] = float(last_bar.get("amount", 0.0))
             meta[symbol] = symbol_meta
 
+        if not xs:
+            raise ValueError("no symbols have finite feature sequences under the active feature contract")
         X = torch.from_numpy(np.stack(xs, axis=0))
-        return {"x": X, "meta": meta}
+        self.feature_contract.assert_sequence_shape(tuple(X.shape), context="inference feature batch")
+        return {"x": X, "meta": meta, "symbols": accepted_symbols}
 
 
 class DummyDryRunModel:
@@ -161,7 +191,7 @@ class DummyDryRunModel:
 
 
 class DummyDryRunFeatureBuilder:
-    def __init__(self, n_feat: int = 10, seq_len: int = 30) -> None:
+    def __init__(self, n_feat: int = 11, seq_len: int = 20) -> None:
         self.n_feat = int(n_feat)
         self.seq_len = int(seq_len)
 
@@ -201,26 +231,70 @@ def _build_data_source(data_source_config_path: str | Path) -> tuple[Any, Any]:
     return data_source, calendar_source
 
 
-def _load_model(model_config_path: str | Path, checkpoint_path: str | Path):
+def _resolve_project_path(path: str | Path) -> Path:
+    resolved = Path(path)
+    return resolved if resolved.is_absolute() else PROJECT_ROOT / resolved
+
+
+def _transformer_architecture(model_cfg: Mapping[str, Any]) -> dict[str, Any]:
+    raw_weights = model_cfg.get("loss_weights", [1.0, 1.0, 1.0])
+    if not isinstance(raw_weights, (list, tuple)) or len(raw_weights) != 3:
+        raise ModelArtifactError("model.loss_weights must contain exactly three values")
+    return {
+        "d_model": int(model_cfg.get("d_model", 128)),
+        "n_heads": int(model_cfg.get("n_heads", 4)),
+        "n_layers": int(model_cfg.get("n_layers", 4)),
+        "d_ff": int(model_cfg.get("d_ff", 512)),
+        "dropout": float(model_cfg.get("dropout", 0.1)),
+        "max_seq_len": int(model_cfg.get("max_seq_len", 512)),
+        "min_seq_len": int(model_cfg.get("min_seq_len", 20)),
+        "loss_weights": [float(value) for value in raw_weights],
+        "loss_type": str(model_cfg.get("loss_type", "l1")),
+        "loss_alpha": float(model_cfg.get("loss_alpha", 0.3)),
+    }
+
+
+def _load_model(
+    model_config_path: str | Path, checkpoint_path: str | Path | None
+) -> tuple[Any, FeatureContract, RollingRobustScaler]:
     try:
         import torch
     except Exception as exc:  # pragma: no cover
         raise RuntimeError("PyTorch (torch) is required to run the production pipeline") from exc
 
     cfg = _load_config(model_config_path)
-    model_cfg = cfg.get("model") or {}
+    model_cfg = cfg.get("model")
+    if not isinstance(model_cfg, Mapping):
+        raise ModelArtifactError("model configuration must contain a [model] mapping")
+    model_family = str(model_cfg.get("family", "")).strip()
+    if model_family != "transformer":
+        raise ModelArtifactError(
+            f"daily pipeline only supports model family 'transformer', got {model_family!r}"
+        )
+    raw_contract_path = model_cfg.get("feature_contract")
+    if not isinstance(raw_contract_path, str) or not raw_contract_path.strip():
+        raise ModelArtifactError("model.feature_contract is required; model.input_dim is derived")
+    feature_contract = FeatureContractLoader.load(_resolve_project_path(raw_contract_path))
+    label_mode = str(model_cfg.get("label_mode", "")).strip()
+    if label_mode not in {"close_to_close", "next_open_to_open"}:
+        raise ModelArtifactError("model.label_mode must be close_to_close or next_open_to_open")
+    architecture = _transformer_architecture(model_cfg)
     model = create_mtl_model(
-        input_dim=int(model_cfg.get("input_dim", 10)),
-        d_model=int(model_cfg.get("d_model", 128)),
-        n_heads=int(model_cfg.get("n_heads", 4)),
-        n_layers=int(model_cfg.get("n_layers", 4)),
-        d_ff=int(model_cfg.get("d_ff", 512)),
-        dropout=float(model_cfg.get("dropout", 0.1)),
-        max_seq_len=int(model_cfg.get("max_seq_len", 60)),
-        min_seq_len=int(model_cfg.get("min_seq_len", 30)),
-        loss_weights=tuple(model_cfg.get("loss_weights", [1.0, 1.0, 1.0])),
+        input_dim=feature_contract.input_dim,
+        d_model=architecture["d_model"],
+        n_heads=architecture["n_heads"],
+        n_layers=architecture["n_layers"],
+        d_ff=architecture["d_ff"],
+        dropout=architecture["dropout"],
+        max_seq_len=architecture["max_seq_len"],
+        min_seq_len=architecture["min_seq_len"],
+        loss_weights=tuple(architecture["loss_weights"]),
+        loss_type=architecture["loss_type"],
+        loss_alpha=architecture["loss_alpha"],
     )
 
+    if checkpoint_path is None or not str(checkpoint_path).strip():
+        raise ModelArtifactError("--model is required outside --dry-run")
     ckpt_path = Path(checkpoint_path)
     if not ckpt_path.is_absolute():
         ckpt_path = PROJECT_ROOT / ckpt_path
@@ -228,13 +302,24 @@ def _load_model(model_config_path: str | Path, checkpoint_path: str | Path):
         raise FileNotFoundError(f"model checkpoint not found: {ckpt_path}")
 
     ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
-    state = ckpt.get("model_state_dict") if isinstance(ckpt, dict) else ckpt
-    if not isinstance(state, dict):
+    if not isinstance(ckpt, Mapping):
+        raise ModelArtifactError(f"checkpoint must be a mapping with manifest: {ckpt_path}")
+    scaler = validate_model_artifact_manifest(
+        ckpt.get("manifest"),
+        expected_model_family=model_family,
+        contract=feature_contract,
+        expected_architecture=architecture,
+        expected_label_mode=label_mode,
+    )
+    state = ckpt.get("model_state_dict")
+    if not isinstance(state, Mapping):
         raise ValueError(f"invalid checkpoint: {ckpt_path}")
-
-    model.load_state_dict(state, strict=False)
+    try:
+        model.load_state_dict(state, strict=True)
+    except RuntimeError as exc:
+        raise ModelArtifactError(f"checkpoint state_dict is incompatible with active model profile: {ckpt_path}") from exc
     model.eval()
-    return model
+    return model, feature_contract, scaler
 
 
 def _default_universe_items() -> list[dict[str, str]]:
@@ -257,25 +342,16 @@ def main(argv: list[str] | None = None) -> None:
         # dry-run skips external refresh + validation; keep adapters unused
         data_source, calendar_source = _build_data_source(args.data_source_config)
     else:
+        if not args.model:
+            raise ValueError("--model is required outside --dry-run")
         data_source, calendar_source = _build_data_source(args.data_source_config)
         universe_items = [{"symbol": s, "name": ""} for s in (args.symbols or [x["symbol"] for x in _default_universe_items()])]
         universe_filter = StaticUniverseFilter(universe_items)
-        model = _load_model(args.model_config, args.model)
+        model, feature_contract, scaler = _load_model(args.model_config, args.model)
         feature_builder = DataSourceFeatureBuilder(
             data_source=data_source,
-            feature_fns=[
-                Return1D(),
-                Return5D(),
-                Return10D(),
-                Return20D(),
-                RSI(),
-                MACDHist(),
-                BollingerDeviation(),
-                VolumeRatio(),
-                AmountChange(),
-                PriceSlope(window=20),
-            ],
-            seq_len=30,
+            feature_contract=feature_contract,
+            scaler=scaler,
         )
 
     orchestrator = DailyPipelineOrchestrator(

@@ -14,23 +14,26 @@ Outputs (default):
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import numpy as np
 import pandas as pd
 
 from ashare_infra.lake import DataLake
 from ashare_infra.lake.r4_contract import R4_ADJUST_DEFAULT, make_r4_datalake
+from ashare_lab.dataset.preprocessing import screen_feature_rows
 from ashare_lab.dataset.sequence_builder import SequenceDatasetBuilder
-from ashare_lab.features.momentum import Return1D, Return20D, Return5D
-from ashare_lab.features.volume import AmountChange, VolumeChange, VolumeRatio
-from ashare_lab.features.technical import RSI, MACDHist, BollingerDeviation
-from ashare_lab.features.price_slope import PriceSlope
+from ashare_lab.features.contract import FeatureContract, FeatureContractLoader, FeatureFactory
 from ashare_lab.labels.multi_horizon import MultiHorizonLabel, OneDayHLCLabel
-from ashare_lab.stock_pool import export_stock_pool_artifacts, get_stock_pool_record, resolve_stock_pool_symbols
+from ashare_lab.stock_pool import (
+    export_stock_pool_artifacts,
+    get_stock_pool_record,
+    resolve_stock_pool_symbols,
+)
 
 try:
     from scripts.config_io import dump_json, extract_arg_overrides
@@ -47,6 +50,34 @@ logging.basicConfig(
 )
 logger = logging.getLogger("build_sequence_dataset")
 CONFIG_SECTION_NAME = "build_sequence_dataset"
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _dataset_fingerprint(split_artifacts: dict[str, dict[str, object]]) -> str:
+    """Return a stable split-content fingerprint, deliberately excluding paths."""
+
+    required_splits = {"train", "valid", "test"}
+    if set(split_artifacts) != required_splits:
+        raise ValueError(f"split artifacts must contain exactly {sorted(required_splits)!r}")
+    fingerprint_inputs: dict[str, dict[str, object]] = {}
+    for name in sorted(required_splits):
+        artifact = split_artifacts[name]
+        rows = artifact.get("rows")
+        checksum = artifact.get("sha256")
+        if isinstance(rows, bool) or not isinstance(rows, int) or rows < 0:
+            raise ValueError(f"split artifact {name} has invalid rows")
+        if not isinstance(checksum, str) or len(checksum) != 64:
+            raise ValueError(f"split artifact {name} has invalid sha256")
+        fingerprint_inputs[name] = {"rows": rows, "sha256": checksum}
+    payload = json.dumps(fingerprint_inputs, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def _parse_symbols(symbols: str | None, symbols_csv: str | None) -> list[str]:
@@ -118,36 +149,10 @@ def _resolve_symbols_input(
     }
 
 
-def _compute_features(data: pd.DataFrame) -> pd.DataFrame:
-    """Compute MVP + technical indicator features.
+def _compute_features(data: pd.DataFrame, contract: FeatureContract) -> pd.DataFrame:
+    """Compute exactly the ordered features declared by the shared contract."""
 
-    Features (11 total):
-    - Momentum: Return1D, Return5D, Return20D
-    - Volume: VolumeRatio, VolumeChange, AmountChange
-    - Technical: RSI(14), MACDHist, BollingerDeviation
-    - Trend: PriceSlope(5), PriceSlope(20)
-    """
-    features = [
-        # Momentum features (3)
-        Return1D(),
-        Return5D(),
-        Return20D(),
-        # Volume features (3)
-        VolumeRatio(window=5),
-        VolumeChange(),
-        AmountChange(),
-        # Technical indicators (3)
-        RSI(period=14),
-        MACDHist(),
-        BollingerDeviation(window=20),
-        # Trend features (2)
-        PriceSlope(window=5),
-        PriceSlope(window=20),
-    ]
-    feat_dict: dict[str, pd.Series] = {}
-    for f in features:
-        feat_dict[f.name] = f.compute(data)
-    return pd.DataFrame(feat_dict, index=data.index)
+    return FeatureFactory.compute(data, contract)
 
 
 def _compute_labels(
@@ -288,7 +293,17 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--cache-dir", default="inputs/data/cache", help="Cache dir for daily bars")
     parser.add_argument("--output-dir", default="workspace/datasets", help="Output dir for parquet files")
-    parser.add_argument("--seq-len", type=int, default=20, help="Sequence length (default: 20)")
+    parser.add_argument(
+        "--feature-contract",
+        default="inputs/configs/features/mainline_11d_v1.toml",
+        help="versioned shared feature contract TOML",
+    )
+    parser.add_argument(
+        "--seq-len",
+        type=int,
+        default=None,
+        help="deprecated consistency assertion; seq_len is owned by --feature-contract",
+    )
     parser.add_argument("--stride", type=int, default=1, help="Sliding window stride (default: 1)")
     parser.add_argument("--valid-weeks", type=int, default=26, help="Validation weeks in fixed split mode")
     parser.add_argument("--test-weeks", type=int, default=26, help="Test weeks in fixed split mode")
@@ -340,6 +355,12 @@ def main() -> None:
         parser.error(f"--source 仅支持 tushare/odp，收到: {args.source!r}")
     if not args.start or not args.end:
         parser.error("--start 与 --end 为必填项（可由 --config-file 提供）")
+    feature_contract = FeatureContractLoader.load(args.feature_contract)
+    if args.seq_len is not None and int(args.seq_len) != feature_contract.seq_len:
+        parser.error(
+            f"--seq-len={args.seq_len} conflicts with feature contract seq_len={feature_contract.seq_len}"
+        )
+    seq_len = feature_contract.seq_len
     config_file_resolved = (
         str(Path(args.config_file).resolve()) if str(args.config_file).strip() else ""
     )
@@ -382,7 +403,15 @@ def main() -> None:
 
     logger.info(f"Symbols: {len(symbols)}")
     logger.info(f"Date range: {args.start} ~ {args.end}")
-    logger.info(f"seq_len={args.seq_len}, stride={args.stride}, horizons={horizons}")
+    logger.info(
+        "feature_contract=%s (%s), seq_len=%s, input_dim=%s, stride=%s, horizons=%s",
+        feature_contract.contract_id,
+        feature_contract.contract_hash[:12],
+        seq_len,
+        feature_contract.input_dim,
+        args.stride,
+        horizons,
+    )
     logger.info(f"label_mode={args.label_mode}")
     logger.info(f"include_1d_hlc_labels={bool(args.include_1d_hlc_labels)}")
 
@@ -395,7 +424,7 @@ def main() -> None:
             logger.warning(f"{symbol}: empty bars, skip")
             continue
 
-        feats = _compute_features(bars)
+        feats = _compute_features(bars, feature_contract)
         labs = _compute_labels(
             bars,
             horizons=horizons,
@@ -414,16 +443,43 @@ def main() -> None:
     features_all = pd.concat(feature_frames).sort_index()
     labels_all = pd.concat(label_frames).sort_index()
 
-    builder = SequenceDatasetBuilder(seq_len=args.seq_len, stride=args.stride)
+    builder = SequenceDatasetBuilder(seq_len=seq_len, stride=args.stride)
     X, y = builder.build_sequences(features_all, labels_all)
 
-    flat_X, x_cols = _flatten_sequences(X, builder.feature_columns_ or list(features_all.columns), args.seq_len)
-    y_cols = builder.label_columns_ or list(labels_all.columns)
-
+    feature_names = builder.feature_columns_ or list(features_all.columns)
     if builder.sample_meta_ is None:
         raise RuntimeError("internal error: sample_meta_ not available after build_sequences")
 
-    meta = builder.sample_meta_.copy()
+    # A sequence with a non-finite feature is not safe to impute silently.  Drop
+    # it before every split so train/valid/test use one explicit input contract.
+    feature_keep_mask, feature_quality = screen_feature_rows(X, feature_names)
+    if not feature_keep_mask.any():
+        raise RuntimeError("all sequence samples contain non-finite feature values")
+    if not feature_keep_mask.all():
+        logger.info(
+            "Dropped %s/%s samples with non-finite feature values before splitting",
+            feature_quality.dropped_rows,
+            feature_quality.total_rows,
+        )
+        X = X[feature_keep_mask]
+        y = y[feature_keep_mask]
+        sample_meta = builder.sample_meta_.loc[feature_keep_mask].reset_index(drop=True)
+    else:
+        sample_meta = builder.sample_meta_.reset_index(drop=True)
+
+    if tuple(feature_names) != feature_contract.feature_names:
+        raise RuntimeError(
+            "dataset feature order does not match feature contract: "
+            f"expected {list(feature_contract.feature_names)!r}, got {feature_names!r}"
+        )
+    if X.shape[2] != feature_contract.input_dim:
+        raise RuntimeError(
+            f"dataset input_dim={X.shape[2]} does not match feature contract input_dim="
+            f"{feature_contract.input_dim}"
+        )
+    flat_X, x_cols = _flatten_sequences(X, feature_names, seq_len)
+    y_cols = builder.label_columns_ or list(labels_all.columns)
+    meta = sample_meta.copy()
     full_df = pd.concat(
         [
             meta.reset_index(drop=True),
@@ -463,6 +519,21 @@ def main() -> None:
     out_train = _save_split("train", m_train)
     out_valid = _save_split("valid", m_valid)
     out_test = _save_split("test", m_test)
+    split_artifacts = {
+        name: {
+            "path": str(path),
+            "rows": int(mask.sum()),
+            "sha256": _sha256_file(path),
+        }
+        for name, path, mask in (
+            ("train", out_train, m_train),
+            ("valid", out_valid, m_valid),
+            ("test", out_test, m_test),
+        )
+    }
+    # Dataset identity is content-based.  Keep paths for operator diagnostics,
+    # but never hash them: moving identical artifacts must not change identity.
+    dataset_fingerprint = _dataset_fingerprint(split_artifacts)
 
     logger.info("Saved:")
     logger.info(f"  train: {out_train} ({m_train.sum()} samples)")
@@ -516,11 +587,13 @@ def main() -> None:
             "include_1d_hlc_labels": bool(args.include_1d_hlc_labels),
         },
         "feature_config": {
-            "seq_len": args.seq_len,
+            "seq_len": seq_len,
             "stride": args.stride,
             "num_features": X.shape[2],
-            "feature_names": builder.feature_columns_ or list(features_all.columns),
+            "feature_names": feature_names,
+            "feature_quality": feature_quality.to_dict(),
         },
+        "feature_contract": feature_contract.to_metadata(source=args.feature_contract),
         "split_config": split_config,
         "label_statistics": {
             col: {
@@ -530,13 +603,19 @@ def main() -> None:
             }
             for col in y_cols
         },
+        "dataset_fingerprint": {
+            "algorithm": "sha256",
+            "value": dataset_fingerprint,
+            "split_artifacts": split_artifacts,
+        },
     }
-    metadata["dataset_id"] = infer_dataset_id(
+    semantic_dataset_id = infer_dataset_id(
         dataset_dir=output_dir,
         dataset_metadata=metadata,
         dataset_id="",
         stock_pool_id=stock_pool_context["stock_pool_id"] or f"custom_symbols{len(symbols)}",
     )
+    metadata["dataset_id"] = f"{semantic_dataset_id}_{dataset_fingerprint[:12]}"
 
     metadata_path = output_dir / "metadata.json"
     with open(metadata_path, "w", encoding="utf-8") as f:

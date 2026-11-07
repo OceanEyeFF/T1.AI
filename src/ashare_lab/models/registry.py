@@ -60,7 +60,7 @@ def create_model_from_toml(toml_path: str | Path, **overrides: Any) -> ModelABC:
     TOML 格式：
         [model]
         name = "transformer"
-        input_dim = 6
+        feature_contract = "inputs/configs/features/mainline_11d_v1.toml"
         d_model = 128
         ...
 
@@ -71,15 +71,33 @@ def create_model_from_toml(toml_path: str | Path, **overrides: Any) -> ModelABC:
     Returns:
         模型实例
     """
-    payload = tomllib.loads(Path(toml_path).read_text(encoding="utf-8"))
+    resolved_path = Path(toml_path)
+    payload = tomllib.loads(resolved_path.read_text(encoding="utf-8"))
 
     model_section = payload.get("model", {})
     if not isinstance(model_section, dict):
         raise ValueError(f"TOML must contain a [model] section: {toml_path}")
 
+    model_section = dict(model_section)
     model_name = str(model_section.pop("name", ""))
     if not model_name:
         raise ValueError(f"[model] section must contain 'name' field: {toml_path}")
+
+    raw_contract_path = model_section.pop("feature_contract", "")
+    if raw_contract_path:
+        from ashare_lab.features.contract import FeatureContractLoader
+
+        contract_path = Path(str(raw_contract_path))
+        if not contract_path.is_absolute() and not contract_path.exists():
+            contract_path = resolved_path.parent / contract_path
+        contract = FeatureContractLoader.load(contract_path)
+        configured_dim = model_section.pop("input_dim", None)
+        if configured_dim is not None and int(configured_dim) != contract.input_dim:
+            raise ValueError(
+                "model input_dim conflicts with Feature Contract: "
+                f"model={configured_dim}, contract={contract.input_dim}"
+            )
+        model_section["input_dim"] = contract.input_dim
 
     # 合并 TOML 参数与 overrides
     config = {**model_section, **overrides}

@@ -1,15 +1,16 @@
 # profiles/ — Z 轴配置档案
 
-定义输入维度 × 回溯窗口 × 输出 horizon 组合。
+定义模型架构、输出 horizon 与 Feature Contract 的组合。
 
 每个 `.toml` 文件是一个独立的配置档案：
 
 ```toml
-profile_id = "10feat_3d5d10d"
-input_dims = 10
-lookback_days = 20
-output_horizons = [3, 5, 10]
-label_type = "forward_return"
+[model]
+family = "transformer"
+feature_contract = "inputs/configs/features/mainline_11d_v1.toml"
+label_mode = "close_to_close"
 ```
 
-当前状态：`model_mtl.toml`（从旧 configs/ 迁移）。后续按实验需求新增。
+`input_dim`、特征顺序和 `seq_len` 不在 profile 手工维护，而由 Feature Contract 的
+`output_columns` 派生。当前状态：`model_mtl.toml` 仅保留给 Transformer 推理；它不再定义训练、
+增量训练或 checkpoint 策略。
