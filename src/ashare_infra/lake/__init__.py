@@ -4,11 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import pandas as pd
+
+if TYPE_CHECKING:
+    from requests import Session
 
 from ashare_infra.guard.scope import DataScope, SymbolLifecycle
 from ashare_infra.guard.temporal import truncate_as_of
@@ -198,6 +201,24 @@ class DataLake:
         if as_of is not None and not df.empty:
             df = truncate_as_of(df, as_of, inclusive=True)
         return df
+
+    def refresh_external_daily(
+        self, symbol: str, start: date, end: date, *, session: Session | None = None
+    ) -> dict:
+        """Pull one allowlisted TuShare series into the observation-time cache."""
+        from ashare_infra.data.external_daily import refresh_external_daily
+
+        return refresh_external_daily(
+            self.cache_dir, symbol, start, end, self.tushare_token, session=session
+        )
+
+    def load_external_daily(
+        self, *, as_of: datetime, start: date | None = None
+    ) -> dict[str, list[dict]]:
+        """Replay external market bars at an explicit decision instant. Cache only."""
+        from ashare_infra.data.external_daily import read_external_daily
+
+        return read_external_daily(self.cache_dir, as_of, start=start)
 
     def resolved_derived_root(self) -> Path:
         """Resolved derived root (explicit ``derived_root`` or R4 default)."""

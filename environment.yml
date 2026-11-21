@@ -37,6 +37,7 @@ dependencies:
   - pip:
       # A股数据源（TuShare 单一信源，已移除 AkShare）
       - tushare>=1.2
+      - requests>=2.31
       - xgboost>=3.2
       - optuna>=3.6
 

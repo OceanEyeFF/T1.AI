@@ -44,6 +44,8 @@ scripts/ tests/ docs/ deployment/
 
 ## 快速开始
 
+行情采集、账户对账、备份恢复和本机调度见[本地数据运维](docs/guides/data_ops.md)。
+
 ```bash
 # 安装
 conda env create -f environment.yml && conda activate py311-private

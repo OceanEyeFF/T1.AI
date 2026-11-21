@@ -280,6 +280,9 @@ def _retry_with_backoff(func, retries: int, base_delay: float = 0.5):
 def _read_cached_partitions(symbol_dir: Path) -> pd.DataFrame:
     frames: list[pd.DataFrame] = []
     if not symbol_dir.exists():
+        # The managed collector may be switching a complete qfq generation.
+        symbol_dir = symbol_dir.with_name(f".{symbol_dir.name}.previous")
+    if not symbol_dir.exists():
         return pd.DataFrame(columns=SUPPORTED_FIELDS)
 
     for part_path in symbol_dir.glob("year=*/part.parquet"):

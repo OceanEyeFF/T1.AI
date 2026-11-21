@@ -1,0 +1,6 @@
+id,date,action,symbol,side,shares,order_id,reason
+OP001,2026-08-11,plan,600000.SH,buy,1000,B001,人工计划买入
+OP002,2026-08-11,submit,600000.SH,buy,1000,B001,人工限价委托
+OP003,2026-08-11,cancel,600000.SH,buy,400,B001,撤销未成交部分
+OP004,2026-08-12,plan,600000.SH,sell,200,S001,人工减仓
+OP005,2026-08-13,hold,600000.SH,,,,继续观察

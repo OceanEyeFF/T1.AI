@@ -3,6 +3,7 @@
 pandas>=2.1
 numpy>=1.26
 tushare>=1.2
+requests>=2.31
 pyyaml>=6.0
 pyarrow>=14.0
 torch>=2.0

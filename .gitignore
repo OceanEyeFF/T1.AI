@@ -12,6 +12,7 @@ htmlcov/
 venv/
 
 inputs/data/cache/
+inputs/data/private/
 inputs/data/derived/**/year=*/
 workspace/checkpoints/
 workspace/runs/
