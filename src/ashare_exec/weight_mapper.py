@@ -14,6 +14,7 @@ class WeightMapper:
     """
 
     top_n: int = 3
+    retention_rank: int | None = None
 
     def map_weights(
         self,
@@ -23,10 +24,17 @@ class WeightMapper:
     ) -> dict[str, float]:
         """Equal-weight the first ``top_n`` ranked symbols.
 
-        ``current_positions`` / turnover gates are reserved (non-goals for this WT).
+        With a retention rank, keep actual positions in that band before filling vacancies.
         """
-        _ = current_positions
-        selected = [symbol for symbol, _ in ranked[: self.top_n]]
+        candidates = [symbol for symbol, _ in ranked]
+        if current_positions and self.retention_rank is not None:
+            held = [
+                symbol
+                for symbol in candidates[: self.retention_rank]
+                if current_positions.get(symbol, 0) > 0
+            ]
+            candidates = list(dict.fromkeys(held + candidates))
+        selected = candidates[: self.top_n]
         if not selected:
             return {}
         weight = 1.0 / float(len(selected))

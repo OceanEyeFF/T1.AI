@@ -17,7 +17,13 @@ class Strategy(Protocol):
         self,
         today: pd.Timestamp,
         history: dict[str, pd.DataFrame],
-    ) -> dict[str, float]: ...
+    ) -> dict[str, float] | None: ...
+
+
+class PositionAwareStrategy(Protocol):
+    def target_weights_with_positions(
+        self, today: pd.Timestamp, current_positions: dict[str, float]
+    ) -> dict[str, float] | None: ...
 
 
 @dataclass(frozen=True)
@@ -57,7 +63,9 @@ class BacktestEngine:
     def __init__(self, config: BacktestConfig) -> None:
         self._config = config
 
-    def run(self, data_by_symbol: dict[str, pd.DataFrame], strategy: Strategy) -> BacktestResult:
+    def run(
+        self, data_by_symbol: dict[str, pd.DataFrame], strategy: Strategy | PositionAwareStrategy
+    ) -> BacktestResult:
         calendar = _build_calendar(data_by_symbol)
         history = _align_history(data_by_symbol, calendar)
 
@@ -75,6 +83,7 @@ class BacktestEngine:
         }
 
         prev_close_equity = cash
+        position_targets = getattr(strategy, "target_weights_with_positions", None)
 
         for i in range(1, len(calendar)):
             today_ts = calendar[i]
@@ -87,7 +96,16 @@ class BacktestEngine:
             if not allow_buy:
                 diagnostics["risk_buy_disabled"] += 1
 
-            targets = strategy.target_weights(today_ts, _slice_history(history, prev_ts))
+            if position_targets is None:
+                targets = strategy.target_weights(today_ts, _slice_history(history, prev_ts))
+            else:
+                targets = position_targets(
+                    today_ts, {symbol: float(book.total_shares(symbol)) for symbol in book.symbols()}
+                )
+            if targets is None:
+                prev_close_equity = self._mark_to_market(history, today_ts, book, cash, "close")
+                equity_rows.append({"date": today_ts, "equity": prev_close_equity, "cash": cash})
+                continue
             target_shares = self._weights_to_target_shares(
                 targets=targets,
                 today=today_ts,
@@ -301,7 +319,9 @@ def _align_history(
     for symbol, df in data_by_symbol.items():
         dfx = df.reindex(calendar)
         dfx["close"] = dfx["close"].ffill()
-        dfx["prev_close"] = dfx["close"].shift(1)
+        dfx["prev_close"] = (
+            dfx["pre_close"] if "pre_close" in dfx else dfx["close"].shift(1)
+        )
         out[symbol] = dfx
     return out
 

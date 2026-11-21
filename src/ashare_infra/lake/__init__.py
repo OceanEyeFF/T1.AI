@@ -146,6 +146,22 @@ class DataLake:
             df = truncate_as_of(df, as_of, inclusive=True)
         return df
 
+    def load_cached_tushare_bars(
+        self, symbol: str, start: date | str, end: date | str, *, adjust: str = "qfq"
+    ) -> pd.DataFrame:
+        """Read canonical market partitions without fetching or masking corrupt files."""
+        from ashare_infra.data.managed_daily import _read_symbol
+
+        namespace = {"qfq": "tushare_qfq", "raw": "tushare"}[adjust]
+        symbol = symbol.strip().upper()
+        code, _, exchange = symbol.partition(".")
+        if len(code) != 6 or not code.isascii() or not code.isdigit() or exchange not in {
+            "SH", "SZ", "BJ"
+        }:
+            raise ValueError(f"expected a TuShare A-share code, received {symbol!r}")
+        bars = _read_symbol(self.cache_dir / namespace / symbol)
+        return bars.loc[pd.Timestamp(start):pd.Timestamp(end)]
+
     def load_scope_bars(
         self,
         scope: DataScope,

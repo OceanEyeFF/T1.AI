@@ -79,7 +79,9 @@ class MultiHorizonLabel:
     def names(self) -> List[str]:
         return [label_col_for_horizon(h) for h in self.horizons]
 
-    def compute(self, data: pd.DataFrame) -> pd.DataFrame:
+    def compute(
+        self, data: pd.DataFrame, *, sessions: pd.DatetimeIndex | None = None
+    ) -> pd.DataFrame:
         """计算多跨度标签
 
         Args:
@@ -96,6 +98,11 @@ class MultiHorizonLabel:
         # 检查必需列
         if "volume" not in data:
             raise KeyError("input data must contain 'volume'")
+
+        if sessions is not None:
+            if not sessions.is_monotonic_increasing or sessions.has_duplicates:
+                raise ValueError("trading sessions must be sorted and unique")
+            data = data.reindex(sessions)
 
         # 根据模式选择基准价格列
         if self.label_mode == "close_to_close":
@@ -129,7 +136,8 @@ class MultiHorizonLabel:
 
             # 停牌掩码：如果未来窗口内任何一天缺价/停牌，label 置为 NaN
             invalid = _window_has_issue(issue_mask, h + shift_offset)
-            invalid = invalid | _suspension_gap_mask(data.index, h + shift_offset)
+            if sessions is None:
+                invalid = invalid | _suspension_gap_mask(data.index, h + shift_offset)
             label_df[label_col_for_horizon(h)] = forward_ret.mask(invalid)
 
         return label_df

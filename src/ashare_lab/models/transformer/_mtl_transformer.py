@@ -36,6 +36,7 @@ class TransformerConfig:
     loss_weights: tuple[float, float, float] = (1.0, 1.0, 1.0)
     loss_type: str = "l1"  # 损失函数类型："l1" 或 "ic_aware"
     loss_alpha: float = 0.3  # IC-Aware Loss的α参数（仅在loss_type="ic_aware"时使用）
+    n_decoder_layers: int = 0
 
 
 class PositionalEncoding(nn.Module):
@@ -274,12 +275,18 @@ class EarlyStoppingIC:
 
 
 class MTLTransformer(nn.Module):
-    """共享编码器 + 三任务回归头的Transformer。"""
+    """Shared encoder with three return heads and optional learned horizon queries."""
 
     def __init__(self, config: TransformerConfig):
         super().__init__()
-        if not 4 <= config.n_layers <= 6:
+        if config.n_decoder_layers == 0 and not 4 <= config.n_layers <= 6:
             raise ValueError("n_layers must be between 4 and 6 for MTL Transformer")
+        if config.n_decoder_layers != 0 and (
+            config.n_layers != 3 or config.n_decoder_layers not in (2, 4, 6, 8, 10)
+        ):
+            raise ValueError(
+                "the horizon-query model requires 3 encoder and 2, 4, 6, 8 or 10 decoder layers"
+            )
         if config.max_seq_len < config.min_seq_len:
             raise ValueError("max_seq_len must be >= min_seq_len")
 
@@ -304,6 +311,27 @@ class MTLTransformer(nn.Module):
             num_layers=config.n_layers,
             norm=nn.LayerNorm(config.d_model),
         )
+
+        self.transformer_decoder: nn.TransformerDecoder | None = None
+        if config.n_decoder_layers:
+            decoder_layer = nn.TransformerDecoderLayer(
+                d_model=config.d_model,
+                nhead=config.n_heads,
+                dim_feedforward=config.d_ff,
+                dropout=config.dropout,
+                activation="gelu",
+                batch_first=True,
+                norm_first=True,
+            )
+            self.transformer_decoder = nn.TransformerDecoder(
+                decoder_layer,
+                num_layers=config.n_decoder_layers,
+                norm=nn.LayerNorm(config.d_model),
+            )
+            self.horizon_queries = nn.Parameter(
+                torch.empty(len(PRIMARY_TREND_PRED_COLS), config.d_model)
+            )
+            nn.init.normal_(self.horizon_queries, std=0.02)
 
         def _make_head() -> nn.Sequential:
             return nn.Sequential(
@@ -339,11 +367,17 @@ class MTLTransformer(nn.Module):
         x = self.input_projection(x)
         x = self.pos_encoder(x)
         x = self.transformer_encoder(x)
-        pooled = x[:, -1, :]
+        if self.transformer_decoder is None:
+            representations = [x[:, -1, :]] * len(self.heads)
+        else:
+            queries = self.horizon_queries.unsqueeze(0).expand(batch_size, -1, -1)
+            representations = self.transformer_decoder(queries, x).unbind(dim=1)
 
         predictions: dict[str, torch.Tensor] = {
-            pred_col: self.heads[pred_col](pooled).squeeze(-1)
-            for pred_col in PRIMARY_TREND_PRED_COLS
+            pred_col: self.heads[pred_col](representation).squeeze(-1)
+            for pred_col, representation in zip(
+                PRIMARY_TREND_PRED_COLS, representations, strict=True
+            )
         }
 
         if labels is None:
@@ -374,6 +408,8 @@ def create_mtl_model(
     loss_weights: tuple[float, float, float] = (1.0, 1.0, 1.0),
     loss_type: str = "l1",
     loss_alpha: float = 0.3,
+    *,
+    n_decoder_layers: int = 0,
 ) -> "MTLTransformer":
     """便捷创建多任务Transformer模型。
 
@@ -394,6 +430,7 @@ def create_mtl_model(
         loss_weights=loss_weights,
         loss_type=loss_type,
         loss_alpha=loss_alpha,
+        n_decoder_layers=n_decoder_layers,
     )
     return MTLTransformer(config)
 

@@ -282,6 +282,29 @@ def suspended_dates(symbol, missing, token, session):
     return set(_dates(rows.loc[full_day, "trade_date"])) & set(missing)
 
 
+def capture_execution_bars(cache, symbol, start, end, token, session, expected_sessions):
+    """Cache raw OHLCV plus the provider's previous close for opening-price replay."""
+    fields = ("open", "high", "low", "close", "pre_close", "vol", "amount")
+    raw = _fetch(
+        "daily", symbol, start.strftime("%Y%m%d"), end.strftime("%Y%m%d"), token, session, fields
+    )
+    bars = tushare_source._normalize_tushare_daily(raw)
+    if bars.empty or not bars.index.equals(expected_sessions):
+        raise ValueError(f"{symbol}: raw prices did not match the expected trading dates")
+    raw.index = pd.to_datetime(raw["trade_date"], format="%Y%m%d")
+    bars["pre_close"] = pd.to_numeric(raw["pre_close"], errors="raise")
+    if (
+        not np.isfinite(bars.to_numpy()).all()
+        or not (bars[["open", "close", "pre_close"]] > 0).all().all()
+    ):
+        raise ValueError(f"{symbol}: invalid raw execution prices")
+    directory = cache / "tushare" / symbol
+    previous = _read_symbol(directory)
+    if not previous.empty:
+        bars = pd.concat((previous.loc[~previous.index.isin(bars.index)], bars)).sort_index()
+    tushare_source._write_partitioned(bars, directory)
+
+
 def _bars(endpoint, job, token, session, open_days):
     args = (job.symbol, job.start_date, job.end_date, token, session)
     stock_fields = ("open", "high", "low", "close", "vol", "amount")
